@@ -10,4 +10,4 @@
 * **Real-time Monitoring:** View and manage currently connected players and their activities.
 * **User-Friendly Interface:** Intuitive design for quick and efficient server administration tasks.
 
-Whether you need to adjust an item on an offline player's character or monitor real-time server activity, **[Your Chosen Name]** puts the power in your hands.
+Whether you need to adjust an item on an offline player's character or monitor real-time server activity, **Veritas** puts the power in your hands.
