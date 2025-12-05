@@ -1,5 +1,5 @@
 local port = 40121 -- Interner Port für die Bridge
-local QBCore = exports['qbx_core']:GetCoreObject() -- Qbox Export
+local QBCore = exports['qb-core']:GetCoreObject() -- Qbox Export
 
 -- Simpler HTTP Listener via Node.js im FiveM (oder wir nutzen REST-Handler)
 -- Für dieses Beispiel nutzen wir einen Command oder Export, der vom Backend via HTTP aufgerufen wird. 
@@ -39,6 +39,19 @@ SetHttpHandler(function(req, res)
         end)
         return
     end
+
+    -- Route: Gibt alle Online CitizenIDs zurück
+    if path == '/get-online-players' and method == 'GET' then
+        local onlinePlayers = {}
+        local players = QBCore.Functions.GetQBPlayers() -- Qbox/QB Funktion
+
+        for source, player in pairs(players) do
+            onlinePlayers[player.PlayerData.citizenid] = source
+        end
+        
+        res.send(json.encode(onlinePlayers))
+        return
+    end
     
     res.send(json.encode({error = "Route not found"}))
 end)
@@ -54,7 +67,7 @@ RegisterCommand('refreshwebdata', function(source, args)
     local dataToDump = {
         ['jobs.json'] = QBCore.Shared.Jobs,
         ['vehicles.json'] = QBCore.Shared.Vehicles,
-        ['items.json'] = QBCore.Shared.Items 
+        ['items.json'] = QBCore.Shared.Items
     }
 
     for filename, data in pairs(dataToDump) do

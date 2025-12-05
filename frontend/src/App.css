@@ -55,3 +55,43 @@ button {
 button:hover {
     background: #3498db;
 }
+
+/* Player Card Styles */
+.player-card-item {
+    background: #404040;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    border-left: 4px solid transparent;
+}
+
+.player-card-item:hover {
+    background: #505050;
+}
+
+/* Grüner Rand wenn Online */
+.player-card-item.online {
+    border-left-color: #2ecc71;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #555; /* Grau für Offline */
+}
+
+.player-card-item.online .status-indicator {
+    background-color: #2ecc71; /* Grün für Online */
+    box-shadow: 0 0 5px #2ecc71;
+}
+
+.list-scroll {
+    max-height: 70vh;
+    overflow-y: auto;
+}

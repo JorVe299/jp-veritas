@@ -1,15 +1,10 @@
 import { useState } from 'react';
 import JobManager from './components/JobManager';
-import './App.css'; // Standard CSS
+import PlayerList from './components/PlayerList';
+import './App.css';
 
 function App() {
-    // Dummy Spieler Daten (Bis wir die Player-List API fertig haben)
-    // Später kommt das aus einer <PlayerList /> Komponente
-    const [selectedPlayer, setSelectedPlayer] = useState({
-        citizenid: 'QB-123456',
-        charinfo: { firstname: 'Max', lastname: 'Mustermann' },
-        job: { name: 'police', grade: 1 }
-    });
+    const [selectedPlayer, setSelectedPlayer] = useState(null);
 
     return (
         <div className="app-container">
@@ -18,22 +13,31 @@ function App() {
             </header>
             
             <div className="content-grid">
-                {/* Linke Seite: Spieler Liste (Platzhalter) */}
+                {/* Linke Seite: Echte Liste */}
                 <aside className="sidebar">
-                    <h3>Spieler Liste</h3>
-                    <div 
-                        className="player-card active"
-                        onClick={() => console.log("Spieler gewählt")}
-                    >
-                        {selectedPlayer.charinfo.firstname} (Online)
-                    </div>
+                    <PlayerList onSelectPlayer={setSelectedPlayer} />
                 </aside>
 
-                {/* Rechte Seite: Detailansicht */}
+                {/* Rechte Seite: Details */}
                 <main className="details">
-                    <JobManager selectedPlayer={selectedPlayer} />
-                    
-                    {/* Hier können später VehicleManager, InventoryManager hin */}
+                    {selectedPlayer ? (
+                        <>
+                            <h2>Verwaltung: {selectedPlayer.name}</h2>
+                            <div className="status-badge">
+                                Status: {selectedPlayer.isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}
+                            </div>
+                            
+                            {/* Deine Module */}
+                            <JobManager selectedPlayer={selectedPlayer} />
+                            
+                            {/* Platzhalter für Inventar / Fahrzeuge */}
+                            {/* <InventoryManager selectedPlayer={selectedPlayer} /> */}
+                        </>
+                    ) : (
+                        <div className="empty-state">
+                            Wähle einen Spieler aus der Liste links.
+                        </div>
+                    )}
                 </main>
             </div>
         </div>
