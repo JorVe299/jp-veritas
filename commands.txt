@@ -1,0 +1,1 @@
+/refreshwebdata -- gets the data from the fivem Server and converts it to json for backend (deprecated)
