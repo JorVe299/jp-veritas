@@ -1,52 +1,70 @@
 require('dotenv').config();
 const express = require('express');
-const mysql = require('mysql2/promise');
 const axios = require('axios');
 const cors = require('cors');
-const { loadGameData } = require('./utils/dataLoader');
+const { loadGameData, getJobs } = require('./utils/dataLoader');
+const { db, parseJSON, updatePlayerColumn } = require('./utils/dbHandler');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// DB Pool
-const db = mysql.createPool({
-    host: process.env.DB_HOST, // 'localhost'
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME // Deine Qbox DB
-});
+// FiveM Bridge URL (die jp-veritas Resource auf dem Server)
+// Der Pfad hinter dem Port ist der Resource-Name
+const FIVEM_API_URL = process.env.FIVEM_API_URL || 'http://127.0.0.1:30120/jp-veritas';
 
-// FiveM Bridge URL (Resource auf dem Server)
-// FiveM's integrierter Webserver läuft meist auf Port 30120 + Resource Name
-const FIVEM_API_URL = 'http://127.0.0.1:30120/deine-bridge-resource'; 
+// Beim Start Daten laden
+loadGameData();
+
+// --- Bridge Helper -------------------------------------------------------
+
+// Fragt die Bridge, ob ein Spieler gerade online ist.
+// Wenn der Server nicht erreichbar ist, behandeln wir ihn als offline
+// und gehen automatisch den SQL-Weg.
+async function isPlayerOnline(citizenid) {
+    try {
+        const res = await axios.post(`${FIVEM_API_URL}/check-online`, { citizenid }, { timeout: 2000 });
+        return !!res.data.isOnline;
+    } catch (e) {
+        console.log('[Bridge] Nicht erreichbar (Server offline?) - nutze SQL Fallback');
+        return false;
+    }
+}
+
+// --- Management Routen ---------------------------------------------------
 
 // Route: Geld geben (Hybrid Logik)
 app.post('/api/manage/money', async (req, res) => {
     const { citizenid, amount, type } = req.body; // type: 'bank' or 'cash'
 
+    if (!citizenid) return res.status(400).json({ error: 'citizenid fehlt' });
+
+    const moneyType = type === 'cash' ? 'cash' : 'bank';
+    const delta = Number(amount);
+    if (!Number.isFinite(delta)) return res.status(400).json({ error: 'amount muss eine Zahl sein' });
+
     try {
-        // 1. Check: Ist er online?
-        // Hinweis: Authentifizierungstoken für die Bridge hier einfügen
-        const onlineCheck = await axios.post(`${FIVEM_API_URL}/check-online`, { citizenid });
-        
-        if (onlineCheck.data.isOnline) {
+        if (await isPlayerOnline(citizenid)) {
             // WEG A: Live Update via Bridge
-            await axios.post(`${FIVEM_API_URL}/update-money`, { citizenid, amount });
+            const bridgeRes = await axios.post(`${FIVEM_API_URL}/update-money`, {
+                citizenid, amount: delta, type: moneyType
+            });
+            if (!bridgeRes.data.success) {
+                return res.status(502).json({ error: bridgeRes.data.msg || 'Bridge Fehler' });
+            }
             return res.json({ status: 'success', mode: 'live', message: 'Money updated via Live API' });
-        } else {
-            // WEG B: SQL Update
-            // Qbox speichert Geld oft als JSON in 'players' -> 'money'
-            // Das ist tricky mit SQL allein, wir holen erst den String
-            const [rows] = await db.execute('SELECT money FROM players WHERE citizenid = ?', [citizenid]);
-            if (rows.length === 0) return res.status(404).json({ error: 'Player not found' });
-
-            let moneyData = JSON.parse(rows[0].money);
-            moneyData[type] = (moneyData[type] || 0) + amount;
-
-            await db.execute('UPDATE players SET money = ? WHERE citizenid = ?', [JSON.stringify(moneyData), citizenid]);
-            return res.json({ status: 'success', mode: 'offline', message: 'Money updated via SQL' });
         }
+
+        // WEG B: SQL Update
+        // Qbox speichert Geld als JSON in 'players' -> 'money'
+        const [rows] = await db.execute('SELECT money FROM players WHERE citizenid = ?', [citizenid]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Player not found' });
+
+        const moneyData = parseJSON(rows[0].money);
+        moneyData[moneyType] = (moneyData[moneyType] || 0) + delta;
+
+        await updatePlayerColumn(citizenid, 'money', moneyData);
+        return res.json({ status: 'success', mode: 'offline', message: 'Money updated via SQL', money: moneyData });
 
     } catch (error) {
         console.error(error);
@@ -54,31 +72,67 @@ app.post('/api/manage/money', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3001; // Backend Port
-app.listen(PORT, () => {
-    console.log(`Backend running on port ${PORT}`);
-});
+// Route: Job setzen (Hybrid Logik)
+app.post('/api/manage/job', async (req, res) => {
+    const { citizenid, jobName, gradeLevel } = req.body;
 
-// Beim Start Daten laden
-loadGameData();
+    if (!citizenid || !jobName) return res.status(400).json({ error: 'citizenid und jobName sind Pflicht' });
 
-// API Route für das Frontend (React braucht die Listen für Dropdowns)
-app.get('/api/meta/jobs', (req, res) => {
-    const { getJobs } = require('./utils/dataLoader');
-    res.json(getJobs());
-});
+    // Job + Grade gegen die geladenen Spieldaten prüfen,
+    // damit kein Fantasie-Job in der DB landet
+    const jobs = getJobs();
+    const job = jobs[jobName];
+    if (!job) return res.status(404).json({ error: `Job '${jobName}' existiert nicht` });
 
-// Helper: JSON parsen wenn nötig
-const parseJSON = (data) => {
-    if (typeof data === 'string') {
-        try { return JSON.parse(data); } catch { return {}; }
+    const level = String(gradeLevel ?? '0');
+    const grade = job.grades?.[level];
+    if (!grade) return res.status(400).json({ error: `Grade '${level}' existiert für Job '${jobName}' nicht` });
+
+    try {
+        if (await isPlayerOnline(citizenid)) {
+            // WEG A: Live Update via Bridge (der Core setzt selbst alles korrekt)
+            const bridgeRes = await axios.post(`${FIVEM_API_URL}/update-job`, {
+                citizenid, jobName, gradeLevel: Number(level)
+            });
+            if (!bridgeRes.data.success) {
+                return res.status(502).json({ error: bridgeRes.data.msg || 'Bridge Fehler' });
+            }
+            return res.json({ status: 'success', mode: 'live', message: 'Job updated via Live API' });
+        }
+
+        // WEG B: SQL Update - wir bauen die job-Struktur aus den Shared Jobs nach
+        const jobData = {
+            name: jobName,
+            label: job.label,
+            payment: grade.payment || 0,
+            onduty: job.defaultDuty ?? true,
+            isboss: grade.isboss ?? false,
+            type: job.type || 'none',
+            grade: {
+                name: grade.name,
+                level: Number(level)
+            }
+        };
+
+        const updated = await updatePlayerColumn(citizenid, 'job', jobData);
+        if (!updated) return res.status(404).json({ error: 'Player not found' });
+
+        return res.json({ status: 'success', mode: 'offline', message: 'Job updated via SQL', job: jobData });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
-    return data;
-};
+});
+
+// --- Lese-Routen ---------------------------------------------------------
 
 app.get('/api/players', async (req, res) => {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    // Auf Integer zwingen und begrenzen: LIMIT/OFFSET lassen sich nicht
+    // zuverlässig als Prepared-Statement-Parameter übergeben, deshalb
+    // werden sie hier validiert und direkt eingesetzt
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
     const search = req.query.search || '';
     const offset = (page - 1) * limit;
 
@@ -88,30 +142,31 @@ app.get('/api/players', async (req, res) => {
         let onlineIDs = {};
         try {
             const onlineRes = await axios.get(`${FIVEM_API_URL}/get-online-players`, { timeout: 1000 });
-            onlineIDs = onlineRes.data;
+            onlineIDs = onlineRes.data || {};
         } catch (e) {
-            console.log("FiveM Bridge nicht erreichbar (Server offline?)");
+            console.log('FiveM Bridge nicht erreichbar (Server offline?)');
         }
 
         // 2. SQL Query bauen (Qbox speichert Namen in charinfo JSON)
-        // Wir suchen in Vorname, Nachname oder CitizenID
-        let query = `
-            SELECT citizenid, charinfo, job, money 
-            FROM players 
-            WHERE 
-                citizenid LIKE ? OR 
-                JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.firstname')) LIKE ? OR 
-                JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.lastname')) LIKE ?
-            LIMIT ? OFFSET ?
-        `;
-        
-        const searchTerm = `%${search}%`;
-        const params = [searchTerm, searchTerm, searchTerm, limit, offset];
+        let query;
+        let params;
 
-        // Wenn keine Suche, Query vereinfachen für Performance
-        if (!search) {
-            query = 'SELECT citizenid, charinfo, job, money FROM players LIMIT ? OFFSET ?';
-            params.splice(0, 3); // Entferne Such-Parameter
+        if (search) {
+            // Wir suchen in Vorname, Nachname oder CitizenID
+            query = `
+                SELECT citizenid, charinfo, job, money
+                FROM players
+                WHERE
+                    citizenid LIKE ? OR
+                    JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.firstname')) LIKE ? OR
+                    JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.lastname')) LIKE ?
+                LIMIT ${limit} OFFSET ${offset}
+            `;
+            const searchTerm = `%${search}%`;
+            params = [searchTerm, searchTerm, searchTerm];
+        } else {
+            query = `SELECT citizenid, charinfo, job, money FROM players LIMIT ${limit} OFFSET ${offset}`;
+            params = [];
         }
 
         const [rows] = await db.execute(query, params);
@@ -121,11 +176,13 @@ app.get('/api/players', async (req, res) => {
             const char = parseJSON(row.charinfo);
             const job = parseJSON(row.job);
             const money = parseJSON(row.money);
-            
+
             return {
                 citizenid: row.citizenid,
-                name: `${char.firstname} ${char.lastname}`,
-                jobLabel: `${job.label} - ${job.grade?.name}`,
+                name: `${char.firstname || '?'} ${char.lastname || ''}`.trim(),
+                charinfo: char,
+                job: job,
+                jobLabel: `${job.label || 'Kein Job'} - ${job.grade?.name || '-'}`,
                 money: money, // { cash: x, bank: y }
                 isOnline: !!onlineIDs[row.citizenid], // true/false
                 sourceID: onlineIDs[row.citizenid] || null
@@ -140,6 +197,11 @@ app.get('/api/players', async (req, res) => {
     }
 });
 
+// API Route für das Frontend (React braucht die Listen für Dropdowns)
+app.get('/api/meta/jobs', (req, res) => {
+    res.json(getJobs());
+});
+
 // Route zum Neuladen der JSON-Daten ohne Neustart
 app.post('/api/system/refresh', (req, res) => {
     try {
@@ -149,4 +211,12 @@ app.post('/api/system/refresh', (req, res) => {
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
+});
+
+// --- Start ---------------------------------------------------------------
+
+const PORT = process.env.PORT || 3001; // Backend Port
+app.listen(PORT, () => {
+    console.log(`Backend running on port ${PORT}`);
+    console.log(`Bridge erwartet unter ${FIVEM_API_URL}`);
 });

@@ -28,7 +28,8 @@ function App() {
                             </div>
                             
                             {/* Deine Module */}
-                            <JobManager selectedPlayer={selectedPlayer} />
+                            {/* key sorgt dafür, dass die Formulare bei Spielerwechsel neu starten */}
+                            <JobManager key={selectedPlayer.citizenid} selectedPlayer={selectedPlayer} />
                             
                             {/* Platzhalter für Inventar / Fahrzeuge */}
                             {/* <InventoryManager selectedPlayer={selectedPlayer} /> */}

@@ -1,10 +1,13 @@
-local port = 40121                                -- Interner Port für die Bridge
 local QBCore = exports['qb-core']:GetCoreObject() -- Qbox Export
 
--- Simpler HTTP Listener via Node.js im FiveM (oder wir nutzen REST-Handler)
--- Für dieses Beispiel nutzen wir einen Command oder Export, der vom Backend via HTTP aufgerufen wird.
--- Da natives HTTP Listening in FiveM komplex ist, ist der einfachste Weg für den Start:
--- Das Node Backend nutzt RCON oder wir nutzen 'SetHttpHandler'.
+-- Die Bridge hängt am HTTP Server von FiveM selbst (Standard 30120).
+-- Erreichbar unter http://<server>:30120/<resource-name>/<route>
+
+-- Helper: Antwort immer als JSON mit passendem Content-Type senden
+local function sendJson(res, payload, status)
+    res.writeHead(status or 200, { ['Content-Type'] = 'application/json' })
+    res.send(json.encode(payload))
+end
 
 SetHttpHandler(function(req, res)
     local path = req.path
@@ -19,23 +22,57 @@ SetHttpHandler(function(req, res)
             local response = { isOnline = (target ~= nil) }
             if target then response.source = target.PlayerData.source end
 
-            res.send(json.encode(response))
+            sendJson(res, response)
         end)
         return
     end
 
-    -- Aktion: Live Update (Beispiel Geld)
+    -- Aktion: Live Update Geld
     if path == '/update-money' and method == 'POST' then
         req.setDataHandler(function(body)
             local data = json.decode(body)
             local player = QBCore.Functions.GetPlayerByCitizenId(data.citizenid)
 
-            if player then
-                player.Functions.AddMoney('bank', data.amount)
-                res.send(json.encode({ success = true, msg = "Live updated" }))
-            else
-                res.send(json.encode({ success = false, msg = "Player offline" }))
+            if not player then
+                sendJson(res, { success = false, msg = "Player offline" })
+                return
             end
+
+            -- type kommt vom Backend ('cash' oder 'bank'), Fallback bank
+            local moneyType = data.type or 'bank'
+            local amount = tonumber(data.amount) or 0
+
+            -- AddMoney akzeptiert keine negativen Beträge -> abziehen explizit
+            local ok
+            if amount >= 0 then
+                ok = player.Functions.AddMoney(moneyType, amount, 'veritas-panel')
+            else
+                ok = player.Functions.RemoveMoney(moneyType, math.abs(amount), 'veritas-panel')
+            end
+
+            if ok == false then
+                sendJson(res, { success = false, msg = "Transaktion abgelehnt (Deckung?)" })
+            else
+                sendJson(res, { success = true, msg = "Live updated" })
+            end
+        end)
+        return
+    end
+
+    -- Aktion: Live Update Job
+    if path == '/update-job' and method == 'POST' then
+        req.setDataHandler(function(body)
+            local data = json.decode(body)
+            local player = QBCore.Functions.GetPlayerByCitizenId(data.citizenid)
+
+            if not player then
+                sendJson(res, { success = false, msg = "Player offline" })
+                return
+            end
+
+            -- Der Core baut die Job-Struktur selbst korrekt zusammen
+            player.Functions.SetJob(data.jobName, tonumber(data.gradeLevel) or 0)
+            sendJson(res, { success = true, msg = "Live updated" })
         end)
         return
     end
@@ -49,11 +86,11 @@ SetHttpHandler(function(req, res)
             onlinePlayers[player.PlayerData.citizenid] = source
         end
 
-        res.send(json.encode(onlinePlayers))
+        sendJson(res, onlinePlayers)
         return
     end
 
-    res.send(json.encode({ error = "Route not found" }))
+    sendJson(res, { error = "Route not found" }, 404)
 end)
 
 -- -- Command: /refreshwebdata

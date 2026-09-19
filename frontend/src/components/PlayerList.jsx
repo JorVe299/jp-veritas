@@ -8,22 +8,26 @@ export default function PlayerList({ onSelectPlayer }) {
     
     // Debounce Suche (Damit nicht bei jedem Tastenschlag gefetcht wird)
     useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchPlayers();
-        }, 500); 
-        return () => clearTimeout(timer);
-    }, [search, page]);
+        // cancelled schützt vor Race Conditions: bei schnellem Tippen darf
+        // eine langsamere ältere Antwort die neuere nicht überschreiben
+        let cancelled = false;
 
-    const fetchPlayers = async () => {
-        try {
-            const res = await api.get('/players', {
-                params: { search, page, limit: 15 }
-            });
-            setPlayers(res.data);
-        } catch (err) {
-            console.error("Fehler beim Laden:", err);
-        }
-    };
+        const timer = setTimeout(async () => {
+            try {
+                const res = await api.get('/players', {
+                    params: { search, page, limit: 15 }
+                });
+                if (!cancelled) setPlayers(res.data);
+            } catch (err) {
+                if (!cancelled) console.error("Fehler beim Laden:", err);
+            }
+        }, 500);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [search, page]);
 
     return (
         <div className="player-list-container">

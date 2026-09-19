@@ -34,21 +34,31 @@ function syncAndLoadData() {
     }
 
     // 2. Lade Daten aus dem lokalen Cache (Backend Ordner)
-    try {
-        FILES.forEach(file => {
-            const filePath = path.join(LOCAL_DATA_PATH, file);
-            if (fs.existsSync(filePath)) {
-                const raw = fs.readFileSync(filePath, 'utf8');
-                const key = file.replace('.json', ''); // jobs.json -> jobs
-                CACHE[key] = JSON.parse(raw);
-            } else {
+    // Wichtig: try/catch pro Datei - sonst reisst eine kaputte Datei
+    // alle anderen mit und der Cache bleibt komplett leer
+    FILES.forEach(file => {
+        const key = file.replace('.json', ''); // jobs.json -> jobs
+        const filePath = path.join(LOCAL_DATA_PATH, file);
+
+        try {
+            if (!fs.existsSync(filePath)) {
                 console.warn(`[Data] Warning: ${file} not found in backend/data/`);
+                return;
             }
-        });
-        console.log(`[Data] Loaded successfully. Items: ${Object.keys(CACHE.items).length}`);
-    } catch (e) {
-        console.error('[Data] Error parsing JSON:', e.message);
-    }
+
+            const raw = fs.readFileSync(filePath, 'utf8');
+            if (!raw.trim()) {
+                console.warn(`[Data] Warning: ${file} ist leer. Starte die jp-veritas Resource auf dem FiveM Server, um sie zu erzeugen.`);
+                return;
+            }
+
+            CACHE[key] = JSON.parse(raw);
+        } catch (e) {
+            console.error(`[Data] Error parsing ${file}:`, e.message);
+        }
+    });
+
+    console.log(`[Data] Loaded. Jobs: ${Object.keys(CACHE.jobs).length}, Items: ${Object.keys(CACHE.items).length}, Vehicles: ${Object.keys(CACHE.vehicles).length}`);
 }
 
 // Initialer Start

@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { fetchJobs, updatePlayerJob } from '../api';
 
+// Hinweis: App.jsx gibt diesem Component ein key={citizenid}. Dadurch wird es
+// bei Spielerwechsel neu gemountet und der State unten startet automatisch mit
+// dem Job des neuen Spielers - kein Sync-Effect nötig.
 export default function JobManager({ selectedPlayer }) {
     const [jobs, setJobs] = useState({});
-    const [selectedJob, setSelectedJob] = useState('');
-    const [selectedGrade, setSelectedGrade] = useState('0');
+    const [selectedJob, setSelectedJob] = useState(selectedPlayer?.job?.name || '');
+    const [selectedGrade, setSelectedGrade] = useState(String(selectedPlayer?.job?.grade?.level ?? '0'));
     const [loading, setLoading] = useState(false);
 
-    // 1. Lade die Job-Liste beim Start
+    // Lade die Job-Liste beim Start
     useEffect(() => {
         fetchJobs().then(res => setJobs(res.data));
     }, []);
@@ -16,22 +19,24 @@ export default function JobManager({ selectedPlayer }) {
     if (!selectedPlayer) return <div className="p-4">Bitte Wähle einen Spieler aus.</div>;
 
     const handleSave = async () => {
+        if (!selectedJob) return alert('Bitte zuerst einen Job wählen.');
+
         setLoading(true);
         try {
-            await updatePlayerJob(selectedPlayer.citizenid, {
+            const res = await updatePlayerJob(selectedPlayer.citizenid, {
                 jobName: selectedJob,
                 gradeLevel: selectedGrade
             });
-            alert('Job gespeichert!');
+            alert(`Job gespeichert (${res.data.mode === 'live' ? 'live auf dem Server' : 'offline in der DB'})!`);
         } catch (err) {
-            alert('Fehler beim Speichern: ' + err.message);
+            alert('Fehler beim Speichern: ' + (err.response?.data?.error || err.message));
         }
         setLoading(false);
     };
 
     return (
         <div className="card">
-            <h3>Job Verwaltung für {selectedPlayer.charinfo?.firstname}</h3>
+            <h3>Job Verwaltung für {selectedPlayer.name}</h3>
             
             {/* JOB AUSWAHL */}
             <div className="form-group">

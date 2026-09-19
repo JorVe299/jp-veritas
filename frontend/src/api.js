@@ -1,14 +1,16 @@
 // src/api.js
 import axios from 'axios';
 
-// Basis-Konfiguration für dein Node.js Backend
+// Relativ: im Dev übernimmt der Vite-Proxy (siehe vite.config.js),
+// im Build liegt das Frontend hinter derselben Origin wie die API.
 const api = axios.create({
-    baseURL: 'http://localhost:3001/api', // Dein Backend Port
+    baseURL: '/api',
 });
 
 // Helper Funktionen
-export const fetchPlayers = () => api.get('/players'); // Müssen wir im Backend noch bauen
-export const fetchJobs = () => api.get('/meta/jobs');  // Die Route haben wir vorhin gebaut
+export const fetchPlayers = (params) => api.get('/players', { params });
+export const fetchJobs = () => api.get('/meta/jobs');
 export const updatePlayerJob = (citizenid, jobData) => api.post('/manage/job', { citizenid, ...jobData });
+export const updatePlayerMoney = (citizenid, amount, type) => api.post('/manage/money', { citizenid, amount, type });
 
 export default api;
