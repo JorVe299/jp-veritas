@@ -1173,7 +1173,140 @@
 }
 
 /* --------------------------------------------------------------------------
-   7. Responsiv
+   7. Anmeldung
+   Vorraum, Sitzung in der Kopfleiste, Warnleiste fuer den ungeschuetzten
+   Betrieb. Keine eigenen Farben: alles kommt aus denselben Tokens.
+   -------------------------------------------------------------------------- */
+
+/* Der Vorraum. Bewusst leer: hier gibt es genau eine Sache zu tun, und
+   nichts im Hintergrund, das Daten vortaeuscht, die niemand sehen darf. */
+.gate {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 100%;
+    padding: var(--s-6) var(--gutter);
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: radial-gradient(118% 80% at 50% -10%, #1B1815 0%, var(--c-bg) 58%);
+}
+
+.gate__grain {
+    position: absolute;
+    inset: 0;
+    background-image: var(--noise);
+    opacity: 0.05;
+    pointer-events: none;
+}
+
+.gate__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    width: 100%;
+    max-width: 27rem;
+    padding: var(--s-6);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-panel);
+    box-shadow: var(--sh-rail);
+}
+
+.gate__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    color: var(--c-text);
+}
+
+.gate__word {
+    font-size: 1.0625rem;
+    font-weight: 800;
+    font-variation-settings: 'wdth' 70;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.gate__block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+}
+
+.gate__title {
+    font-size: var(--fs-lg);
+}
+
+.gate__text {
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+    max-width: 46ch;
+}
+
+.gate__action {
+    align-self: flex-start;
+    margin-top: var(--s-1);
+}
+
+/* --- Sitzung in der Kopfleiste -------------------------------------------- */
+
+.session {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    flex: none;
+    min-width: 0;
+}
+
+.session__avatar {
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: none;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--c-border-strong);
+    background: var(--c-surface-2);
+    object-fit: cover;
+}
+
+/* Kein Bild vorhanden oder nicht geladen: Initialen statt eines kaputten
+   Bildsymbols. Gleiche Groesse, gleiche Form, kein Sprung im Layout. */
+.session__avatar--mark {
+    display: grid;
+    place-items: center;
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--c-text-muted);
+}
+
+.session__name {
+    max-width: 10rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+}
+
+/* --- Warnleiste: Panel laeuft ohne Schutz ---------------------------------
+   Steht ausserhalb der scrollenden Flaeche und laesst sich nicht wegklicken.
+   Eine Meldung, die sich wegscrollen laesst, ist hier zu wenig. */
+
+.app--warned {
+    grid-template-rows: var(--topbar-h) auto minmax(0, 1fr);
+}
+
+.banner {
+    position: relative;
+    z-index: 19;
+    padding: var(--s-3) var(--gutter);
+    border-width: 0 0 1px;
+    border-radius: 0;
+}
+
+/* --------------------------------------------------------------------------
+   8. Responsiv
    Ziel: von 360px Telefon bis zum breiten Schreibtisch ohne Bruch.
    -------------------------------------------------------------------------- */
 
@@ -1202,6 +1335,12 @@
 
     .bridge__text {
         font-size: 0.625rem;
+    }
+
+    /* Marke, Bruecke und Sitzung teilen sich die erste Zeile - der Name
+       gibt zuerst nach, Bild und Abmelden bleiben. */
+    .session__name {
+        max-width: 7rem;
     }
 
     .billboard {
@@ -1238,6 +1377,16 @@
 
     .billboard__name {
         max-width: none;
+    }
+
+    /* Auf dem Telefon reicht die Breite nicht fuer Bruecke, Name und
+       Abmelden. Der Name faellt weg, das Bild bleibt als Kennzeichen. */
+    .session__name {
+        display: none;
+    }
+
+    .gate__card {
+        padding: var(--s-5);
     }
 
     /* Auf dem Telefon steht die kleinste Schrift vor dem dichtesten Teil des
@@ -1301,5 +1450,341 @@
 
     .wall__body:has(.tile:hover) .rail {
         opacity: 1;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   9. Inventar
+   Zusammenfassung in der Karte, das eigentliche Bearbeiten in einer eigenen
+   Flaeche. Das Raster ist dem Inventar im Spiel nachempfunden: gleich grosse
+   Kacheln, Bild mittig, Menge oben rechts, Gewicht unten.
+   -------------------------------------------------------------------------- */
+
+.invsum {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+}
+
+.invsum__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+}
+
+.invsum__peek {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+}
+
+.invsum__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    padding: var(--s-1) var(--s-2);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-control);
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+}
+
+.invsum__chipcount {
+    color: var(--c-text);
+}
+
+/* --- Gewichtsbalken ------------------------------------------------------- */
+
+.weigh {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+}
+
+.weigh__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-2);
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+}
+
+.weigh__value {
+    color: var(--c-text);
+}
+
+.weigh__bar {
+    height: 0.375rem;
+    border-radius: var(--r-pill);
+    background: var(--c-surface-3);
+    overflow: hidden;
+}
+
+.weigh__fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--c-live);
+    transition: width 0.18s var(--ease-out);
+}
+
+/* Ueber der Grenze ist keine Warnung "bald voll", sondern ein Zustand, den
+   der Server so nicht erzeugt haette - deshalb der Debit-Ton. */
+.weigh__fill--over {
+    background: var(--c-debit);
+}
+
+/* --- Vollflaechige Bearbeitung -------------------------------------------- */
+
+.sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: var(--s-5);
+}
+
+.sheet__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 8, 7, 0.78);
+    backdrop-filter: blur(6px);
+    border: 0;
+    padding: 0;
+    cursor: default;
+}
+
+.sheet__panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(64rem, 100%);
+    max-height: min(46rem, 100%);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-panel);
+    box-shadow: var(--sh-panel);
+    overflow: hidden;
+}
+
+.sheet__head {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    padding: var(--s-4) var(--s-5);
+    border-bottom: 1px solid var(--c-border);
+}
+
+.sheet__heading {
+    min-width: 0;
+    flex: 1;
+}
+
+.sheet__title {
+    font-size: var(--fs-lg);
+    font-weight: 600;
+    line-height: var(--lh-tight);
+}
+
+.sheet__sub {
+    margin-top: 2px;
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.sheet__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: var(--s-5);
+    padding: var(--s-5);
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.sheet__side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    min-width: 0;
+}
+
+/* --- Das Raster ----------------------------------------------------------- */
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
+    gap: var(--s-2);
+    align-content: start;
+}
+
+.slot {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    aspect-ratio: 1;
+    padding: var(--s-2);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-tile);
+    color: inherit;
+    text-align: left;
+    cursor: default;
+    transition: border-color 0.12s var(--ease-out), background 0.12s var(--ease-out);
+}
+
+.slot--filled {
+    background: var(--c-surface-3);
+    cursor: grab;
+}
+
+.slot--filled:hover {
+    border-color: var(--c-border-strong);
+}
+
+.slot--filled:active {
+    cursor: grabbing;
+}
+
+/* Die Kachel, die gerade gezogen wird, bleibt sichtbar aber zurueckgenommen -
+   sonst verliert man beim Ziehen den Ausgangspunkt aus dem Blick. */
+.slot--source {
+    opacity: 0.35;
+}
+
+.slot--drop {
+    border-color: var(--c-live);
+    background: var(--c-live-soft);
+}
+
+.slot--selected {
+    border-color: var(--c-focus);
+}
+
+.slot__num {
+    position: absolute;
+    top: var(--s-1);
+    left: var(--s-2);
+    font-size: var(--fs-micro);
+    color: var(--c-text-faint);
+    pointer-events: none;
+}
+
+.slot__art {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    pointer-events: none;
+}
+
+.slot__img {
+    max-width: 78%;
+    max-height: 78%;
+    object-fit: contain;
+}
+
+/* Ohne ox_inventory-Icons tragen die Kacheln die ersten Zeichen des
+   Itemnamens - lesbar bleibt das Raster dadurch trotzdem. */
+.slot__fallback {
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--c-text-faint);
+}
+
+.slot__count {
+    position: absolute;
+    top: var(--s-1);
+    right: var(--s-2);
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    color: var(--c-text);
+    pointer-events: none;
+}
+
+.slot__label {
+    font-size: var(--fs-micro);
+    line-height: var(--lh-tight);
+    color: var(--c-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* --- Ablegen zum Entfernen ------------------------------------------------ */
+
+.trash {
+    display: grid;
+    place-items: center;
+    gap: var(--s-1);
+    padding: var(--s-4);
+    border: 1px dashed var(--c-border-strong);
+    border-radius: var(--r-panel);
+    color: var(--c-text-faint);
+    font-size: var(--fs-sm);
+    text-align: center;
+}
+
+.trash--armed {
+    border-color: var(--c-debit);
+    border-style: solid;
+    background: var(--c-debit-soft);
+    color: var(--c-debit);
+}
+
+/* --- Ausgewaehlte Kachel -------------------------------------------------- */
+
+.detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    padding: var(--s-4);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-panel);
+}
+
+.detail__name {
+    font-size: var(--fs-md);
+    font-weight: 600;
+    line-height: var(--lh-tight);
+}
+
+.detail__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-3);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.detail__actions {
+    display: flex;
+    gap: var(--s-2);
+}
+
+.detail__actions .btn {
+    flex: 1;
+}
+
+@media (max-width: 860px) {
+    .sheet {
+        padding: 0;
+    }
+
+    .sheet__panel {
+        max-height: 100%;
+        height: 100%;
+        border-radius: 0;
+        border: 0;
+    }
+
+    .sheet__body {
+        grid-template-columns: minmax(0, 1fr);
     }
 }

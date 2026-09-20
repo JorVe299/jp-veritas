@@ -1,14 +1,26 @@
 import Icon from './Icon';
 import Mark from './Mark';
+import SessionMenu from './SessionMenu';
 
 /**
- * Die Kopfleiste traegt drei Dinge und sonst nichts: die Marke, die Suche
- * als schnellsten Weg zu einem Datensatz, und den Zustand der Bruecke.
+ * Die Kopfleiste traegt vier Dinge und sonst nichts: die Marke, die Suche
+ * als schnellsten Weg zu einem Datensatz, den Zustand der Bruecke und den
+ * angemeldeten Nutzer.
  *
- * Ausdruecklich kein Benutzermenue: das Produkt hat keine Anmeldung, und
- * Oberflaeche, die eine andeutet, waere eine Behauptung.
+ * showSession ist false, wenn der Discord-Login gar nicht konfiguriert ist:
+ * dann gibt es niemanden, der angemeldet waere, und ein Nutzerfeld waere
+ * eine Behauptung. Stattdessen steht dort die Warnleiste darunter.
  */
-export default function TopBar({ search, onSearchChange, bridge, status }) {
+export default function TopBar({
+    search,
+    onSearchChange,
+    bridge,
+    status,
+    user,
+    showSession = false,
+    signingOut = false,
+    onSignOut,
+}) {
     const bridgeDown = Boolean(bridge && !bridge.reachable);
     const unknown = !bridge || bridgeDown;
 
@@ -48,6 +60,10 @@ export default function TopBar({ search, onSearchChange, bridge, status }) {
                             : `Live link · ${bridge.onlineCount ?? 0} on server`}
                 </span>
             </div>
+
+            {showSession && (
+                <SessionMenu user={user} signingOut={signingOut} onSignOut={onSignOut} />
+            )}
         </header>
     );
 }

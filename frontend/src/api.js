@@ -3,9 +3,66 @@ import axios from 'axios';
 
 // Relativ: im Dev übernimmt der Vite-Proxy (siehe vite.config.js),
 // im Build liegt das Frontend hinter derselben Origin wie die API.
+// withCredentials ist Pflicht: ohne das schickt der Browser das
+// Sitzungscookie nicht mit und jede Anfrage liefe in den 401.
 const api = axios.create({
     baseURL: '/api',
+    withCredentials: true,
 });
+
+// --- Anmeldung ------------------------------------------------------------
+
+// Fallback, falls der Server keine loginUrl mitschickt.
+export const DEFAULT_LOGIN_URL = '/api/auth/login';
+
+// Antwortet immer mit 200; "nicht angemeldet" ist dort kein Fehlerfall.
+export const fetchSession = () => api.get('/auth/me');
+export const signOutRequest = () => api.post('/auth/logout');
+
+// Die loginUrl kommt aus einer Antwort, landet aber in window.location -
+// deshalb nur ein Pfad auf der eigenen Origin, kein "//fremder.host".
+export const safeLoginUrl = (value) => {
+    if (typeof value !== 'string') return DEFAULT_LOGIN_URL;
+    const url = value.trim();
+    if (!url.startsWith('/') || url.startsWith('//')) return DEFAULT_LOGIN_URL;
+    return url;
+};
+
+// Anmelden ist eine echte Seitennavigation, kein XHR: Discord braucht den
+// Browser, ein fetch() wuerde am OAuth-Dialog scheitern.
+export const startDiscordLogin = (loginUrl) => {
+    window.location.href = safeLoginUrl(loginUrl);
+};
+
+// --- Globale 401-Behandlung -----------------------------------------------
+// Laeuft die Sitzung mitten in der Arbeit ab, soll nicht jede Karte einzeln
+// "could not be loaded" melden. Stattdessen meldet der Interceptor einmal
+// nach oben, und die App faellt geschlossen auf den Anmeldebildschirm.
+
+const unauthorizedHandlers = new Set();
+
+export function onUnauthorized(handler) {
+    unauthorizedHandlers.add(handler);
+    return () => { unauthorizedHandlers.delete(handler); };
+}
+
+// /auth/* ist ausgenommen: /auth/me beantwortet die Frage nach der Sitzung
+// gerade erst, und ein 401 beim Abmelden heisst nur "war schon abgemeldet".
+const isAuthRoute = (url) => {
+    if (typeof url !== 'string') return false;
+    const path = url.split('?')[0];
+    return path.startsWith('/auth/') || path.startsWith('auth/') || path.startsWith('/api/auth/');
+};
+
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error?.response?.status === 401 && !isAuthRoute(error.config?.url)) {
+            unauthorizedHandlers.forEach((handler) => handler());
+        }
+        return Promise.reject(error);
+    },
+);
 
 // Citizen-IDs und Datensatz-IDs stehen im Pfad und koennen Zeichen enthalten,
 // die dort eine eigene Bedeutung haetten - deshalb durchgaengig kodiert.

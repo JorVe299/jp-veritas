@@ -1,144 +1,49 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchJobs } from './api';
-import Billboard from './components/Billboard';
-import CitizenWall from './components/CitizenWall';
-import InventoryManager from './components/InventoryManager';
-import JobManager from './components/JobManager';
-import MoneyManager from './components/MoneyManager';
-import PlayerDataManager from './components/PlayerDataManager';
-import VehicleManager from './components/VehicleManager';
-import TopBar from './components/TopBar';
-import { PlateSprite } from './components/Plate';
-import { useRoster } from './lib/useRoster';
-import { formatTime } from './utils/format';
+import { useCallback } from 'react';
+import { startDiscordLogin } from './api';
+import AuthScreen from './components/AuthScreen';
+import Workspace from './components/Workspace';
+import { useAuth } from './lib/useAuth';
 import './App.css';
 
-const LOG_LIMIT = 6;
-
+/**
+ * Die Schale beantwortet genau eine Frage: darf hier ueberhaupt gearbeitet
+ * werden? Erst wenn sie beantwortet ist, wird das Panel gemountet - vorher
+ * liefe jede Datenanfrage in einen 401.
+ *
+ * Solange /api/auth/me laeuft, steht hier weder Panel noch Login: sonst
+ * blitzt bei jedem Reload kurz der Anmeldebildschirm auf, obwohl die
+ * Sitzung laengst steht.
+ */
 function App() {
-    const [search, setSearch] = useState('');
-    const [page, setPage] = useState(1);
-    const [selectedPlayer, setSelectedPlayer] = useState(null);
-    // Wird nach jeder Mutation hochgezaehlt und laesst die Wand neu laden.
-    const [rosterVersion, setRosterVersion] = useState(0);
-    const [jobs, setJobs] = useState({});
-    const [jobsError, setJobsError] = useState(null);
-    // Abgeschlossene Schreibvorgaenge der laufenden Sitzung.
-    const [writeLog, setWriteLog] = useState([]);
+    const auth = useAuth();
 
-    const roster = useRoster(search, page, rosterVersion);
-    const stageRef = useRef(null);
+    const handleSignIn = useCallback(() => {
+        // Echte Seitennavigation, kein XHR - Discord braucht den Browser.
+        startDiscordLogin(auth.loginUrl);
+    }, [auth.loginUrl]);
 
-    // Job-Stammdaten einmal pro Sitzung laden, nicht bei jedem Wechsel.
-    useEffect(() => {
-        let cancelled = false;
-        fetchJobs()
-            .then((res) => { if (!cancelled) setJobs(res.data || {}); })
-            .catch((err) => {
-                if (!cancelled) setJobsError(err.response?.data?.error || err.message);
-            });
-        return () => { cancelled = true; };
-    }, []);
+    if (auth.phase === 'loading') {
+        return <AuthScreen mode="loading" />;
+    }
 
-    const handleSearchChange = useCallback((value) => {
-        setSearch(value);
-        setPage(1);
-    }, []);
+    // Eigener Zustand: das Backend antwortet nicht. Das als "nicht
+    // angemeldet" zu zeigen waere eine Behauptung, die niemand geprueft hat.
+    if (auth.phase === 'unreachable') {
+        return <AuthScreen mode="offline" error={auth.error} onRetry={auth.recheck} />;
+    }
 
-    // Auswahl bringt den Kopfbereich nach oben: nach dem Klick steht alles,
-    // was geaendert werden kann, in einem Blickfeld.
-    const handleSelect = useCallback((player) => {
-        setSelectedPlayer(player);
-        setWriteLog([]);
-        stageRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    }, []);
-
-    // Eine Mutation hat Erfolg gemeldet: ausgewaehlten Citizen sofort
-    // aktualisieren, den Vorgang festhalten und die Wand nachziehen.
-    const handleApplied = useCallback((patch, entry) => {
-        setSelectedPlayer((prev) => (prev ? { ...prev, ...patch } : prev));
-        setRosterVersion((v) => v + 1);
-        if (entry) {
-            setWriteLog((prev) => [
-                { id: `${Date.now()}-${prev.length}`, time: formatTime(), ...entry },
-                ...prev,
-            ].slice(0, LOG_LIMIT));
-        }
-    }, []);
-
-    const bridgeDown = Boolean(roster.bridge && !roster.bridge.reachable);
+    if (!auth.authenticated) {
+        return <AuthScreen mode="signin" notice={auth.notice} onSignIn={handleSignIn} />;
+    }
 
     return (
-        <div className="app">
-            <PlateSprite />
-
-            <TopBar
-                search={search}
-                onSearchChange={handleSearchChange}
-                bridge={roster.bridge}
-                status={roster.status}
-            />
-
-            <div className="stage" ref={stageRef}>
-                <Billboard
-                    player={selectedPlayer}
-                    bridgeDown={bridgeDown}
-                    writeLog={writeLog}
-                    onClear={() => setWriteLog([])}
-                />
-
-                {selectedPlayer && (
-                    /* Modulraster: weitere Module (Inventar, Fahrzeuge, ...)
-                       einfach hier ergaenzen, das Grid ordnet sie selbst ein.
-                       key sorgt dafuer, dass die Formulare beim Wechsel des
-                       Citizens neu starten - bei jedem Modul gleich anwenden. */
-                    <div className="modules">
-                        <JobManager
-                            key={`job-${selectedPlayer.citizenid}`}
-                            selectedPlayer={selectedPlayer}
-                            jobs={jobs}
-                            jobsError={jobsError}
-                            onApplied={handleApplied}
-                        />
-                        <MoneyManager
-                            key={`money-${selectedPlayer.citizenid}`}
-                            selectedPlayer={selectedPlayer}
-                            onApplied={handleApplied}
-                        />
-                        <InventoryManager
-                            key={`inv-${selectedPlayer.citizenid}`}
-                            selectedPlayer={selectedPlayer}
-                            onApplied={handleApplied}
-                        />
-                        <VehicleManager
-                            key={`veh-${selectedPlayer.citizenid}`}
-                            selectedPlayer={selectedPlayer}
-                            onApplied={handleApplied}
-                        />
-                        <PlayerDataManager
-                            key={`data-${selectedPlayer.citizenid}`}
-                            selectedPlayer={selectedPlayer}
-                            onApplied={handleApplied}
-                        />
-                    </div>
-                )}
-
-                <div id="wall">
-                    <CitizenWall
-                        players={roster.players}
-                        bridge={roster.bridge}
-                        status={roster.status}
-                        error={roster.error}
-                        isStale={roster.isStale}
-                        search={roster.query.search}
-                        page={page}
-                        onPageChange={setPage}
-                        selectedId={selectedPlayer?.citizenid}
-                        onSelect={handleSelect}
-                    />
-                </div>
-            </div>
-        </div>
+        <Workspace
+            user={auth.user}
+            authDisabled={auth.authDisabled}
+            warning={auth.warning}
+            signingOut={auth.signingOut}
+            onSignOut={auth.signOut}
+        />
     );
 }
 

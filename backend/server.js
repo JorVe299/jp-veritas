@@ -3,19 +3,36 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const { loadGameData, getJobs, getItems, getVehicles } = require('./utils/dataLoader');
 const { FIVEM_API_URL } = require('./utils/bridge');
+const auth = require('./utils/auth');
 
 const app = express();
-app.use(cors());
+
+// credentials: true ist noetig, damit der Browser das Sitzungscookie im
+// Dev-Betrieb mitschickt. Die Origin wird eng gefasst - '*' waere mit
+// Cookies ohnehin unzulaessig.
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 // Beim Start Daten laden (muss vor den Routen passieren, die den Cache lesen)
 loadGameData();
 
+// --- Anmeldung ------------------------------------------------------------
+// Die Auth-Routen stehen bewusst vor der Middleware: sie muessen auch ohne
+// Sitzung erreichbar sein.
+app.use(require('./routes/auth').router);
+app.use(auth.requireAuth);
+
 // --- Routen ---------------------------------------------------------------
-// Jedes Modul bringt seine eigenen vollständigen /api/... Pfade mit,
-// damit man in der Datei sieht, welche URL eine Route bedient.
+// Alles ab hier setzt eine gueltige Sitzung voraus, sofern Discord-Auth
+// konfiguriert ist. Jedes Modul bringt seine eigenen vollstaendigen
+// /api/... Pfade mit, damit man in der Datei sieht, welche URL es bedient.
 app.use(require('./routes/players').router);      // Spielerliste, Einzelabruf
 app.use(require('./routes/manage').router);       // Geld, Job
 app.use(require('./routes/vehicles').router);     // Fahrzeuge
@@ -51,6 +68,26 @@ app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
     console.log(`Bridge expected at ${FIVEM_API_URL}`);
     console.log(`[Data] Jobs: ${Object.keys(getJobs()).length}, Items: ${Object.keys(getItems()).length}, Vehicles: ${Object.keys(getVehicles()).length}`);
+
+    if (auth.ENABLED) {
+        const gate = [];
+        if (auth.ADMIN_IDS.length) gate.push(`${auth.ADMIN_IDS.length} user id(s)`);
+        if (auth.ADMIN_ROLE_IDS.length) gate.push(`${auth.ADMIN_ROLE_IDS.length} role(s) in guild ${auth.GUILD_ID}`);
+        console.log(`[Auth] Discord login active - access via ${gate.join(' or ') || 'nothing configured'}`);
+        console.log(`[Auth] Sessions last ${auth.SESSION_HOURS}h`);
+    }
+
+    // Fehlkonfigurationen duerfen nicht in der Logflut untergehen: eine
+    // offene /api/manage/money Route ist kein Detail.
+    const problems = auth.configProblems();
+    if (problems.length > 0) {
+        console.warn('');
+        console.warn('  ==================== ATTENTION ====================');
+        problems.forEach(p => console.warn(`  !  ${p}`));
+        console.warn('  ===================================================');
+        console.warn('');
+    }
+
     if (hasFrontendBuild) {
         console.log(`[Web] Panel available at http://localhost:${PORT}`);
     } else {
