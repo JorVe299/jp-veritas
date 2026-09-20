@@ -51,7 +51,7 @@ SetHttpHandler(function(req, res)
             end
 
             if ok == false then
-                sendJson(res, { success = false, msg = "Transaktion abgelehnt (Deckung?)" })
+                sendJson(res, { success = false, msg = "Transaction rejected (insufficient funds?)" })
             else
                 sendJson(res, { success = true, msg = "Live updated" })
             end
@@ -72,6 +72,100 @@ SetHttpHandler(function(req, res)
 
             -- Der Core baut die Job-Struktur selbst korrekt zusammen
             player.Functions.SetJob(data.jobName, tonumber(data.gradeLevel) or 0)
+            sendJson(res, { success = true, msg = "Live updated" })
+        end)
+        return
+    end
+
+    -- Aktion: Live Update Inventar
+    -- Muss zwingend über den Core/das Inventar laufen: schriebe das Backend
+    -- direkt in die DB, überschriebe der Server das beim nächsten Speichern.
+    if path == '/update-inventory' and method == 'POST' then
+        req.setDataHandler(function(body)
+            local data = json.decode(body)
+            local player = QBCore.Functions.GetPlayerByCitizenId(data.citizenid)
+
+            if not player then
+                sendJson(res, { success = false, msg = "Player offline" })
+                return
+            end
+
+            local src = player.PlayerData.source
+            local item = data.item
+            local count = tonumber(data.amount) or 0
+            local useOx = GetResourceState('ox_inventory') == 'started'
+            local ok
+
+            if data.action == 'add' then
+                if useOx then
+                    ok = exports.ox_inventory:AddItem(src, item, count)
+                else
+                    ok = player.Functions.AddItem(item, count, data.slot)
+                end
+            elseif data.action == 'remove' then
+                if useOx then
+                    ok = exports.ox_inventory:RemoveItem(src, item, count)
+                else
+                    ok = player.Functions.RemoveItem(item, count, data.slot)
+                end
+            elseif data.action == 'set' then
+                -- Kein Core bietet "setze auf genau N" an, also Differenz bilden
+                local current
+                if useOx then
+                    current = exports.ox_inventory:GetItemCount(src, item) or 0
+                else
+                    local found = player.Functions.GetItemByName(item)
+                    current = found and found.amount or 0
+                end
+
+                local diff = count - current
+                if diff > 0 then
+                    ok = useOx and exports.ox_inventory:AddItem(src, item, diff)
+                        or player.Functions.AddItem(item, diff)
+                elseif diff < 0 then
+                    ok = useOx and exports.ox_inventory:RemoveItem(src, item, -diff)
+                        or player.Functions.RemoveItem(item, -diff)
+                else
+                    ok = true -- steht schon auf dem Zielwert
+                end
+            else
+                sendJson(res, { success = false, msg = "Unknown action: " .. tostring(data.action) })
+                return
+            end
+
+            if ok == false then
+                sendJson(res, { success = false, msg = "The inventory rejected the action (full, or item not present?)" })
+            else
+                sendJson(res, { success = true, msg = "Live updated", inventory = useOx and 'ox_inventory' or 'qb-inventory' })
+            end
+        end)
+        return
+    end
+
+    -- Aktion: Live Update Metadaten (Lizenzen, Hunger, Stress, ...)
+    if path == '/update-metadata' and method == 'POST' then
+        req.setDataHandler(function(body)
+            local data = json.decode(body)
+            local player = QBCore.Functions.GetPlayerByCitizenId(data.citizenid)
+
+            if not player then
+                sendJson(res, { success = false, msg = "Player offline" })
+                return
+            end
+
+            -- Zwei Aufrufformen: ein einzelner Schlüssel mit Wert (Lizenzen),
+            -- oder mehrere Felder auf einmal (Statuswerte).
+            if data.key ~= nil then
+                player.Functions.SetMetaData(data.key, data.value)
+            elseif type(data.fields) == 'table' then
+                for field, value in pairs(data.fields) do
+                    player.Functions.SetMetaData(field, value)
+                end
+            else
+                sendJson(res, { success = false, msg = "Neither key nor fields given" })
+                return
+            end
+
             sendJson(res, { success = true, msg = "Live updated" })
         end)
         return

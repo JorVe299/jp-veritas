@@ -1,68 +1,476 @@
+/* ==========================================================================
+   Veritas - Design Tokens & Basis
+   Kachelwand nach dem Vorbild eines Streaming-Katalogs, uebersetzt in die
+   Welt von Los Santos. Dark-only: die Oberflaeche wird nachts neben einem
+   laufenden Spiel gelesen, nicht bei Tageslicht.
+   Reines CSS, keine Abhaengigkeiten.
+   ========================================================================== */
+
+/* --- Schriften -----------------------------------------------------------
+   Selbst ausgeliefert, nicht ueber ein CDN. Dieses Panel laeuft neben dem
+   Gameserver, oft in einem LAN ohne Internetzugang: ueber ein CDN geladen
+   wuerde die Anzeigeschrift dort stillschweigend durch system-ui ersetzt -
+   ohne Fehlermeldung, aber mit einem anderen Gesicht.
+   Beide Familien sind variabel; die Achsen stehen in font-variation-settings.
+   -------------------------------------------------------------------------- */
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/archivo-latin.woff2') format('woff2');
+    font-weight: 400 900;
+    font-stretch: 62% 125%;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+        U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+        U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/archivo-latin-ext.woff2') format('woff2');
+    font-weight: 400 900;
+    font-stretch: 62% 125%;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+        U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+        U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'Spline Sans Mono';
+    src: url('/fonts/spline-sans-mono-latin.woff2') format('woff2');
+    font-weight: 400 600;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+        U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+        U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Spline Sans Mono';
+    src: url('/fonts/spline-sans-mono-latin-ext.woff2') format('woff2');
+    font-weight: 400 600;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+        U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+        U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+    /* --- Grund ------------------------------------------------------------
+       Warmes Asphaltschwarz, ausdruecklich kein Blauschwarz. Die Farbe der
+       Oberflaeche steckt in den erzeugten Bildern, nicht im Chrome. */
+    --c-bg: #0D0C0B;
+    --c-surface: #171614;
+    --c-surface-2: #211F1C;
+    --c-surface-3: #2B2825;
+    --c-border: #262320;
+    --c-border-strong: #3A3631;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+    --c-text: #EDE9E1;
+    --c-text-muted: #B3ACA3;
+    /* Angehoben: der frueher blassere Ton lag auf der Panelflaeche unter
+       4.5:1 und war damit fuer Fliesstext nicht zulaessig. */
+    --c-text-faint: #918A80;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    /* --- Signale -----------------------------------------------------------
+       Genau drei. Jedes wird zuerst durch Worte getragen, erst danach durch
+       Farbe - der Status ist auch ohne Farbwahrnehmung lesbar. */
+    --c-live: #48E08A;
+    --c-live-soft: rgba(72, 224, 138, 0.13);
+    --c-live-line: rgba(72, 224, 138, 0.42);
+
+    --c-unknown: #F5A623;
+    --c-unknown-soft: rgba(245, 166, 35, 0.12);
+    --c-unknown-line: rgba(245, 166, 35, 0.42);
+
+    --c-debit: #F0503C;
+    --c-debit-soft: rgba(240, 80, 60, 0.13);
+    --c-debit-line: rgba(240, 80, 60, 0.45);
+
+    /* Der einzige Akzent des Chromes: der Fokusring der Kachel. */
+    --c-focus: #FFFFFF;
+
+    /* --- Abstandsraster (8px-Basis) --------------------------------------- */
+    --s-1: 0.25rem;
+    --s-2: 0.5rem;
+    --s-3: 0.75rem;
+    --s-4: 1rem;
+    --s-5: 1.5rem;
+    --s-6: 2rem;
+    --s-7: 3rem;
+    --s-8: 4rem;
+
+    /* --- Typo-Leiter -------------------------------------------------------
+       Jede Stufe traegt genau eine Rolle und taucht ueberall in dieser
+       Groesse auf. Keine Zwischenwerte im Fliesstext. */
+    --fs-micro: 0.6875rem;  /* 11px - getrackte Versalien, Rubriken */
+    --fs-sm: 0.8125rem;     /* 13px - Sekundaertext, Metadaten */
+    --fs-base: 0.875rem;    /* 14px - Basis der Bedienoberflaeche */
+    --fs-md: 1rem;          /* 16px - Panel-Titel */
+    --fs-lg: 1.375rem;      /* 22px - Kacheltitel im Fokus */
+    --fs-xl: 2rem;          /* 32px - Betraege */
+    --fs-display: clamp(2.25rem, 5.4vw, 4.25rem); /* Citizen-Name */
+
+    --lh-tight: 1.08;
+    --lh-snug: 1.3;
+    --lh-base: 1.55;
+
+    /* --- Form ------------------------------------------------------------- */
+    --r-tile: 5px;
+    --r-control: 5px;
+    --r-panel: 8px;
+    --r-pill: 999px;
+
+    /* Schatten mit echtem Versatz und echter Weichzeichnung. */
+    --sh-panel: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --sh-tile: 0 20px 38px -14px rgba(0, 0, 0, 0.9), 0 4px 10px -4px rgba(0, 0, 0, 0.6);
+    --sh-rail: 0 10px 24px -10px rgba(0, 0, 0, 0.8);
+
+    --ctrl-h: 2.5rem; /* 40px - grosszuegig, weil mitten in der Sitzung geklickt wird */
+
+    --topbar-h: 4rem;
+    --tile-w: 11.5rem;
+    --rail-gap: 0.625rem;
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Filmkorn. Liegt einmal als Datei-URI vor und wird mehrfach referenziert. */
+    --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+
+    font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-variation-settings: 'wdth' 100;
+    line-height: var(--lh-base);
+    color-scheme: dark;
+    color: var(--c-text);
+    background-color: var(--c-bg);
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* --- Reset ---------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
-a:hover {
-  color: #535bf2;
+
+html,
+body,
+#root {
+    height: 100%;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+    margin: 0;
+    min-width: 20rem;
+    font-size: var(--fs-base);
+    background-color: var(--c-bg);
+    color: var(--c-text);
+    /* Harte Anforderung: nie horizontal scrollen. Die Schienen scrollen
+       intern, die Seite selbst nicht. */
+    overflow-x: hidden;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+h1,
+h2,
+h3,
+h4,
+p {
+    margin: 0;
 }
 
+/* --- Browser-Oberflaechen ------------------------------------------------
+   Auswahl, Cursor, Scrollbalken und Fokusring gehoeren zum Entwurf. Ohne
+   das hier traegt die Seite an genau diesen Stellen fremde Standardfarben. */
+
+::selection {
+    background: var(--c-text);
+    color: var(--c-bg);
+}
+
+:root {
+    caret-color: var(--c-live);
+    accent-color: var(--c-live);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--c-surface-3) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--c-surface-3);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: var(--r-pill);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #46413A;
+    background-clip: content-box;
+}
+
+:focus-visible {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 2px;
+    border-radius: var(--r-control);
+}
+
+/* --- Schriftrollen -------------------------------------------------------- */
+
+.u-caps {
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 105;
+}
+
+.u-mono {
+    font-family: 'Spline Sans Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+}
+
+/* Verdichtete Versalien: die Anzeigestimme der Wand. */
+.u-display {
+    font-variation-settings: 'wdth' 78;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: var(--lh-tight);
+    text-transform: uppercase;
+}
+
+.u-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+.plate {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.icon {
+    flex: none;
+    display: block;
+}
+
+/* --- Bedienelemente ------------------------------------------------------- */
+
+input,
+select,
+textarea,
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+    font: inherit;
+    color: inherit;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    min-width: 0;
+}
+
+.field__label {
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-text-muted);
+    font-variation-settings: 'wdth' 105;
+}
+
+.field__hint {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.input,
+.select {
+    width: 100%;
+    height: var(--ctrl-h);
+    padding: 0 var(--s-3);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-control);
+    color: var(--c-text);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.input::placeholder {
+    color: var(--c-text-faint);
+}
+
+.input:hover:not(:disabled),
+.select:hover:not(:disabled) {
+    border-color: #4A443C;
+}
+
+.input:focus-visible,
+.select:focus-visible {
+    border-color: var(--c-focus);
+    outline: 2px solid rgba(255, 255, 255, 0.35);
+    outline-offset: 0;
+}
+
+/* Deaktiviert heisst flach in die Flaeche zurueckgenommen, nicht halb
+   durchsichtig weiter vorhanden. */
+.input:disabled,
+.select:disabled {
+    background: var(--c-surface);
+    border-color: var(--c-border);
+    color: var(--c-text-faint);
+    cursor: not-allowed;
+}
+
+.select {
+    appearance: none;
+    padding-right: var(--s-7);
+    /* Derselbe Chevron wie in Icon.jsx, gleiche Strichstaerke und Enden:
+       zwei CSS-Dreiecke waeren eine zweite Icon-Sprache auf einem Schirm. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23B3ACA3' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 9.5 12 16l6.5-6.5'/%3E%3C/svg%3E");
+    background-position: calc(100% - 0.6rem) 50%;
+    background-size: 1.125rem 1.125rem;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+.select option {
+    background: var(--c-surface-2);
+    color: var(--c-text);
+}
+
+/* --- Buttons --------------------------------------------------------------
+   Alle Schaltflaechen haben echten Tastweg: sie senken sich beim Druck
+   sichtbar ab und geben die Bewegung wieder frei. */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    height: var(--ctrl-h);
+    padding: 0 var(--s-4);
+    border: 1px solid transparent;
+    border-radius: var(--r-control);
+    background: var(--c-surface-3);
+    color: var(--c-text);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.08s ease;
+}
+
+.btn:hover:not(:disabled) {
+    background: #36322C;
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(1px) scale(0.995);
+}
+
+.btn:disabled {
+    background: var(--c-surface);
+    border-color: var(--c-border);
+    color: var(--c-text-faint);
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: var(--c-text);
+    color: var(--c-bg);
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: #FFFFFF;
+}
+
+.btn--primary:disabled {
+    background: var(--c-surface-2);
+    color: var(--c-text-faint);
+}
+
+.btn--ghost {
+    background: transparent;
+    border-color: var(--c-border-strong);
+    color: var(--c-text-muted);
+}
+
+.btn--ghost:hover:not(:disabled) {
+    background: var(--c-surface-2);
+    color: var(--c-text);
+    border-color: #4A443C;
+}
+
+/* Nur fuer Vorgaenge, die Daten endgueltig entfernen. Erscheint erst im
+   zweiten Schritt einer Bestaetigung - vorher steht dort ein ruhiger
+   Geisterknopf, damit die Farbe nicht zur Dauerdrohung wird. */
+.btn--danger {
+    background: var(--c-debit-soft);
+    border-color: var(--c-debit-line);
+    color: var(--c-debit);
+}
+
+.btn--danger:hover:not(:disabled) {
+    background: var(--c-debit);
+    color: #1A0704;
+}
+
+.btn--sm {
+    height: 2.125rem;
+    padding: 0 var(--s-3);
+    font-size: var(--fs-sm);
+}
+
+.btn--icon {
+    width: 2.125rem;
+    height: 2.125rem;
+    padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

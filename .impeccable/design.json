@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-20T00:00:00.000Z",
+  "title": "Design System: Veritas",
+  "extensions": {
+    "colorMeta": {
+      "asphalt-ground": {
+        "role": "neutral",
+        "displayName": "Warm Asphalt",
+        "canonical": "#0D0C0B",
+        "tonalRamp": ["#0D0C0B", "#171614", "#211F1C", "#2B2825", "#3A3631", "#4A443C", "#6E665C", "#B3ACA3"]
+      },
+      "asphalt-surface": {
+        "role": "neutral",
+        "displayName": "Panel Asphalt",
+        "canonical": "#171614",
+        "tonalRamp": ["#0D0C0B", "#171614", "#211F1C", "#2B2825", "#36322C", "#46413A", "#6E665C", "#918A80"]
+      },
+      "asphalt-surface-2": {
+        "role": "neutral",
+        "displayName": "Well Asphalt",
+        "canonical": "#211F1C",
+        "tonalRamp": ["#0D0C0B", "#171614", "#211F1C", "#2B2825", "#36322C", "#46413A", "#6E665C", "#918A80"]
+      },
+      "asphalt-surface-3": {
+        "role": "neutral",
+        "displayName": "Raised Asphalt",
+        "canonical": "#2B2825",
+        "tonalRamp": ["#171614", "#211F1C", "#2B2825", "#36322C", "#46413A", "#5B544B", "#7D756A", "#B3ACA3"]
+      },
+      "asphalt-border": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#262320",
+        "tonalRamp": ["#0D0C0B", "#171614", "#211F1C", "#262320", "#3A3631", "#4A443C", "#6E665C", "#918A80"]
+      },
+      "asphalt-border-strong": {
+        "role": "neutral",
+        "displayName": "Touchable Edge",
+        "canonical": "#3A3631",
+        "tonalRamp": ["#171614", "#211F1C", "#2B2825", "#3A3631", "#4A443C", "#5B544B", "#7D756A", "#B3ACA3"]
+      },
+      "bone": {
+        "role": "primary",
+        "displayName": "Bone",
+        "canonical": "#EDE9E1",
+        "tonalRamp": ["#2B2825", "#46413A", "#6E665C", "#918A80", "#B3ACA3", "#D2CCC2", "#EDE9E1", "#F8F6F1"]
+      },
+      "bone-muted": {
+        "role": "neutral",
+        "displayName": "Muted Bone",
+        "canonical": "#B3ACA3",
+        "tonalRamp": ["#211F1C", "#3A3631", "#5B544B", "#7D756A", "#918A80", "#B3ACA3", "#D2CCC2", "#EDE9E1"]
+      },
+      "bone-faint": {
+        "role": "neutral",
+        "displayName": "Faint Bone",
+        "canonical": "#918A80",
+        "tonalRamp": ["#1B1916", "#2B2825", "#46413A", "#6E665C", "#918A80", "#B3ACA3", "#D2CCC2", "#EDE9E1"]
+      },
+      "signal-live": {
+        "role": "secondary",
+        "displayName": "Live Green",
+        "canonical": "#48E08A",
+        "softFill": "rgba(72, 224, 138, 0.13)",
+        "softLine": "rgba(72, 224, 138, 0.42)",
+        "tonalRamp": ["#052B18", "#0B3E24", "#12603A", "#1A8451", "#25A96A", "#33C67D", "#48E08A", "#A6F2C6"]
+      },
+      "signal-unknown": {
+        "role": "secondary",
+        "displayName": "Unverified Amber",
+        "canonical": "#F5A623",
+        "softFill": "rgba(245, 166, 35, 0.12)",
+        "softLine": "rgba(245, 166, 35, 0.42)",
+        "tonalRamp": ["#2A1B04", "#4A3008", "#6D470C", "#936011", "#BA7A16", "#DC921C", "#F5A623", "#FAD199"]
+      },
+      "signal-debit": {
+        "role": "secondary",
+        "displayName": "Debit Red",
+        "canonical": "#F0503C",
+        "softFill": "rgba(240, 80, 60, 0.13)",
+        "softLine": "rgba(240, 80, 60, 0.45)",
+        "tonalRamp": ["#1A0704", "#3D120B", "#5F1D12", "#85291A", "#AB3624", "#D0442E", "#F0503C", "#F8A99E"]
+      },
+      "chrome-focus": {
+        "role": "primary",
+        "displayName": "Chrome White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#2B2825", "#46413A", "#6E665C", "#918A80", "#B3ACA3", "#D2CCC2", "#EDE9E1", "#FFFFFF"]
+      },
+      "sky-dusk-zenith": { "role": "tertiary", "displayName": "Dusk Zenith", "canonical": "#2B1B4D", "skyId": "dusk", "light": "#FFB067", "land": "#140B22", "haze": "#FF8FA3" },
+      "sky-dusk-horizon": { "role": "tertiary", "displayName": "Dusk Horizon", "canonical": "#7B2D6B", "skyId": "dusk" },
+      "sky-sodium-zenith": { "role": "tertiary", "displayName": "Sodium Zenith", "canonical": "#3A1F0C", "skyId": "sodium", "light": "#FFD08A", "land": "#190D05", "haze": "#FFA55C" },
+      "sky-sodium-horizon": { "role": "tertiary", "displayName": "Sodium Horizon", "canonical": "#B4551A", "skyId": "sodium" },
+      "sky-palm-zenith": { "role": "tertiary", "displayName": "Palm Zenith", "canonical": "#06342E", "skyId": "palm", "light": "#F2E27A", "land": "#04201B", "haze": "#8FE3C4" },
+      "sky-palm-horizon": { "role": "tertiary", "displayName": "Palm Horizon", "canonical": "#1E8F76", "skyId": "palm" },
+      "sky-smog-zenith": { "role": "tertiary", "displayName": "Smog Zenith", "canonical": "#3B2430", "skyId": "smog", "light": "#F6C1B4", "land": "#1D1018", "haze": "#E9A8AE" },
+      "sky-smog-horizon": { "role": "tertiary", "displayName": "Smog Horizon", "canonical": "#A3596B", "skyId": "smog" },
+      "sky-ocean-zenith": { "role": "tertiary", "displayName": "Ocean Zenith", "canonical": "#08243F", "skyId": "ocean", "light": "#CFE9F5", "land": "#05172A", "haze": "#7FC4E8" },
+      "sky-ocean-horizon": { "role": "tertiary", "displayName": "Ocean Horizon", "canonical": "#1C6C9E", "skyId": "ocean" },
+      "sky-vinewood-zenith": { "role": "tertiary", "displayName": "Vinewood Zenith", "canonical": "#2A0E20", "skyId": "vinewood", "light": "#FFC26B", "land": "#160615", "haze": "#FF9BA6" },
+      "sky-vinewood-horizon": { "role": "tertiary", "displayName": "Vinewood Horizon", "canonical": "#8E2B4B", "skyId": "vinewood" },
+      "sky-chaparral-zenith": { "role": "tertiary", "displayName": "Chaparral Zenith", "canonical": "#2E2A10", "skyId": "chaparral", "light": "#FFF0A8", "land": "#16130A", "haze": "#E4D98A" },
+      "sky-chaparral-horizon": { "role": "tertiary", "displayName": "Chaparral Horizon", "canonical": "#8A7A22", "skyId": "chaparral" },
+      "sky-storm-zenith": { "role": "tertiary", "displayName": "Storm Zenith", "canonical": "#1A2030", "skyId": "storm", "light": "#D6DEE8", "land": "#0C1018", "haze": "#9FB3CC" },
+      "sky-storm-horizon": { "role": "tertiary", "displayName": "Storm Horizon", "canonical": "#4A5C78", "skyId": "storm" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The selected citizen's name on the billboard. Archivo at width 78, uppercase. One per screen." },
+      "headline": { "displayName": "Headline", "purpose": "The idle billboard's single statement of what the panel is." },
+      "title": { "displayName": "Title", "purpose": "Module panel headings." },
+      "wordmark": { "displayName": "Wordmark", "purpose": "The Veritas lockup at width 70, tracked 0.16em. This width step exists for the wordmark alone." },
+      "body": { "displayName": "Body", "purpose": "The 14px interface baseline; prose capped at 62-72ch." },
+      "body-small": { "displayName": "Body Small", "purpose": "Secondary text, hints, metadata, small buttons." },
+      "label": { "displayName": "Label", "purpose": "Tracked micro-caps at width 105: rail headings, field labels, balance keys, ledger mode." },
+      "measure": { "displayName": "Measure", "purpose": "Spline Sans Mono, tabular. Citizen IDs, currency, timestamps, counts. Never a label or a sentence." }
+    },
+    "shadows": [
+      { "name": "panel-hairline", "value": "0 1px 2px rgba(0, 0, 0, 0.45)", "purpose": "Module panels at rest: a seam, not a lift." },
+      { "name": "tile-focus", "value": "0 20px 38px -14px rgba(0, 0, 0, 0.9), 0 4px 10px -4px rgba(0, 0, 0, 0.6)", "purpose": "The only heavy shadow in the system, and only under a hovered or focused tile." },
+      { "name": "rail-lift", "value": "0 10px 24px -10px rgba(0, 0, 0, 0.8)", "purpose": "Declared shadow for a lifted rail band." },
+      { "name": "tile-edge", "value": "inset 0 0 0 1px rgba(255, 255, 255, 0.06)", "purpose": "Hairline inset edge on tile art so a dark plate still has a boundary." },
+      { "name": "tile-selected", "value": "inset 0 0 0 2px #FFFFFF", "purpose": "Selection ring on the chosen tile: the one pure-white chrome accent." },
+      { "name": "text-on-art", "value": "0 2px 20px rgba(0, 0, 0, 0.55)", "purpose": "Second legibility guarantee for display text set over a generated plate." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Exponential ease-out for the focus expansion and rail response." },
+      { "name": "duration-focus", "value": "0.36s", "purpose": "Tile scale, scrim, caption rise and reveal-row expansion." },
+      { "name": "duration-state", "value": "0.15s ease", "purpose": "Border and background changes on fields and buttons." },
+      { "name": "duration-press", "value": "0.08s ease", "purpose": "Honest 1px press travel on every button." },
+      { "name": "pulse", "value": "pulse 2.6s ease-in-out infinite", "purpose": "Opacity 1 -> 0.35 on the live rail dot and LIVE badge dot." },
+      { "name": "shimmer", "value": "shimmer 1.5s ease-in-out infinite", "purpose": "Tonal sweep across skeleton tiles while the first page loads." },
+      { "name": "reduced-motion", "value": "@media (prefers-reduced-motion: reduce) { transition-duration: 0.01ms !important }", "purpose": "All authored motion is switched off; also disabled on hover:none pointers and below 560px." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "900px" },
+      { "name": "phone", "value": "560px" },
+      { "name": "no-hover", "value": "(hover: none)" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one committing action in a panel foot; bone fill that goes pure white on hover.",
+      "html": "<button class=\"ds-btn ds-btn--primary\">Apply job</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.5rem; padding: 0 1rem; border: 1px solid transparent; border-radius: 5px; background: #2B2825; color: #EDE9E1; font-family: 'Archivo', system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.08s ease; } .ds-btn--primary { background: #EDE9E1; color: #0D0C0B; } .ds-btn--primary:hover { background: #FFFFFF; } .ds-btn:active { transform: translateY(1px) scale(0.995); } .ds-btn:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; } .ds-btn:disabled { background: #211F1C; color: #918A80; cursor: not-allowed; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Rail navigation and pagination; transparent with a touchable edge, disabled when there is nothing further that way.",
+      "html": "<button class=\"ds-btn-ghost\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14.5 5.5 8 12l6.5 6.5\"/></svg>Previous</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 0.5rem; height: 2.125rem; padding: 0 0.75rem; border: 1px solid #3A3631; border-radius: 5px; background: transparent; color: #B3ACA3; font-family: 'Archivo', system-ui, sans-serif; font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.08s ease; } .ds-btn-ghost:hover { background: #211F1C; color: #EDE9E1; border-color: #4A443C; } .ds-btn-ghost:active { transform: translateY(1px); } .ds-btn-ghost:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; } .ds-btn-ghost:disabled { background: #171614; border-color: #262320; color: #918A80; cursor: not-allowed; }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "Labelled control group: micro-caps label, 40px well, optional faint hint. Focus doubles the edge in white rather than glowing.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field__label\" for=\"ds-amount\">Amount</label><input class=\"ds-input\" id=\"ds-amount\" type=\"text\" placeholder=\"0\" /><span class=\"ds-field__hint\">Cash balance $12,400</span></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.5rem; font-family: 'Archivo', system-ui, sans-serif; } .ds-field__label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #B3ACA3; font-variation-settings: 'wdth' 105; } .ds-input { width: 100%; height: 2.5rem; padding: 0 0.75rem; background: #211F1C; border: 1px solid #3A3631; border-radius: 5px; color: #EDE9E1; font: inherit; font-size: 0.875rem; transition: border-color 0.15s ease, background 0.15s ease; } .ds-input::placeholder { color: #918A80; } .ds-input:hover { border-color: #4A443C; } .ds-input:focus-visible { border-color: #FFFFFF; outline: 2px solid rgba(255,255,255,0.35); outline-offset: 0; } .ds-field__hint { font-size: 0.8125rem; color: #918A80; }"
+    },
+    {
+      "name": "Poster Tile",
+      "kind": "card",
+      "refersTo": "tile",
+      "description": "The signature component: a 2:3 generated plate as a semantic button. Hover or focus scales it to 1.11 and opens the reveal row with citizen ID and balances.",
+      "html": "<button class=\"ds-tile\" type=\"button\" aria-pressed=\"false\"><span class=\"ds-tile__art\"><svg class=\"ds-tile__plate\" viewBox=\"0 0 200 300\" preserveAspectRatio=\"xMidYMid slice\" aria-hidden=\"true\"><defs><linearGradient id=\"ds-sky\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#2B1B4D\"/><stop offset=\"56%\" stop-color=\"#7B2D6B\"/><stop offset=\"100%\" stop-color=\"#7B2D6B\"/></linearGradient><radialGradient id=\"ds-glow\"><stop offset=\"0%\" stop-color=\"#FFB067\" stop-opacity=\"0.85\"/><stop offset=\"55%\" stop-color=\"#FFB067\" stop-opacity=\"0.22\"/><stop offset=\"100%\" stop-color=\"#FFB067\" stop-opacity=\"0\"/></radialGradient></defs><rect width=\"200\" height=\"300\" fill=\"url(#ds-sky)\"/><circle cx=\"128\" cy=\"52\" r=\"46\" fill=\"url(#ds-glow)\"/><circle cx=\"128\" cy=\"52\" r=\"11\" fill=\"#FFB067\"/><path d=\"M0 300L0 176Q50 150 100 172Q150 194 200 166L200 300Z\" fill=\"#140B22\" opacity=\"0.75\"/><path d=\"M0 300L0 206Q60 186 110 210Q160 232 200 208L200 300Z\" fill=\"#140B22\"/></svg><span class=\"ds-tile__grain\"></span><span class=\"ds-tile__scrim\"></span></span><span class=\"ds-tile__badge\"><span class=\"ds-tile__dot\"></span>Live</span><span class=\"ds-tile__caption\"><span class=\"ds-tile__name\">Marcus Doyle</span><span class=\"ds-tile__job\">Police — Sergeant</span></span><span class=\"ds-tile__reveal\"><span class=\"ds-tile__revealinner\"><span class=\"ds-tile__cid\">ABC12345</span><span class=\"ds-tile__row\"><span class=\"ds-tile__key\">Cash</span><span class=\"ds-tile__val\">$12,400</span></span><span class=\"ds-tile__row\"><span class=\"ds-tile__key\">Bank</span><span class=\"ds-tile__val\">$86,120</span></span></span></span></button>",
+      "css": ".ds-tile { position: relative; display: block; width: 11.5rem; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; border-radius: 5px; font-family: 'Archivo', system-ui, sans-serif; color: #EDE9E1; transition: transform 0.36s cubic-bezier(0.16,1,0.3,1), box-shadow 0.36s cubic-bezier(0.16,1,0.3,1); } .ds-tile:hover, .ds-tile:focus-visible { transform: scale(1.11); box-shadow: 0 20px 38px -14px rgba(0,0,0,0.9), 0 4px 10px -4px rgba(0,0,0,0.6); } .ds-tile:active { transform: scale(1.06); } .ds-tile:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; } .ds-tile__art { position: relative; display: block; aspect-ratio: 2 / 3; overflow: hidden; border-radius: 5px; background: #211F1C; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); } .ds-tile__plate { display: block; width: 100%; height: 100%; } .ds-tile__grain { position: absolute; inset: 0; background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E\"); background-size: 130px; opacity: 0.17; mix-blend-mode: overlay; } .ds-tile__scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(6,5,4,0.95) 4%, rgba(6,5,4,0.62) 30%, rgba(6,5,4,0) 62%); transition: background 0.36s cubic-bezier(0.16,1,0.3,1); } .ds-tile:hover .ds-tile__scrim, .ds-tile:focus-visible .ds-tile__scrim { background: linear-gradient(to top, rgba(6,5,4,0.96) 14%, rgba(6,5,4,0.7) 44%, rgba(6,5,4,0.06) 78%); } .ds-tile__badge { position: absolute; top: 0.5rem; left: 0.5rem; z-index: 2; display: inline-flex; align-items: center; gap: 5px; padding: 3px 0.5rem; border-radius: 3px; background: rgba(6,5,4,0.82); border: 1px solid rgba(72,224,138,0.42); color: #48E08A; font-size: 0.625rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; backdrop-filter: blur(4px); } .ds-tile__dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: ds-pulse 2.6s ease-in-out infinite; } @keyframes ds-pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } } .ds-tile__caption { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: block; padding: 0.75rem; transition: transform 0.36s cubic-bezier(0.16,1,0.3,1); } .ds-tile:hover .ds-tile__caption, .ds-tile:focus-visible .ds-tile__caption { transform: translateY(-4.75rem); } .ds-tile__name { display: -webkit-box; font-size: 0.9375rem; line-height: 1.12; min-height: 2.24em; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em; font-variation-settings: 'wdth' 78; text-shadow: 0 1px 6px rgba(0,0,0,0.7); } .ds-tile__job { display: -webkit-box; margin-top: 3px; font-size: 0.6875rem; line-height: 1.35; min-height: 2.7em; color: #B3ACA3; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; } .ds-tile__reveal { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 0.36s cubic-bezier(0.16,1,0.3,1), opacity 0.22s ease; } .ds-tile:hover .ds-tile__reveal, .ds-tile:focus-visible .ds-tile__reveal { grid-template-rows: 1fr; opacity: 1; } .ds-tile__revealinner { min-height: 0; overflow: hidden; padding: 0 0.75rem 0.75rem; } .ds-tile__cid { display: block; font-family: 'Spline Sans Mono', ui-monospace, Consolas, monospace; font-size: 0.6875rem; color: #B3ACA3; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.14); } .ds-tile__row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; font-size: 0.6875rem; line-height: 1.7; } .ds-tile__key { color: #918A80; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-variation-settings: 'wdth' 105; } .ds-tile__val { font-family: 'Spline Sans Mono', ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; } @media (hover: none) { .ds-tile:hover { transform: none; box-shadow: none; } }"
+    },
+    {
+      "name": "Bridge Status Pill",
+      "kind": "chip",
+      "refersTo": "pill-live",
+      "description": "The link reported as a broadcast status in the topbar: green and named when up, amber and explicitly unverified when down.",
+      "html": "<span class=\"ds-bridge ds-bridge--up\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 13.6a3.6 3.6 0 0 0 5.4.4l2.6-2.6a3.7 3.7 0 0 0-5.2-5.2l-1.5 1.5\"/><path d=\"M14 10.4a3.6 3.6 0 0 0-5.4-.4L6 12.6a3.7 3.7 0 0 0 5.2 5.2l1.5-1.5\"/></svg><span class=\"ds-bridge__text\">Live link · 7 on server</span></span> <span class=\"ds-bridge ds-bridge--down\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10.6 13a3.6 3.6 0 0 0 4.8.8\"/><path d=\"M13.4 11a3.6 3.6 0 0 0-4.8-.8\"/><path d=\"M4 4l16 16\"/><path d=\"M14.5 7.7 16 6.2a3.7 3.7 0 0 1 5.2 5.2l-1.6 1.6\"/><path d=\"M9.5 16.3 8 17.8a3.7 3.7 0 0 1-5.2-5.2l1.6-1.6\"/></svg><span class=\"ds-bridge__text\">Link down · status unverified</span></span>",
+      "css": ".ds-bridge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid #3A3631; border-radius: 999px; color: #B3ACA3; white-space: nowrap; font-family: 'Archivo', system-ui, sans-serif; } .ds-bridge__text { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-variation-settings: 'wdth' 105; } .ds-bridge--up { color: #48E08A; border-color: rgba(72,224,138,0.42); background: rgba(72,224,138,0.13); } .ds-bridge--down { color: #F5A623; border-color: rgba(245,166,35,0.42); background: rgba(245,166,35,0.12); }"
+    },
+    {
+      "name": "Grade Ladder",
+      "kind": "nav",
+      "refersTo": "panel",
+      "description": "Every rank of the selected job shown at once, the current one struck forward and marked Now, so the distance between two ranks is visible.",
+      "html": "<div class=\"ds-ladder\"><button class=\"ds-ladder__step\" type=\"button\"><span class=\"ds-ladder__lvl\">0</span><span class=\"ds-ladder__name\">Recruit</span></button><button class=\"ds-ladder__step is-active\" type=\"button\"><span class=\"ds-ladder__lvl\">1</span><span class=\"ds-ladder__name\">Officer</span><span class=\"ds-ladder__now\">Now</span></button><button class=\"ds-ladder__step\" type=\"button\"><span class=\"ds-ladder__lvl\">2</span><span class=\"ds-ladder__name\">Sergeant</span></button></div>",
+      "css": ".ds-ladder { display: flex; flex-direction: column; gap: 2px; border: 1px solid #3A3631; border-radius: 5px; padding: 3px; background: #211F1C; max-height: 15rem; overflow-y: auto; font-family: 'Archivo', system-ui, sans-serif; } .ds-ladder__step { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.5rem 0.75rem; border: 0; border-radius: 4px; background: transparent; color: #B3ACA3; font: inherit; font-size: 0.875rem; text-align: left; cursor: pointer; transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease; } .ds-ladder__step:hover { background: #2B2825; color: #EDE9E1; } .ds-ladder__step:active { transform: translateY(1px); } .ds-ladder__step:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; } .ds-ladder__step.is-active { background: #EDE9E1; color: #0D0C0B; font-weight: 600; } .ds-ladder__lvl { flex: none; min-width: 1.5rem; font-size: 0.8125rem; opacity: 0.75; } .ds-ladder__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-ladder__now { margin-left: auto; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.6; }"
+    },
+    {
+      "name": "Segment Control",
+      "kind": "chip",
+      "refersTo": "segment-selected",
+      "description": "Direction and account switching. Pressed inverts to bone-on-asphalt, except debit, which is the one control a signal hue fills.",
+      "html": "<div class=\"ds-segment\"><button class=\"ds-segment__btn\" type=\"button\" aria-pressed=\"true\">Add</button><button class=\"ds-segment__btn ds-segment__btn--debit\" type=\"button\" aria-pressed=\"false\">Remove</button></div>",
+      "css": ".ds-segment { display: flex; gap: 2px; padding: 3px; background: #211F1C; border: 1px solid #3A3631; border-radius: 5px; font-family: 'Archivo', system-ui, sans-serif; } .ds-segment__btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; flex: 1; height: 2rem; padding: 0 0.5rem; border: 0; border-radius: 4px; background: transparent; color: #B3ACA3; font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease; } .ds-segment__btn:hover { color: #EDE9E1; } .ds-segment__btn:active { transform: translateY(1px); } .ds-segment__btn:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; } .ds-segment__btn[aria-pressed=\"true\"] { background: #EDE9E1; color: #0D0C0B; } .ds-segment__btn--debit[aria-pressed=\"true\"] { background: #F0503C; color: #1A0704; }"
+    },
+    {
+      "name": "Status Note",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "Inline role=\"status\" feedback that replaces alert(). Persists until the next operation replaces it; the hue sits on border, wash and icon while the words carry the meaning.",
+      "html": "<div class=\"ds-note ds-note--success\" role=\"status\"><svg class=\"ds-note__icon\" width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4.8 12.4 9.6 17.2 19.2 7.2\"/></svg><div><div class=\"ds-note__title\">$500 posted to cash</div><div class=\"ds-note__detail\">Applied live on the server. New balance: $12,900.</div></div></div>",
+      "css": ".ds-note { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem; padding: 0.75rem; border: 1px solid #3A3631; border-radius: 5px; background: #211F1C; font-family: 'Archivo', system-ui, sans-serif; font-size: 0.8125rem; line-height: 1.55; color: #EDE9E1; } .ds-note__icon { margin-top: 2px; } .ds-note__title { font-weight: 700; } .ds-note__detail { margin-top: 2px; color: #B3ACA3; max-width: 72ch; } .ds-note--success { border-color: rgba(72,224,138,0.42); background: rgba(72,224,138,0.13); } .ds-note--success .ds-note__icon { color: #48E08A; } .ds-note--warn { border-color: rgba(245,166,35,0.42); background: rgba(245,166,35,0.12); } .ds-note--warn .ds-note__icon { color: #F5A623; } .ds-note--error { border-color: rgba(240,80,60,0.45); background: rgba(240,80,60,0.13); } .ds-note--error .ds-note__icon { color: #F0503C; }"
+    },
+    {
+      "name": "Session Ledger",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "Completed writes stay on the record for the session instead of vanishing into a toast; row hue marks which path the write took while the description stays achromatic.",
+      "html": "<div class=\"ds-ledger\"><div class=\"ds-ledger__head\"><h2 class=\"ds-ledger__title\">Changed this session</h2><button class=\"ds-ledger__clear\" type=\"button\">Clear</button></div><ul class=\"ds-ledger__list\"><li class=\"ds-ledger__row ds-ledger__row--live\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 13.6a3.6 3.6 0 0 0 5.4.4l2.6-2.6a3.7 3.7 0 0 0-5.2-5.2l-1.5 1.5\"/><path d=\"M14 10.4a3.6 3.6 0 0 0-5.4-.4L6 12.6a3.7 3.7 0 0 0 5.2 5.2l1.5-1.5\"/></svg><span class=\"ds-ledger__what\">Cash +$500, now $12,900</span><span class=\"ds-ledger__mode\">Applied live</span><time class=\"ds-ledger__time\">02:14</time></li><li class=\"ds-ledger__row ds-ledger__row--offline\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4.8 12.4 9.6 17.2 19.2 7.2\"/></svg><span class=\"ds-ledger__what\">Job set to Police · Sergeant</span><span class=\"ds-ledger__mode\">Saved to database</span><time class=\"ds-ledger__time\">02:11</time></li></ul></div>",
+      "css": ".ds-ledger { border: 1px solid #3A3631; border-radius: 8px; background: rgba(13,12,11,0.74); backdrop-filter: blur(8px); overflow: hidden; font-family: 'Archivo', system-ui, sans-serif; } .ds-ledger__head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid #262320; } .ds-ledger__title { margin: 0; color: #B3ACA3; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-variation-settings: 'wdth' 105; } .ds-ledger__clear { border: 0; background: none; padding: 0; color: #918A80; font: inherit; font-size: 0.8125rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; } .ds-ledger__clear:hover { color: #EDE9E1; } .ds-ledger__list { list-style: none; margin: 0; padding: 0; } .ds-ledger__row { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; font-size: 0.8125rem; border-top: 1px solid #262320; } .ds-ledger__row:first-child { border-top: 0; } .ds-ledger__row--live { color: #48E08A; } .ds-ledger__row--offline { color: #F5A623; } .ds-ledger__what { color: #EDE9E1; font-variant-numeric: tabular-nums; } .ds-ledger__mode { margin-left: auto; white-space: nowrap; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-variation-settings: 'wdth' 105; } .ds-ledger__time { color: #918A80; font-family: 'Spline Sans Mono', ui-monospace, Consolas, monospace; flex: none; }"
+    },
+    {
+      "name": "Module Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "The dock for any capability: bordered head with an authored icon, a 1rem body, and a washed foot where the committing action and its status sit.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel__head\"><svg class=\"ds-panel__icon\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"7.4\" width=\"18\" height=\"12.2\" rx=\"2\"/><path d=\"M8.6 7.4V5.9a1.9 1.9 0 0 1 1.9-1.9h3a1.9 1.9 0 0 1 1.9 1.9v1.5\"/><path d=\"M3 12.6h18\"/></svg><div><h2 class=\"ds-panel__title\">Employment</h2><p class=\"ds-panel__hint\">Currently Police — Officer</p></div></header><div class=\"ds-panel__body\">Panel content</div><footer class=\"ds-panel__foot\"><span class=\"ds-panel__footinfo\">Applies live if connected</span><button class=\"ds-panel__save\" type=\"button\">Apply job</button></footer></section>",
+      "css": ".ds-panel { display: flex; flex-direction: column; background: #171614; border: 1px solid #262320; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.45); font-family: 'Archivo', system-ui, sans-serif; color: #EDE9E1; } .ds-panel__head { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border-bottom: 1px solid #262320; } .ds-panel__icon { margin-top: 2px; color: #918A80; } .ds-panel__title { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; } .ds-panel__hint { margin: 2px 0 0; font-size: 0.8125rem; color: #918A80; } .ds-panel__body { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; font-size: 0.875rem; } .ds-panel__foot { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid #262320; background: rgba(0,0,0,0.22); border-radius: 0 0 8px 8px; } .ds-panel__footinfo { margin-right: auto; font-size: 0.8125rem; color: #918A80; } .ds-panel__save { height: 2.5rem; padding: 0 1rem; border: 1px solid transparent; border-radius: 5px; background: #EDE9E1; color: #0D0C0B; font: inherit; font-weight: 600; cursor: pointer; transition: background 0.15s ease, transform 0.08s ease; } .ds-panel__save:hover { background: #FFFFFF; } .ds-panel__save:active { transform: translateY(1px) scale(0.995); } .ds-panel__save:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Wall of Los Santos",
+    "overview": "Veritas is a catalog of people, read the way its admin reads everything else on the second monitor at 2am: a wall of horizontally scrolling rails of poster tiles on warm asphalt, where the tile under the cursor swells and tells you what it is while the rest of the wall steps back. The ground is deliberately warm near-black (#0D0C0B), not the blue-black the streaming skin defaults to, and the chrome carries no hue at all. Every saturated colour on screen comes from somewhere else: the generated key art. Characters in this product have no artwork, so the artwork is computed from the citizen ID — one deterministic Los Santos sky per record, the same one forever — which makes the image a recognisable property of the data rather than decoration.\n\nThe density is operational, not editorial. Controls stand 40px tall because they are clicked mid-session with a game running behind them; the type ramp holds seven fixed steps and admits no in-between sizes; the page never scrolls sideways, only the rails do. Depth is real: an offset-and-blur shadow under the focused tile, a hairline shadow under panels, never a zero-offset halo pretending to be light. Motion is rationed to one authored moment (focus expansion) and it is switched off entirely under prefers-reduced-motion and on touch, where no hover exists to carry it.\n\nThe system's discipline is that colour and wording never bluff. Three signals exist and no more, each stated in words before it is stated in hue, because the product's load-bearing distinction — \"not on the server\" versus \"we cannot verify\" — must survive a colourblind reader and a monochrome screenshot.",
+    "keyCharacteristics": [
+      "Warm asphalt ground (#0D0C0B), dark-only, chosen from the 2am use scene rather than category habit.",
+      "All saturation lives in the generated plates; the chrome is achromatic bone with one pure-white accent.",
+      "Exactly three semantic signals, each worded first and hued second.",
+      "Archivo run across its width axis (78 / 100 / 105 / 70) instead of across a second typeface.",
+      "Spline Sans Mono strictly for measurement: IDs, amounts, timestamps, counts.",
+      "2:3 poster tiles on rails; one authored motion moment; everything else still."
+    ],
+    "rules": [
+      { "name": "The Colour Lives in the Picture Rule", "body": "Saturation belongs to the generated plates and to the three signals. Running prose, record data and every chrome surface stay achromatic. If a new surface needs a colour to be interesting, it needs a plate, not a hue.", "section": "colors" },
+      { "name": "The Word Before the Hue Rule", "body": "No state is carried by colour alone. Green is always accompanied by \"On the server now\" or \"Applied live\"; amber always by \"Status unverified\" or \"Unverified\"; red always by a written direction or failure. A screenshot in greyscale must still read correctly.", "section": "colors" },
+      { "name": "The Three Lamps Rule", "body": "There are exactly three signal hues. \"Not on the server\" is a neutral state and gets bone, never amber — amber means unverified, and collapsing the two would erase the product's core distinction.", "section": "colors" },
+      { "name": "The Reserved White Rule", "body": "Pure white appears only where the system says \"this one, right now\": selection ring, focus ring, focused field border, primary hover. It is never a text or surface colour.", "section": "colors" },
+      { "name": "The Width-Axis Rule", "body": "Emphasis is made by moving Archivo's wdth axis (78 display, 100 interface, 105 micro-caps, 70 wordmark), not by adding a family. A second display face is a system change, not a styling choice.", "section": "typography" },
+      { "name": "The Mono Is Measurement Rule", "body": "Spline Sans Mono is permitted only for values that are read digit by digit: citizen IDs, currency, times, counts, server IDs, phone numbers. It never sets a label, a heading, or a sentence.", "section": "typography" },
+      { "name": "The Seven Steps Rule", "body": "The ramp has seven declared steps (11 / 13 / 14 / 16 / 22 / 32 / display clamp) and each carries one role. Body copy uses no intermediate value.", "section": "typography" },
+      { "name": "The Page Never Pans Rule", "body": "Only rails scroll sideways. If a new surface needs horizontal room, it becomes a rail or a reflowing grid; it never widens the page.", "section": "layout" },
+      { "name": "The One Gutter Rule", "body": "Every full-width band uses the same --gutter clamp. Section-specific horizontal padding is drift.", "section": "layout" },
+      { "name": "The Flat-Until-Touched Rule", "body": "Every surface rests flat on its tone. A cast shadow is a response to hover, focus or selection, never a decoration at rest.", "section": "elevation" },
+      { "name": "The Real Light Rule", "body": "Shadows have offset and blur. A zero-offset dark halo is not permitted anywhere in this world.", "section": "elevation" },
+      { "name": "The Poster Rule", "body": "Every citizen tile is 2:3, always. A crop ratio is never varied to fit a layout; the layout changes the tile width instead.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do put every saturated colour in a generated plate, and keep chrome achromatic bone on warm asphalt (#0D0C0B).",
+      "Do state a status in words before you state it in hue; the three signals are green #48E08A live, amber #F5A623 unverified, red #F0503C debit.",
+      "Do derive a citizen's key art from their ID through getPlate(), so the same record always shows the same sky.",
+      "Do generate a new crop shape when a new aspect is needed, instead of cropping the 200x300 poster.",
+      "Do reach for Archivo's width axis (78 / 100 / 105) for emphasis, and keep Spline Sans Mono for measured values only.",
+      "Do reserve two lines of caption height on any card in a rail so names share a baseline across the row.",
+      "Do keep controls at 40px with honest 1px press travel, and flatten disabled states into the surface.",
+      "Do keep the accessibility floor: semantic buttons, labelled controls, pure-white :focus-visible rings, role=\"status\" inline feedback, themed ::selection/caret/scrollbars, and motion disabled under prefers-reduced-motion.",
+      "Do dock new capabilities as another .panel in the module grid, or as another rail in the same grammar."
+    ],
+    "donts": [
+      "Don't render \"offline\" and \"unverified\" in the same colour or the same words; unknown state stays amber and explicitly unknown.",
+      "Don't use pure white for text or surfaces — it belongs to selection, focus and primary hover.",
+      "Don't tint running prose or record values with a signal hue; the hue goes on the badge, border, wash or marker beside them.",
+      "Don't cast a zero-offset halo or a glow for elevation; shadows in this world have offset and blur.",
+      "Don't add a second display typeface or an icon font; the width axis and the authored 24px/1.75 set cover both jobs.",
+      "Don't let the page scroll horizontally — only rail tracks do.",
+      "Don't add motion beyond the focus expansion, the 2.6s live pulse and the skeleton shimmer; stillness is what makes the one moment read.",
+      "Don't replace persistent inline feedback with a toast or an alert(); completed writes stay visible on the record for the session.",
+      "Don't design UI implying authentication, permission tiers or an audit trail — none exist.",
+      "Don't invent counts, uptime figures or testimonials on any surface."
+    ]
+  }
+}

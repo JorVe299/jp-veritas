@@ -48,7 +48,7 @@ function syncAndLoadData() {
 
             const raw = fs.readFileSync(filePath, 'utf8');
             if (!raw.trim()) {
-                console.warn(`[Data] Warning: ${file} ist leer. Starte die jp-veritas Resource auf dem FiveM Server, um sie zu erzeugen.`);
+                console.warn(`[Data] Warning: ${file} is empty. Start the jp-veritas resource on the FiveM server to generate it.`);
                 return;
             }
 

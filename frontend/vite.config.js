@@ -15,4 +15,16 @@ export default defineConfig({
       },
     },
   },
+  // `npm run preview` ist ein eigener Server und erbt server.proxy NICHT.
+  // Ohne das hier laufen im Preview alle /api Aufrufe ins Leere.
+  // Für echten Betrieb trotzdem nicht preview nutzen, sondern den Build
+  // vom Backend ausliefern lassen (siehe server.js).
+  preview: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
+  },
 })
