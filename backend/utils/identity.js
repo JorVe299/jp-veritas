@@ -171,4 +171,21 @@ async function identifiersOf(discordId) {
     return [...out];
 }
 
-module.exports = { charactersOf, owns, discordVariants, identifiersOf, asIdentifier };
+// The Discord id behind a character, for diagnostics: the panel knows
+// citizenids, the portal works in Discord ids, and a question about one
+// person has to be askable in whichever of the two is to hand.
+async function discordOf(citizenid) {
+    if (!citizenid) return null;
+    const fw = await profile();
+    if (fw.id !== 'qb') return null;
+
+    const [rows] = await db.execute(
+        'SELECT u.discord FROM players p JOIN users u ON u.userId = p.userId WHERE p.citizenid = ? LIMIT 1',
+        [citizenid]
+    );
+    const raw = rows[0] && rows[0].discord;
+    if (!raw) return null;
+    return String(raw).replace(/^discord:/, '').trim() || null;
+}
+
+module.exports = { charactersOf, owns, discordVariants, identifiersOf, asIdentifier, discordOf };

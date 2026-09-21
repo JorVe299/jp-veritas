@@ -294,7 +294,60 @@ async function status() {
         : { available: false, reason: state.reason, hint: state.hint };
 }
 
+/**
+ * Why a match did or did not happen.
+ *
+ * When a ban that plainly exists does not appear for the person it was
+ * issued against, exactly two things can be wrong, and neither is visible
+ * from outside: the store may not key that action by anything this account
+ * is known by, or the account may resolve to fewer identifiers than it
+ * should. This answers both.
+ *
+ * It reports which KINDS of identifier the store uses and whether each of
+ * THIS account's identifiers appears - never anyone else's values.
+ */
+async function describe(identifiers) {
+    const state = await load();
+    if (!state.ok) return { available: false, reason: state.reason, hint: state.hint };
+
+    const seen = new Set();
+    const kinds = new Set();
+    let bans = 0;
+    let warns = 0;
+
+    for (const [key, bucket] of state.index) {
+        const colon = key.indexOf(':');
+        kinds.add(colon > 0 ? key.slice(0, colon) : '(no prefix)');
+        for (const action of bucket) {
+            if (seen.has(action)) continue;
+            seen.add(action);
+            if (action && action.type === 'warn') warns += 1;
+            else bans += 1;
+        }
+    }
+
+    const checked = (identifiers || []).map(id => ({
+        id: identifierKey(id),
+        inStore: state.index.has(identifierKey(id)),
+    }));
+
+    return {
+        available: true,
+        path: state.path,
+        store: {
+            actions: seen.size,
+            bans,
+            warns,
+            identifierKinds: [...kinds].sort(),
+        },
+        account: {
+            identifiers: checked,
+            matched: checked.filter(c => c.inStore).length,
+        },
+    };
+}
+
 module.exports = {
-    actionsFor, status, shapeAction, buildIndex, identifierKey,
+    actionsFor, status, describe, shapeAction, buildIndex, identifierKey,
     SHOW_AUTHOR, FILE_NAME,
 };

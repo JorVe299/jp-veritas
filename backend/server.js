@@ -125,10 +125,19 @@ app.listen(PORT, () => {
     // read" - it must not print server paths at them. Whoever runs the
     // server needs the other half, and needs it without having to sign in
     // and click, so it goes here where the rest of the startup state is.
-    require('./utils/txadmin').status().then(tx => {
+    require('./utils/txadmin').describe([]).then(tx => {
         if (tx.available) {
-            console.log(`[txAdmin] Ban record readable - ${tx.actions} action(s)`);
+            // The split matters: the portal shows bans, not warnings, so a
+            // store holding one warning and no bans looks identical to a
+            // working setup from the outside. And the identifier kinds say
+            // what a ban can possibly be matched on at all.
+            const s = tx.store;
+            console.log(`[txAdmin] Ban record readable - ${s.actions} action(s): ${s.bans} ban(s), ${s.warns} warning(s)`);
+            console.log(`          keyed by [${s.identifierKinds.join(', ') || 'nothing'}]`);
             console.log(`          ${tx.path}`);
+            if (s.bans === 0) {
+                console.log('          Veritas ID shows bans only, so nothing here will appear in it.');
+            }
         } else {
             console.log(`[txAdmin] ${tx.reason}`);
             console.log(`          ${tx.hint}`);

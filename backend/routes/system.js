@@ -9,6 +9,7 @@ const { getTableColumns, tableExists, clearSchemaCache, listTables } = require('
 const { loadGameData, getJobs, getItems, getVehicles } = require('../utils/dataLoader');
 const { FIVEM_API_URL, BRIDGE_TIMEOUT } = require('../utils/bridge');
 const txadmin = require('../utils/txadmin');
+const { identifiersOf, discordOf } = require('../utils/identity');
 const { checkDatabaseMatchesServer } = require('./players');
 
 const router = express.Router();
@@ -129,6 +130,30 @@ async function inspectTables(raw) {
 // rest of the diagnostics, not in front of a citizen.
 router.get('/api/system/txadmin', async (req, res) => {
     try {
+        // With ?citizenid= or ?discord= this answers the harder question:
+        // the store is readable and the ban is in it, so why does the
+        // person it was issued against not see it? Matching happens on
+        // identifiers, and neither side of that comparison is visible
+        // from outside - so both are printed here.
+        const { citizenid } = req.query;
+        let discord = req.query.discord;
+        if (!discord && citizenid) discord = await discordOf(String(citizenid));
+
+        if (discord) {
+            const identifiers = await identifiersOf(String(discord));
+            if (identifiers === null) {
+                return res.status(400).json({ error: 'That Discord id is malformed' });
+            }
+            const report = await txadmin.describe(identifiers);
+            return res.json({
+                ...report,
+                configured: Boolean((process.env.TXADMIN_DB_PATH || '').trim()),
+                showsBanAuthor: txadmin.SHOW_AUTHOR,
+                asked: { citizenid: citizenid || null, discordId: String(discord) },
+                verdict: verdictFor(report),
+            });
+        }
+
         const state = await txadmin.status();
         res.json({
             ...state,
@@ -136,12 +161,33 @@ router.get('/api/system/txadmin', async (req, res) => {
             showsBanAuthor: txadmin.SHOW_AUTHOR,
             // So a reader can tell "found nothing" from "never looked".
             searched: state.available ? undefined : 'TXADMIN_DB_PATH, then a txData folder near the panel',
+            hintForMatching: 'Add ?citizenid=XXXX to see why a particular person does or does not match.',
         });
     } catch (e) {
         console.error('[System] txAdmin check failed:', e.message);
         res.status(500).json({ available: false, reason: 'The txAdmin check itself failed', hint: e.message });
     }
 });
+
+// The check turned into one sentence, because a table of identifiers is
+// not an answer - it is the material for one.
+function verdictFor(report) {
+    if (!report.available) return report.reason;
+
+    const ids = report.account.identifiers;
+    if (report.account.matched > 0) {
+        return `${report.account.matched} of this account's ${ids.length} identifier(s) appear in the store. Anything still missing from the portal is a ban/warning split or a stale frontend build, not a matching problem.`;
+    }
+    if (report.store.actions === 0) {
+        return 'The store is readable but holds no actions at all.';
+    }
+    if (report.store.bans === 0) {
+        return `The store holds ${report.store.warns} warning(s) and no bans. The portal shows bans only.`;
+    }
+    const kinds = report.store.identifierKinds.join(', ');
+    const mine = [...new Set(ids.map(i => i.id.split(':')[0]))].join(', ');
+    return `None of this account's identifiers appear in the store. It keys actions by [${kinds}]; this account resolves to [${mine}]. If the ban was issued against an identifier the users table does not hold, the two can never meet.`;
+}
 
 // Route for reloading the JSON data without a restart
 router.post('/api/system/refresh', (req, res) => {
