@@ -85,6 +85,13 @@ export default function Workspace({
     const [area, setArea] = useState('citizens');
     const [serverTab, setServerTab] = useState('orgs');
 
+    // Which citizen the server-wide ban list is narrowed to, if any. It
+    // lives here rather than in the panel because it is set from the other
+    // area entirely: the Enforcement tab hands a citizen over and the list
+    // opens already filtered. The panel offers the way back out, which is
+    // why the clearing handler travels down with it.
+    const [bansCitizenid, setBansCitizenid] = useState('');
+
     // One source for all cards. Hangs off the user object: when the session
     // is reloaded it carries the fresh permission list, and the whole UI
     // follows it - with no re-login.
@@ -257,6 +264,25 @@ export default function Workspace({
 
     const serverAccountsReachable = serverTabs.some((t) => t.id === 'accounts');
 
+    // The same move as the accounts one above, for the ban record. The
+    // citizen card can only ever show the bans that match the character in
+    // front of it, out of the database table alone; the server-wide list
+    // holds both records and the entries hanging off identifiers with no
+    // character behind them. So the Enforcement tab sends the user there
+    // with this citizen already filtered, instead of growing a second copy
+    // of that list inside the card.
+    const showBansForCitizen = useCallback(() => {
+        const citizenid = selectedPlayer?.citizenid;
+        if (!citizenid) return;
+        setBansCitizenid(citizenid);
+        setServerTab('bans');
+        handleAreaChange('server');
+    }, [selectedPlayer, handleAreaChange]);
+
+    const clearBansCitizen = useCallback(() => setBansCitizenid(''), []);
+
+    const serverBansReachable = serverTabs.some((t) => t.id === 'bans');
+
     /* The destinations on the start page. Only what this user may actually
        enter is offered - a row pointing at a locked door would be worse
        than no row.
@@ -392,6 +418,8 @@ export default function Workspace({
                             tabs={serverTabs}
                             activeTab={activeServerTab}
                             onTabChange={setServerTab}
+                            bansCitizenid={bansCitizenid}
+                            onClearBansCitizen={clearBansCitizen}
                         />
                     ) : (
                       <>
@@ -535,6 +563,13 @@ export default function Workspace({
                                             key={`ban-${selectedPlayer.citizenid}`}
                                             selectedPlayer={selectedPlayer}
                                             onApplied={handleApplied}
+                                            /* Left out where the server
+                                               area cannot be entered: a
+                                               door onto nothing explains
+                                               less than no door. */
+                                            onShowServerBans={
+                                                serverBansReachable ? showBansForCitizen : undefined
+                                            }
                                         />
                                     )}
                                 </div>

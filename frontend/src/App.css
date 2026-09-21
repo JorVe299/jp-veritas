@@ -2660,26 +2660,61 @@
     margin-top: var(--s-3);
 }
 
-/* --- A second ban record -------------------------------------------------
-   txAdmin's list, read-only, beside the database table. The difference that
-   has to survive a hurried glance is not a colour but a shape: entries stand
-   under a heading that says whether they are in force, and the ones that are
-   over step back in weight rather than change hue. Nothing here signals
-   alarm - a ban in force is a fact about the server, not an incident. */
+/* --- One list out of two ban records -------------------------------------
+   The rows of both records stand in one list, sorted together, so the thing
+   that has to survive a hurried glance is which record a row is written in:
+   only a database row can be lifted from the panel. That is carried in
+   words on every row rather than in a colour, because a shade tells nobody
+   which of the two it means. Nothing here signals alarm - a ban in force is
+   a fact about the server, not an incident. */
 
-.bangroup + .bangroup {
-    margin-top: var(--s-5);
+/* Two pills at the end of the row: where it is written down, and how it
+   stands. They travel together to the right edge, so the state pill keeps
+   the place the eye already looks for it in every other list. */
+.line__badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s-2);
+    margin-left: auto;
+    flex: none;
 }
 
-.bangroup__title {
-    margin: 0;
-    color: var(--c-text-muted);
+/* Provenance, not a verdict: it keeps the neutral pill and gives up the
+   uppercase tracking, so it reads as a label beside the state rather than
+   competing with it. */
+.line__src {
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: none;
 }
 
-.bangroup__hint {
-    margin: var(--s-1) 0 var(--s-3);
+/* The one-citizen filter and the sentence that says how it was matched. */
+.banfilter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2) var(--s-3);
+}
+
+/* A chip that removes itself. The filter it names is the only reason the
+   list is short, so the statement and the way out of it are one control. */
+.chip--drop {
+    cursor: pointer;
+    font: inherit;
     font-size: var(--fs-sm);
-    color: var(--c-text-faint);
+    text-align: left;
+}
+
+.chip--drop:hover,
+.chip--drop:focus-visible {
+    color: var(--c-text);
+    border-color: var(--c-text-faint);
+}
+
+.chip__x {
+    flex: none;
+    opacity: 0.7;
 }
 
 /* Over and done with: the reason keeps its place in the row but gives up
@@ -2710,12 +2745,6 @@
     flex: none;
     min-width: 4.5rem;
     color: var(--c-text-faint);
-}
-
-/* An absolute path on a server is long and nobody types it from memory -
-   it may break anywhere rather than push the footer sideways. */
-.txbans__path {
-    overflow-wrap: anywhere;
 }
 
 @media (max-width: 900px) {

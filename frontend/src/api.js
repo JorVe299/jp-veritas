@@ -145,13 +145,16 @@ export const updatePlayerCharinfo = (citizenid, charinfo) => api.post('/manage/c
 // A ban hangs off license and Discord ID, not off the citizenid: what gets
 // blocked is the access, not the single character.
 export const fetchPlayerBans = (citizenid) => api.get(`/players/${seg(citizenid)}/bans`);
-export const fetchBans = (params) => api.get('/bans', { params });
-// The other ban record: txAdmin's own file beside the server, which this
-// panel can read and nothing else. Its parameters are txAdmin's own (q,
-// active, include, limit) and are left that way rather than dressed up as
-// the database route's - the two are different lists and should not answer
-// to the same words.
-export const fetchTxAdminBans = (params) => api.get('/bans/txadmin', { params });
+// Both ban records in one list: the `bans` table this panel writes and
+// txAdmin's own file beside the server, merged and sorted by the route.
+// It replaces the two separate list calls that used to stand here - the
+// question "who is kept out" was never one that cared which file holds
+// the answer.
+//
+// Parameters, all optional: q, citizenid, active, include, source, page,
+// limit. Every row keeps its source, because only the database rows can be
+// lifted, and liftBan below is the only write either record accepts.
+export const fetchAllBans = (params) => api.get('/bans/all', { params });
 // Omitting days, or 0, means permanent - hence no default value here.
 export const banPlayer = (citizenid, ban) => api.post('/manage/ban', { citizenid, ...ban });
 export const liftBan = (id) => api.delete(`/manage/ban/${seg(id)}`);

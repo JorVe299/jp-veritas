@@ -25,10 +25,18 @@ const REASON_MAX = 255;
  * two steps instead of one click, and no confirm(): the button changes its
  * label and waits there.
  *
+ * What this card is not is the whole record. It shows the rows of the
+ * database table that match this character's own license and Discord ID.
+ * A ban hangs off an identifier, not a character, and there is a second
+ * record besides - txAdmin's - that this card never reads at all. So it
+ * offers the way over to the server-wide list, filtered to this citizen,
+ * rather than pretending to be it. onShowServerBans is left out where that
+ * area cannot be entered, and then so is the control.
+ *
  * Workspace gives the module a key={citizenid} - the state restarts by
  * itself when the citizen changes.
  */
-export default function BanManager({ selectedPlayer, onApplied }) {
+export default function BanManager({ selectedPlayer, onApplied, onShowServerBans }) {
     const { can } = useCan();
     const canEdit = can('bans.edit');
 
@@ -171,6 +179,29 @@ export default function BanManager({ selectedPlayer, onApplied }) {
                             />
                         ))}
                     </ul>
+                )}
+
+                {/* The way out to the whole picture. This card reads one
+                    table and matches on this character alone; the server
+                    list reads both records and finds the entries hanging
+                    off identifiers that no character here belongs to. */}
+                {onShowServerBans && citizenid && (
+                    <>
+                        <div className="acts">
+                            <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                onClick={onShowServerBans}
+                            >
+                                Open the server ban list for this citizen
+                            </button>
+                        </div>
+                        <p className="field__hint">
+                            Leaves this citizen&rsquo;s page for the Bans section of the Server
+                            area, filtered to them — both ban records at once, including
+                            txAdmin&rsquo;s, which this card does not read.
+                        </p>
+                    </>
                 )}
             </div>
 

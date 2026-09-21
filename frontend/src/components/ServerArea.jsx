@@ -1,10 +1,9 @@
 import AccountsPanel from './AccountsPanel';
-import BansPanel from './BansPanel';
+import AllBansPanel from './AllBansPanel';
 import CitizenTabs from './CitizenTabs';
 import DiagnosticsPanel from './DiagnosticsPanel';
 import OrganisationsPanel from './OrganisationsPanel';
 import ResourcesPanel from './ResourcesPanel';
-import TxAdminBansPanel from './TxAdminBansPanel';
 
 /**
  * The second main area: everything on this server that belongs to nobody.
@@ -31,7 +30,13 @@ import TxAdminBansPanel from './TxAdminBansPanel';
  * The tab bar is the same component the citizen view uses. Two bars that
  * look alike but behave differently would be worse than one shared one.
  */
-export default function ServerArea({ tabs, activeTab, onTabChange }) {
+export default function ServerArea({
+    tabs,
+    activeTab,
+    onTabChange,
+    bansCitizenid = '',
+    onClearBansCitizen,
+}) {
     return (
         <>
             <header className="areahead">
@@ -54,10 +59,10 @@ export default function ServerArea({ tabs, activeTab, onTabChange }) {
                 /* Resources stacks instead of laying out in columns: its
                    three cards climb from harmless to dangerous, and that
                    order only reads if they sit one under the other. Bans
-                   stacks for a different reason: its two cards are two
-                   different records of who is kept out, and side by side at
-                   equal width they would read as one list in two columns -
-                   which is the one thing that area may not say. */
+                   stacks because it is one wide list: its rows carry a
+                   source, a state, who they are against and what they hang
+                   off, and squeezed into a grid column they wrap into
+                   something nobody can scan. */
                 className={`modules${activeTab === 'resources' || activeTab === 'bans' ? ' modules--stack' : ''}`}
                 role="tabpanel"
                 id={`tabpanel-${activeTab}`}
@@ -67,10 +72,10 @@ export default function ServerArea({ tabs, activeTab, onTabChange }) {
                 {activeTab === 'orgs' && <OrganisationsPanel />}
                 {activeTab === 'accounts' && <AccountsPanel />}
                 {activeTab === 'bans' && (
-                    <>
-                        <BansPanel />
-                        <TxAdminBansPanel />
-                    </>
+                    <AllBansPanel
+                        citizenid={bansCitizenid}
+                        onClearCitizen={onClearBansCitizen}
+                    />
                 )}
                 {activeTab === 'resources' && <ResourcesPanel />}
                 {activeTab === 'system' && <DiagnosticsPanel />}
