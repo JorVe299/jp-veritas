@@ -143,7 +143,14 @@ function sortBans(rows) {
     return [...rows].sort(compareBans);
 }
 
-/** Free text over everything a person would reasonably type. */
+/**
+ * Free text over everything a person would reasonably type.
+ *
+ * citizenid is in the haystack for rows that already carry one, but the
+ * caller must not rely on that alone: the reverse lookup runs on the page
+ * being sent, so rows are usually still unresolved here. The route
+ * resolves a citizenid-shaped term to identifiers separately.
+ */
 function matchesQuery(row, needle) {
     if (!needle) return true;
     const hay = [

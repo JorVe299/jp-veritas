@@ -84,7 +84,8 @@ const MERGE_CEILING = 2000;
 router.get('/api/bans/all', async (req, res) => {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
-    const needle = String(req.query.q || '').trim().toLowerCase();
+    const rawQuery = String(req.query.q || '').trim();
+    const needle = rawQuery.toLowerCase();
     const citizenid = String(req.query.citizenid || '').trim();
     const activeOnly = req.query.active === 'true';
     const wantWarnings = req.query.include === 'warnings';
@@ -140,7 +141,30 @@ router.get('/api/bans/all', async (req, res) => {
         let merged = [...rows, ...txRows];
         if (identifierSet) merged = merged.filter(r => banlist.belongsTo(r, identifierSet));
         if (activeOnly) merged = merged.filter(r => r.active);
-        if (needle) merged = merged.filter(r => banlist.matchesQuery(r, needle));
+
+        // A citizenid typed into the search box has to find that person's
+        // bans. Neither record stores one, and the reverse lookup that puts
+        // citizenids on rows runs later, on the page being sent - so at this
+        // point every row's citizenid is still null and matching on it would
+        // silently find nothing. Resolve the term the same way the explicit
+        // citizen filter does and let it match on identifiers instead.
+        let searchIdentifiers = null;
+        if (needle && /^[A-Za-z0-9_-]{3,32}$/.test(rawQuery)) {
+            try {
+                const owned = await identifiersForCitizen(rawQuery);
+                if (owned.length > 0) searchIdentifiers = new Set(owned);
+            } catch (e) {
+                // A failed lookup narrows the search rather than breaking it.
+                console.warn('[Bans] citizen lookup for search term failed:', e.message);
+            }
+        }
+
+        if (needle) {
+            merged = merged.filter(r =>
+                banlist.matchesQuery(r, needle)
+                || (searchIdentifiers && banlist.belongsTo(r, searchIdentifiers))
+            );
+        }
 
         merged = banlist.sortBans(merged);
 
@@ -176,7 +200,10 @@ router.get('/api/bans/all', async (req, res) => {
             sources: { database, txadmin: txState },
             filter: {
                 citizenid: citizenid || null,
-                q: needle || null,
+                q: rawQuery || null,
+                // So the page can say the search term was understood as a
+                // person rather than as free text that happened to hit.
+                qMatchedCitizen: Boolean(searchIdentifiers),
                 active: activeOnly,
                 include: wantWarnings ? 'warnings' : 'bans',
                 source: onlySource,
