@@ -7,6 +7,7 @@
 const express = require('express');
 const { db, tableExists, pickExistingColumns } = require('../utils/dbHandler');
 const { isPlayerOnline, callBridge } = require('../utils/bridge');
+const txadmin = require('../utils/txadmin');
 
 const router = express.Router();
 const TABLE = 'bans';
@@ -65,6 +66,54 @@ async function identityFor(citizenid) {
 }
 
 // --- Every ban ------------------------------------------------------------
+// --- The other ban list ---------------------------------------------------
+// A server bans in two places that know nothing about each other: this
+// table, which the framework and this panel write, and txAdmin's own
+// record, which is a JSON file beside the server. A page called "Bans"
+// that shows only the first is not wrong so much as incomplete, and the
+// gap is invisible - an empty table reads as "nobody is banned" even
+// while txAdmin is turning people away at the door.
+//
+// Read-only, and it stays that way: txAdmin owns that file, and two
+// processes writing it is how a ban list gets truncated.
+router.get('/api/bans/txadmin', async (req, res) => {
+    try {
+        const result = await txadmin.allActions({
+            types: req.query.include === 'warnings' ? ['ban', 'warn'] : ['ban'],
+            query: req.query.q,
+            activeOnly: req.query.active === 'true',
+            limit: req.query.limit,
+        });
+
+        if (!result.available) {
+            // Not an error: plenty of servers do not run txAdmin. But it is
+            // not an empty list either, and the two must not look alike.
+            return res.json({
+                available: false,
+                reason: result.reason,
+                hint: result.hint,
+                bans: [],
+                count: 0,
+                activeCount: 0,
+            });
+        }
+
+        res.json({
+            available: true,
+            bans: result.actions,
+            count: result.count,
+            activeCount: result.activeCount,
+            truncated: result.truncated,
+            limit: result.limit,
+            source: result.path,
+            readOnly: true,
+        });
+    } catch (e) {
+        console.error('[Bans] txAdmin list failed:', e.message);
+        res.status(500).json({ error: 'The txAdmin ban record could not be read' });
+    }
+});
+
 router.get('/api/bans', async (req, res) => {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 25, 1), 100);

@@ -286,6 +286,79 @@ async function actionsFor(identifiers, options = {}) {
     };
 }
 
+/**
+ * The whole record, for staff rather than for one player.
+ *
+ * Deliberately a different shape from actionsFor(): an admin looking at a
+ * ban list needs the name it was issued against, who issued it and which
+ * identifiers it covers, none of which a player is shown about themselves.
+ * The panel already prints licence and Discord id in its own ban list, so
+ * this reveals nothing that surface does not.
+ *
+ * @param {object}   [options]
+ * @param {string[]} [options.types]   which action types to include
+ * @param {string}   [options.query]   free text over name, reason, id and identifiers
+ * @param {boolean}  [options.activeOnly]
+ * @param {number}   [options.limit]   a busy server's store is long
+ */
+async function allActions(options = {}) {
+    const state = await load();
+    if (!state.ok) return { available: false, reason: state.reason, hint: state.hint };
+
+    const wanted = new Set(Array.isArray(options.types) ? options.types : ['ban']);
+    const limit = Math.min(Math.max(parseInt(options.limit, 10) || 200, 1), 1000);
+    const needle = String(options.query || '').trim().toLowerCase();
+    const now = Math.floor(Date.now() / 1000);
+
+    // The index holds each action once per identifier, so collect by
+    // identity before doing anything else.
+    const seen = new Set();
+    for (const bucket of state.index.values()) {
+        for (const action of bucket) seen.add(action);
+    }
+
+    const rows = [];
+    let total = 0;
+    let activeCount = 0;
+
+    for (const action of seen) {
+        const type = action && action.type === 'warn' ? 'warn' : 'ban';
+        if (!wanted.has(type)) continue;
+
+        const shaped = shapeAction(action, now);
+        // Staff see what a player does not: who it was issued against and
+        // by whom. Not a leak - the panel's own ban list shows the same.
+        shaped.playerName = typeof action.playerName === 'string' ? action.playerName : null;
+        shaped.author = typeof action.author === 'string' ? action.author : null;
+        shaped.identifiers = Array.isArray(action.ids) ? action.ids.map(identifierKey) : [];
+
+        if (needle) {
+            const hay = [shaped.id, shaped.playerName, shaped.reason, shaped.author, ...shaped.identifiers]
+                .filter(Boolean).join(' ').toLowerCase();
+            if (!hay.includes(needle)) continue;
+        }
+        if (options.activeOnly && !shaped.active) continue;
+
+        total += 1;
+        if (shaped.active) activeCount += 1;
+        rows.push(shaped);
+    }
+
+    rows.sort((a, b) => String(b.issuedAt || '').localeCompare(String(a.issuedAt || '')));
+
+    return {
+        available: true,
+        actions: rows.slice(0, limit),
+        count: total,
+        activeCount,
+        // So the page can say "showing 200 of 4000" rather than quietly
+        // pretending the list ends there.
+        truncated: total > limit,
+        limit,
+        path: state.path,
+    };
+}
+
 /** Whether the store can be reached at all - for the diagnostics panel. */
 async function status() {
     const state = await load();
@@ -348,6 +421,6 @@ async function describe(identifiers) {
 }
 
 module.exports = {
-    actionsFor, status, describe, shapeAction, buildIndex, identifierKey,
+    actionsFor, allActions, status, describe, shapeAction, buildIndex, identifierKey,
     SHOW_AUTHOR, FILE_NAME,
 };
