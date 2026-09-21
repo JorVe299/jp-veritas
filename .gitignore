@@ -159,3 +159,7 @@ backend/data/jobs.json
 backend/data/items.json
 backend/data/vehicles.json
 backend/data/gangs.json
+
+# brag skill
+brag-output
+brag-output/*
