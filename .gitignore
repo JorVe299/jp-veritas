@@ -151,3 +151,11 @@ veritas/jobs.json
 veritas/gangs.json
 veritas/items.json
 veritas/vehicles.json
+
+# Datencache des Backends: wird beim Start aus FIVEM_JSON_PATH kopiert.
+# Im Repo lagen die vier Dateien leer - ein `git reset --hard` beim Deploy
+# hat damit jedes Mal den Cache des Servers ueberschrieben.
+backend/data/jobs.json
+backend/data/items.json
+backend/data/vehicles.json
+backend/data/gangs.json
