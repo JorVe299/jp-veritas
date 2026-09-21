@@ -146,6 +146,12 @@ export const updatePlayerCharinfo = (citizenid, charinfo) => api.post('/manage/c
 // blocked is the access, not the single character.
 export const fetchPlayerBans = (citizenid) => api.get(`/players/${seg(citizenid)}/bans`);
 export const fetchBans = (params) => api.get('/bans', { params });
+// The other ban record: txAdmin's own file beside the server, which this
+// panel can read and nothing else. Its parameters are txAdmin's own (q,
+// active, include, limit) and are left that way rather than dressed up as
+// the database route's - the two are different lists and should not answer
+// to the same words.
+export const fetchTxAdminBans = (params) => api.get('/bans/txadmin', { params });
 // Omitting days, or 0, means permanent - hence no default value here.
 export const banPlayer = (citizenid, ban) => api.post('/manage/ban', { citizenid, ...ban });
 export const liftBan = (id) => api.delete(`/manage/ban/${seg(id)}`);

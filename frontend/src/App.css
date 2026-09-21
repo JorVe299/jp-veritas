@@ -2660,6 +2660,64 @@
     margin-top: var(--s-3);
 }
 
+/* --- A second ban record -------------------------------------------------
+   txAdmin's list, read-only, beside the database table. The difference that
+   has to survive a hurried glance is not a colour but a shape: entries stand
+   under a heading that says whether they are in force, and the ones that are
+   over step back in weight rather than change hue. Nothing here signals
+   alarm - a ban in force is a fact about the server, not an incident. */
+
+.bangroup + .bangroup {
+    margin-top: var(--s-5);
+}
+
+.bangroup__title {
+    margin: 0;
+    color: var(--c-text-muted);
+}
+
+.bangroup__hint {
+    margin: var(--s-1) 0 var(--s-3);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+/* Over and done with: the reason keeps its place in the row but gives up
+   the weight of one that is keeping somebody out right now. */
+.line--spent .line__name {
+    font-weight: 500;
+    color: var(--c-text-muted);
+}
+
+/* The identifiers fold away inside the row, so the divider and the padding
+   the reveal carries at the foot of a panel would be too much here. */
+.line__ids {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.line__idgroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s-1) var(--s-3);
+    margin: 0 0 var(--s-2);
+    font-size: var(--fs-sm);
+    overflow-wrap: anywhere;
+}
+
+.line__idkind {
+    flex: none;
+    min-width: 4.5rem;
+    color: var(--c-text-faint);
+}
+
+/* An absolute path on a server is long and nobody types it from memory -
+   it may break anywhere rather than push the footer sideways. */
+.txbans__path {
+    overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
     /* The switch keeps its labels but gives up its padding before the bar
        wraps - "Citizens" and "Server" cannot be guessed from a glyph. */

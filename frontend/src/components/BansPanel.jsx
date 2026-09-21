@@ -22,6 +22,14 @@ const LIMIT = 25;
  * The list is paged on the server. The route answers with the rows of this
  * page and no grand total, so the surface does not claim one: it says which
  * page this is and offers the next only while a full page came back.
+ *
+ * One thing this panel used to say and no longer does: that it knows every
+ * ban on the server. It knows the database table - the one the framework
+ * and this panel write, and the only one anything here can lift. txAdmin
+ * keeps a second record of its own, which stands in its own panel below.
+ * So every sentence here names the table it is about, down to the empty
+ * case: "nothing is banned" was a claim about a server, made by something
+ * that had only looked in one of the two places it is written down.
  */
 export default function BansPanel() {
     const { can } = useCan();
@@ -58,7 +66,7 @@ export default function BansPanel() {
             <header className="panel__head">
                 <Icon name="ban" size={18} className="panel__icon" />
                 <div>
-                    <h2 className="panel__title" id="bans-panel-title">Bans</h2>
+                    <h2 className="panel__title" id="bans-panel-title">Bans in the database</h2>
                     <p className="panel__hint">{headHint(res, bans.length, activeCount, page)}</p>
                 </div>
             </header>
@@ -70,6 +78,12 @@ export default function BansPanel() {
                     A ban blocks a license, a Discord ID or an IP — not a character.
                     Bans on an identifier that no character in this database belongs to
                     can be found and lifted here, and nowhere else in the panel.
+                </p>
+
+                <p className="field__hint">
+                    This is the <strong>bans</strong> table in the server&rsquo;s database — the bans
+                    this panel issues and lifts. txAdmin keeps a second record of its own, which
+                    this list knows nothing about; it stands in the panel below.
                 </p>
 
                 <div className="field">
@@ -119,7 +133,7 @@ export default function BansPanel() {
                             ? `No ban matches “${search}”.`
                             : page > 1
                                 ? 'This page is empty — there is nothing beyond the previous one.'
-                                : 'Nothing is banned on this server.'}
+                                : 'No ban is recorded in the database table. Check the txAdmin record below before concluding that nobody is banned.'}
                     </p>
                 )}
 
@@ -174,7 +188,7 @@ function headHint(res, shown, active, page) {
     if (res.status === 'unavailable') return 'Module unavailable';
     if (res.status === 'unreachable') return 'Game server unreachable';
     if (res.status === 'error') return 'Bans unknown';
-    if (shown === 0) return page > 1 ? `Page ${page} · empty` : 'Nothing banned';
+    if (shown === 0) return page > 1 ? `Page ${page} · empty` : 'Nothing in the table';
 
     const base = shown === 1 ? '1 ban on this page' : `${shown} bans on this page`;
     return `${base} · ${active} of them still in force`;
