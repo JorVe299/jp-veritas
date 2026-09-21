@@ -13,6 +13,7 @@ const express = require('express');
 const { db, parseJSON, tableExists } = require('../utils/dbHandler');
 const { charactersOf, owns, identifiersOf } = require('../utils/identity');
 const txadmin = require('../utils/txadmin');
+const banlist = require('../utils/banlist');
 
 const router = express.Router();
 
@@ -118,30 +119,59 @@ router.get('/api/me/bans', async (req, res) => {
             return res.status(400).json({ error: 'The Discord id on this session is malformed' });
         }
 
-        const result = await txadmin.actionsFor(identifiers, { types: ['ban'] });
+        // Both records, the same as the panel - a citizen banned through
+        // this panel's own ban tool must not be told there is nothing on
+        // file just because txAdmin has never heard of them.
+        const own = new Set(identifiers);
 
-        if (!result.available) {
-            // Not an error and not an empty history. A server may not run
-            // txAdmin at all, or the path may not be set yet; answering
-            // "no bans" would be a claim about the player rather than
-            // about the panel, so the two stay firmly apart.
-            return res.json({
-                available: false,
-                reason: result.reason,
-                hint: result.hint,
-                bans: [],
-                count: 0,
-                activeCount: 0,
-            });
+        const database = { available: false };
+        let rows = [];
+        try {
+            const found = await banlist.databaseBansFor(identifiers);
+            database.available = found.available;
+            if (found.reason) database.reason = found.reason;
+            rows = found.rows;
+        } catch (e) {
+            console.error('[Me] database bans failed:', e.message);
+            database.reason = 'The ban table could not be read';
         }
 
+        const tx = { available: false };
+        let txRows = [];
+        const fromTx = await txadmin.actionsFor(identifiers, { types: ['ban'] });
+        if (fromTx.available) {
+            tx.available = true;
+            txRows = fromTx.actions
+                .map(a => ({ ...a, identifiers: [] }))
+                .map(banlist.fromTxAdmin);
+        } else {
+            tx.reason = fromTx.reason;
+            tx.hint = fromTx.hint;
+        }
+
+        const merged = banlist
+            .sortBans([...rows, ...txRows])
+            .filter(row => row.source !== banlist.DATABASE || banlist.belongsTo(row, own))
+            .map(citizenView);
+
+        // 'available' stays true only when every record could be read. An
+        // older page reads this field alone, and a partial list shown as a
+        // complete one is the one answer this route must never give.
+        const complete = database.available && tx.available;
+        const failed = !database.available ? database : tx;
+
         res.json({
-            available: true,
-            bans: result.actions,
-            count: result.count,
-            activeCount: result.activeCount,
-            // So the page can say whose decision it was to show or hide the
-            // issuing admin, instead of leaving a blank where a name went.
+            available: complete,
+            reason: complete ? undefined : failed.reason,
+            hint: complete ? undefined : failed.hint,
+
+            bans: merged,
+            count: merged.length,
+            activeCount: merged.filter(b => b.active).length,
+
+            // Per record, so a page can show what it has and still say what
+            // is missing instead of choosing between the two.
+            sources: { database, txadmin: tx },
             showsAuthor: txadmin.SHOW_AUTHOR,
         });
     } catch (e) {
@@ -149,6 +179,36 @@ router.get('/api/me/bans', async (req, res) => {
         res.status(500).json({ error: 'Could not read the ban history' });
     }
 });
+
+// What a player is shown about a ban against them.
+//
+// Deliberately narrower than the staff view. Absent no matter what:
+//   - identifiers, which on a database row include the IP the ban was
+//     issued against
+//   - the name the ban was filed under, and any other character on the
+//     account
+//   - the admin who issued it, unless the server owner turned that on
+function citizenView(row) {
+    const out = {
+        id: row.nativeId,
+        type: row.type,
+        reason: row.reason,
+        issuedAt: row.issuedAt,
+        issuedAtKnown: row.issuedAtKnown,
+        expiresAt: row.expiresAt,
+        permanent: row.permanent,
+        revoked: row.revoked,
+        revokedAt: row.revokedAt,
+        expired: row.expired,
+        active: row.active,
+        // Which record holds it. Not plumbing to the person affected: it
+        // is the difference between something this community's staff wrote
+        // and something the server software did.
+        source: row.source,
+    };
+    if (txadmin.SHOW_AUTHOR) out.issuedBy = row.issuedBy || null;
+    return out;
+}
 
 // --- One character in full ------------------------------------------------
 router.get('/api/me/characters/:citizenid', requireOwnership, async (req, res) => {

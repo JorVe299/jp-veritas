@@ -18,7 +18,82 @@
 // the row id would be a number dressed up as a fact. They sort by id among
 // themselves and are marked as undated.
 
+const { db, tableExists } = require('./dbHandler');
 const { asIdentifier } = require('./identity');
+
+const TABLE = 'bans';
+
+// QBCore stores the expiry as unix seconds. A 0, or a value far in the
+// future, means "permanent" in practice.
+const PERMANENT_AFTER_YEARS = 50;
+
+/**
+ * A raw `bans` row in the shape the rest of the panel expects.
+ *
+ * It lives here rather than in a route because both the staff list and the
+ * citizen portal build on it, and two copies of "what counts as permanent"
+ * would drift apart exactly once and never be noticed.
+ */
+function shapeBan(row) {
+    const expire = Number(row.expire) || 0;
+    const permanent = expire === 0 || expire > Date.now() / 1000 + PERMANENT_AFTER_YEARS * 31536000;
+    return {
+        id: row.id,
+        name: row.name,
+        license: row.license,
+        discord: row.discord,
+        ip: row.ip,
+        reason: row.reason,
+        bannedBy: row.bannedby,
+        expire,
+        expiresAt: expire > 0 ? new Date(expire * 1000).toISOString() : null,
+        permanent,
+        active: permanent || expire > Date.now() / 1000
+    };
+}
+
+/**
+ * The database bans issued against any of these identifiers.
+ *
+ * The table keys bans by licence, Discord id and IP, so the lookup asks
+ * for the ones it can hold and compares them normalised - the same exact
+ * comparison the merged list uses, for the same reason.
+ */
+async function databaseBansFor(identifiers) {
+    if (!identifiers || identifiers.length === 0) return { available: true, rows: [] };
+    if (!await tableExists(TABLE)) {
+        return { available: false, reason: `Table '${TABLE}' does not exist in this database`, rows: [] };
+    }
+
+    // Schemas differ on whether the prefix is stored, so both forms go into
+    // the query and the decision is made on the normalised value afterwards.
+    const values = [];
+    for (const id of identifiers) {
+        values.push(id);
+        const colon = id.indexOf(':');
+        if (colon > 0) values.push(id.slice(colon + 1));
+    }
+    const placeholders = values.map(() => '?').join(', ');
+    const columns = ['license', 'discord', 'ip'];
+    const where = columns.map(c => `LOWER(${c}) IN (${placeholders})`).join(' OR ');
+    const params = [];
+    for (let i = 0; i < columns.length; i++) params.push(...values);
+
+    const [raw] = await db.execute(
+        `SELECT * FROM ${TABLE} WHERE ${where} ORDER BY id DESC LIMIT 500`,
+        params
+    );
+
+    // The SQL narrows; this decides. LOWER() in the query is a filter, not
+    // a guarantee about how the column was written.
+    const wanted = new Set(identifiers);
+    const rows = raw
+        .map(shapeBan)
+        .map(fromDatabase)
+        .filter(row => belongsTo(row, wanted));
+
+    return { available: true, rows };
+}
 
 const DATABASE = 'database';
 const TXADMIN = 'txadmin';
@@ -174,7 +249,8 @@ function belongsTo(row, identifierSet) {
 }
 
 module.exports = {
-    DATABASE, TXADMIN,
+    DATABASE, TXADMIN, TABLE,
+    shapeBan, databaseBansFor,
     fromDatabase, fromTxAdmin,
     compareBans, sortBans, matchesQuery, belongsTo,
     identifiersFromRow,

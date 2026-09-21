@@ -14,27 +14,10 @@ const { identifiersForCitizen, citizensByIdentifier } = require('../utils/identi
 const router = express.Router();
 const TABLE = 'bans';
 
-// QBCore stores the expiry as unix seconds. A 0, or a value far in the
-// future, means "permanent" in practice.
-const PERMANENT_AFTER_YEARS = 50;
-
-function shapeBan(row) {
-    const expire = Number(row.expire) || 0;
-    const permanent = expire === 0 || expire > Date.now() / 1000 + PERMANENT_AFTER_YEARS * 31536000;
-    return {
-        id: row.id,
-        name: row.name,
-        license: row.license,
-        discord: row.discord,
-        ip: row.ip,
-        reason: row.reason,
-        bannedBy: row.bannedby,
-        expire,
-        expiresAt: expire > 0 ? new Date(expire * 1000).toISOString() : null,
-        permanent,
-        active: permanent || expire > Date.now() / 1000
-    };
-}
+// Shaping a bans row lives in utils/banlist.js: the citizen portal builds
+// on the same rows, and two copies of "what counts as permanent" would
+// drift apart exactly once.
+const { shapeBan } = banlist;
 
 async function ensureTable(res) {
     if (await tableExists(TABLE)) return true;
