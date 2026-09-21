@@ -32,6 +32,17 @@ function requireIdentity(req, res, next) {
     // this to a boolean today, so both read the same - but a guard that only
     // holds because of what some other module does is one refactor away from
     // letting people through. Say what is required instead.
+    // Told apart deliberately. Both are 403, but only one of them is
+    // about the account - the other is about the cookie, and the person
+    // can fix it in ten seconds once somebody says so.
+    if (req.user.portalKnown === false) {
+        return res.status(403).json({
+            error: 'Your sign-in is older than Veritas ID',
+            hint: 'Sign out and sign in again - the portal is decided when you sign in, and this session predates it.',
+            stale: true,
+        });
+    }
+
     if (req.user.portal !== true) {
         return res.status(403).json({
             error: 'This account cannot use Veritas ID',

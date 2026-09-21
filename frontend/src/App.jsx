@@ -155,7 +155,17 @@ function App() {
                Hangs off the portal flag and not off the role: an account
                can hold a role in the panel and still not be in the Discord
                Veritas ID is open to. */
-            onOpenPortal={auth.user?.portal === true ? goPortal : undefined}
+            onOpenPortal={
+                auth.user?.portal === true
+                /* A session from before Veritas ID existed cannot know
+                   whether it belongs here, and hiding the way in leaves
+                   someone hunting the panel for a page that is not on it.
+                   The portal explains itself in that case, so the door is
+                   better open than missing. */
+                || auth.user?.portalKnown === false
+                    ? goPortal
+                    : undefined
+            }
         />
     );
 }

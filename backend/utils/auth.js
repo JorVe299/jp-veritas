@@ -252,6 +252,12 @@ function publicUser(session) {
         role: session.role || null,
         roleLabel: session.role ? ROLE_LABELS[session.role] : null,
         portal: session.portal === true,
+        // A session minted before Veritas ID existed carries no portal
+        // field at all. That is not the same as "not allowed": it is an
+        // answer nobody ever gave. Collapsing the two into false makes a
+        // stale cookie look exactly like a refusal, and the person is then
+        // told something untrue about their account.
+        portalKnown: session.portal !== undefined,
         // The role's current capability list, not the one from sign-in:
         // a change to the matrix therefore takes effect immediately,
         // without everyone having to sign in again.
