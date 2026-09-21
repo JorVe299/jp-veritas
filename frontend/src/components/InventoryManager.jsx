@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import Icon from './Icon';
+import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
 import InventorySheet from './InventorySheet';
 import { fetchPlayerInventory } from '../api';
+import { useCan } from '../lib/useCan';
 import { usePlayerResource } from '../lib/usePlayerResource';
 
 function kg(grams) {
@@ -11,16 +13,22 @@ function kg(grams) {
 }
 
 /**
- * Inventar in der Modulwand: hier steht nur, was drin ist. Bearbeitet wird
- * es in einer eigenen Flaeche, die der Knopf oeffnet.
+ * Inventory in the module wall: this only states what is in it. Editing
+ * happens in a sheet of its own that the button opens.
  *
- * Grund fuer die Trennung: ein Inventar hat 41 Plaetze und wird geschoben,
- * gestapelt und geteilt. Das braucht Raum und Aufmerksamkeit - eingequetscht
- * zwischen Job und Fahrzeugen waere es weder uebersichtlich noch bedienbar,
- * und man raeumt nicht versehentlich ein Inventar um, waehrend man eigentlich
- * den Rang aendern wollte.
+ * Reason for the split: an inventory has 41 slots and gets dragged, stacked
+ * and split. That needs room and attention - squeezed in between job and
+ * vehicles it would be neither legible nor usable, and this way nobody
+ * rearranges an inventory by accident while what they really wanted was to
+ * change the rank.
  */
 export default function InventoryManager({ selectedPlayer, onApplied }) {
+    // inventory.view carries the card, inventory.edit the grid in the sheet.
+    // Without the second the sheet stays reachable all the same: looking at
+    // all 41 slots is something other than rearranging them.
+    const { can } = useCan();
+    const canEdit = can('inventory.edit');
+
     const citizenid = selectedPlayer?.citizenid;
     const [open, setOpen] = useState(false);
     const [version, setVersion] = useState(0);
@@ -33,14 +41,14 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
     const max = Number(data.maxWeight) || 0;
     const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
 
-    // Die Flaeche meldet jede Aenderung nach oben; die Karte laedt danach
-    // neu, damit Zusammenfassung und Raster nicht auseinanderlaufen.
+    // The sheet reports every change upwards; the card then reloads so that
+    // summary and grid do not drift apart.
     const handleApplied = (patch, entry) => {
         setVersion((v) => v + 1);
         onApplied?.(patch, entry);
     };
 
-    // Drei, vier Items als Vorschau reichen, um zu erkennen, worum es geht.
+    // Three or four items as a preview are enough to tell what this is about.
     const peek = items.slice(0, 4);
     const rest = items.length - peek.length;
 
@@ -56,6 +64,8 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
                 </header>
 
                 <div className="panel__body">
+                    {!canEdit && <PermissionLine what="add, remove or move items" />}
+
                     {res.status === 'unavailable' && (
                         <StatusNote
                             tone="warn"
@@ -94,7 +104,7 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
                                     >
                                         <div
                                             className={`weigh__fill${used > max ? ' weigh__fill--over' : ''}`}
-                                            style={{ width: `${pct}%` }}
+                                            style={{ transform: `scaleX(${pct / 100})` }}
                                         />
                                     </div>
                                 </div>
@@ -123,7 +133,11 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
 
                 <footer className="panel__foot">
                     <span className="panel__footinfo">
-                        {data.canReorder === false ? 'Online — slots are locked' : 'Drag, stack and split'}
+                        {!canEdit
+                            ? 'Read-only'
+                            : data.canReorder === false
+                                ? 'Online — slots are locked'
+                                : 'Drag, stack and split'}
                     </span>
                     <button
                         type="button"
@@ -131,7 +145,7 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
                         onClick={() => setOpen(true)}
                         disabled={res.status !== 'ready'}
                     >
-                        Open inventory
+                        {canEdit ? 'Open inventory' : 'View inventory'}
                     </button>
                 </footer>
             </section>
@@ -140,6 +154,7 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
                 <InventorySheet
                     citizenid={citizenid}
                     playerName={selectedPlayer?.name || citizenid}
+                    canEdit={canEdit}
                     onClose={() => setOpen(false)}
                     onApplied={handleApplied}
                 />

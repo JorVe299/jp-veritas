@@ -138,3 +138,16 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Rechtematrix: wird vom Panel geschrieben, gehoert nicht ins Repo
+backend/data/permissions.json
+
+# Bridge-Config: wird auf dem Server bearbeitet (Config.Token), wie die .env.
+# Vorlage ist veritas/config.lua.example.
+veritas/config.lua
+
+# JSON-Dumps, die die Bridge zur Laufzeit in ihren eigenen Ordner schreibt.
+veritas/jobs.json
+veritas/gangs.json
+veritas/items.json
+veritas/vehicles.json

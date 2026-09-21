@@ -1,8 +1,8 @@
 import Icon from './Icon';
 
-// Dezentes Inline-Feedback statt alert(). Wird per role="status" auch von
-// Screenreadern angesagt und bleibt so lange stehen, bis der naechste
-// Vorgang sie ersetzt - anders als ein Dialog, den man wegklickt.
+// Discreet inline feedback instead of alert(). role="status" has screen
+// readers announce it too, and it stays until the next operation replaces
+// it - unlike a dialog that gets clicked away.
 
 const ICONS = {
     success: 'check',

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { fetchMetaItems, fetchMetaVehicles } from '../api';
 
-// Die beiden Kataloge sind zu gross fuer einen Rundumschlag: rund 300 Items
-// und rund 900 Fahrzeuge. Gefiltert wird deshalb serverseitig, und zwar
-// entprellt wie die Suche ueber der Wand - sonst schickt jeder Tastendruck
-// eine eigene Abfrage los.
+// The two catalogs are too large to fetch in one sweep: around 300 items
+// and around 900 vehicles. So the filtering happens on the server, debounced
+// like the search above the wall - otherwise every keystroke would fire off
+// a query of its own.
 const DEBOUNCE_MS = 400;
 export const CATALOG_LIMIT = 20;
 
@@ -20,22 +20,22 @@ const INITIAL = {
     matched: 0,
     total: 0,
     error: null,
-    query: null, // null = es liegt noch keine Antwort vor
+    query: null, // null = no answer has arrived yet
 };
 
 /**
- * Sucht in einem der Stammdatenkataloge.
+ * Searches one of the reference data catalogs.
  *
- * Wie useRoster haelt der Hook Daten, Ladezustand und die Abfrage, zu der sie
- * gehoeren, in einem einzigen Objekt zusammen: "das Ergebnis ist veraltet"
- * wird daraus abgeleitet und nicht nebenher gespeichert.
+ * Like useRoster, the hook keeps data, loading state and the query they
+ * belong to together in a single object: "the result is stale" is derived
+ * from that instead of being stored alongside it.
  */
 export function useCatalog(kind, search) {
     const [result, setResult] = useState(INITIAL);
 
     useEffect(() => {
-        // Schuetzt vor Race Conditions: beim schnellen Tippen darf eine
-        // langsamere aeltere Antwort die neuere nicht ueberschreiben.
+        // Guards against race conditions: while typing fast, a slower older
+        // answer must not overwrite the newer one.
         let cancelled = false;
 
         const timer = setTimeout(async () => {

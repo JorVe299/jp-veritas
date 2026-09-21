@@ -5,9 +5,9 @@ import { jobGroup } from '../utils/format';
 export const PAGE_SIZE = 24;
 const DEBOUNCE_MS = 400;
 
-// Ein einziges Ergebnis-Objekt statt vieler Einzel-States: dadurch koennen
-// Daten, Ladezustand und die Abfrage, zu der sie gehoeren, nicht auseinander
-// laufen. "Wird gerade getippt" leiten wir daraus ab, statt es zu speichern.
+// A single result object instead of many separate states: that way data,
+// loading state and the query they belong to cannot drift apart. "Someone is
+// typing right now" is derived from that instead of being stored.
 const INITIAL = {
     status: 'loading', // 'loading' | 'ready' | 'error'
     players: [],
@@ -16,12 +16,20 @@ const INITIAL = {
     query: { search: '', page: 1 },
 };
 
-export function useRoster(search, page, refreshToken) {
+/**
+ * `enabled` is the players.view permission. Without it /api/players answers
+ * with 403, and the wall would report an error that is none - so it is not
+ * loaded in the first place and says instead that the role is not
+ * allowed to see it.
+ */
+export function useRoster(search, page, refreshToken, enabled = true) {
     const [result, setResult] = useState(INITIAL);
 
     useEffect(() => {
-        // cancelled schuetzt vor Race Conditions: bei schnellem Tippen darf
-        // eine langsamere aeltere Antwort die neuere nicht ueberschreiben.
+        if (!enabled) return undefined;
+
+        // cancelled guards against race conditions: while typing fast, a
+        // slower older answer must not overwrite the newer one.
         let cancelled = false;
 
         const timer = setTimeout(async () => {
@@ -54,20 +62,24 @@ export function useRoster(search, page, refreshToken) {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [search, page, refreshToken]);
+    }, [search, page, refreshToken, enabled]);
 
-    // Abgeleitet, kein State: zeigt die Wand gerade noch ein altes Ergebnis?
+    // Derived, not state: is the wall still showing an old result?
     const isStale = result.query.search !== search || result.query.page !== page;
+
+    // Without the permission nothing is loaded - and then no loading state
+    // is true either. 'forbidden' is a case of its own, not an error, not "empty".
+    if (!enabled) return { ...INITIAL, status: 'forbidden', isStale: false };
 
     return { ...result, isStale };
 }
 
 /**
- * Teilt die zurueckgegebene Seite in die Schienen der Wand.
+ * Splits the returned page into the rails of the wall.
  *
- * Wichtig fuer die Formulierung in der Oberflaeche: gruppiert wird genau
- * das, was diese Seite geliefert hat - nicht die Datenbank. Die Rubriken
- * duerfen deshalb nie so klingen, als waeren sie vollstaendig.
+ * Important for how the surface is worded: what gets grouped is exactly what
+ * this page delivered - not the database. The headings must therefore never
+ * sound as though they were complete.
  */
 export function buildRails(players, bridgeDown) {
     if (!players || players.length === 0) return [];
@@ -85,8 +97,8 @@ export function buildRails(players, bridgeDown) {
         rest.push(...players);
     }
 
-    // Nach Arbeitgeber gruppieren. Reihenfolge: groesste Gruppe zuerst,
-    // bei Gleichstand alphabetisch, damit das Blaettern nicht springt.
+    // Group by employer. Order: largest group first, alphabetical on a tie,
+    // so that paging does not jump around.
     const byJob = new Map();
     rest.forEach((p) => {
         const key = jobGroup(p);
@@ -99,9 +111,9 @@ export function buildRails(players, bridgeDown) {
         return a[0].localeCompare(b[0]);
     });
 
-    // Ohne diese Schwelle zerfaellt eine Seite in ein Dutzend Schienen mit je
-    // einem Eintrag - das liest sich schlechter als gar keine Gruppierung.
-    // Alles Einzelne wandert zusammen ans Ende.
+    // Without this threshold a page falls apart into a dozen rails with one
+    // entry each - which reads worse than no grouping at all.
+    // Everything that stands alone moves to the end together.
     const MIN_RAIL = 2;
     const singles = [];
 
@@ -116,7 +128,7 @@ export function buildRails(players, bridgeDown) {
     if (singles.length > 0) {
         rails.push({
             id: 'other',
-            // Nur ein Eintrag uebrig: dann ist seine eigene Rubrik ehrlicher.
+            // Only one entry left: then its own heading is the honest one.
             title: singles.length === 1 ? jobGroup(singles[0]) : 'Other roles',
             tone: 'plain',
             players: singles,

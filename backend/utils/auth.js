@@ -1,17 +1,18 @@
 // backend/utils/auth.js
-// Discord OAuth2 als Zugangsschutz fuer das Panel.
+// Discord OAuth2 as the access gate for the panel.
 //
-// Bewusst ohne Bot-Token: mit dem Scope 'guilds.members.read' laesst sich die
-// Rollenliste des Anmeldenden direkt mit seinem eigenen Access-Token abfragen.
-// Ein Bot-Token im Panel waere ein zweites Geheimnis mit deutlich groesserer
-// Reichweite, nur um dieselbe Frage zu beantworten.
+// Deliberately without a bot token: the 'guilds.members.read' scope lets us
+// read the signing-in user's own role list with their own access token. A
+// bot token in the panel would be a second secret with far wider reach,
+// just to answer the same question.
 //
-// Die Sitzung ist ein signiertes JWT in einem httpOnly-Cookie. Kein Session-
-// Store noetig, damit ueberlebt eine Anmeldung auch einen Neustart des
-// Backends - und es entsteht keine zusaetzliche Tabelle in der Qbox-Datenbank.
+// The session is a signed JWT in an httpOnly cookie. No session store is
+// needed, so a login survives a restart of the backend - and no extra table
+// appears in the Qbox database.
 const crypto = require('crypto');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
+const { ROLE_LABELS, capabilitiesOf } = require('./permissions');
 
 const DISCORD_API = 'https://discord.com/api/v10';
 
@@ -24,28 +25,57 @@ const SESSION_COOKIE = 'veritas_session';
 const STATE_COOKIE = 'veritas_oauth_state';
 const SESSION_HOURS = parseInt(process.env.SESSION_HOURS) || 12;
 
-// Zugang bekommt, wer in einer der beiden Listen steht. Beide sind einzeln
-// optional, aber mindestens eine muss gefuellt sein - sonst koennte sich
-// jeder beliebige Discord-Nutzer anmelden.
+// Splits a comma separated list from the environment into clean entries.
 function splitList(raw) {
     return String(raw || '').split(',').map(s => s.trim()).filter(Boolean);
 }
 
-const ADMIN_IDS = splitList(process.env.DISCORD_ADMIN_IDS);
-const ADMIN_ROLE_IDS = splitList(process.env.DISCORD_ADMIN_ROLE_IDS);
+// --- Role mapping ---------------------------------------------------------
+// Exactly one variable per role and per way of assigning it. Whoever
+// matches several gets the highest - the ranking lives in ROLE_ORDER, not
+// in the order of the .env file.
 
-// Auth ist aktiv, sobald eine Discord-App hinterlegt ist. Fehlt sie, laeuft
-// das Panel offen weiter - damit ein unvollstaendiges Deployment nicht alle
-// aussperrt. Der Startlog sagt dafuer unuebersehbar Bescheid.
+// Before roles existed there were only these two lists, and whoever was in
+// them could do everything. They are still read so that a server with an
+// old .env does not suddenly let nobody in after the update - but they now
+// mean exactly one thing: owner.
+const LEGACY_IDS = splitList(process.env.DISCORD_ADMIN_IDS);
+const LEGACY_ROLE_IDS = splitList(process.env.DISCORD_ADMIN_ROLE_IDS);
+const USES_LEGACY = LEGACY_IDS.length > 0 || LEGACY_ROLE_IDS.length > 0;
+
+const ROLE_BY_USER = {
+    owner: splitList(process.env.DISCORD_OWNER_IDS).concat(LEGACY_IDS),
+    administrator: splitList(process.env.DISCORD_ADMINISTRATOR_IDS),
+    supporter: splitList(process.env.DISCORD_SUPPORTER_IDS),
+    citizen: splitList(process.env.DISCORD_CITIZEN_IDS)
+};
+
+const ROLE_BY_GUILD_ROLE = {
+    owner: splitList(process.env.DISCORD_ROLE_OWNER).concat(LEGACY_ROLE_IDS),
+    administrator: splitList(process.env.DISCORD_ROLE_ADMINISTRATOR),
+    supporter: splitList(process.env.DISCORD_ROLE_SUPPORTER),
+    citizen: splitList(process.env.DISCORD_ROLE_CITIZEN)
+};
+
+// Order = rank. The first match wins.
+const ROLE_ORDER = ['owner', 'administrator', 'supporter', 'citizen'];
+
+// The guild scope is needed as soon as any role is assigned via Discord
+// roles - not just for one particular one.
+const ALL_ROLE_IDS = ROLE_ORDER.flatMap(r => ROLE_BY_GUILD_ROLE[r]);
+
+// Auth is active as soon as a Discord app is configured. Without one the
+// panel keeps running open, so that an incomplete deployment does not lock
+// everyone out. The startup log says so unmistakably in return.
 const ENABLED = Boolean(CLIENT_ID && CLIENT_SECRET && REDIRECT_URI);
 
-// Ohne gesetztes Secret waere jedes Cookie faelschbar. Ein zufaelliges Secret
-// pro Start ist die sichere Notloesung: es entwertet nur die alten Sitzungen.
+// Without a configured secret every cookie would be forgeable. A random
+// secret per start is the safe fallback: it only invalidates old sessions.
 const JWT_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const EPHEMERAL_SECRET = !process.env.SESSION_SECRET;
 
-// Fehlkonfigurationen, die das Panel offen lassen oder alle aussperren
-// wuerden, ohne dass es auffaellt. Werden beim Start ausgegeben.
+// Misconfigurations that would leave the panel open or lock everyone out
+// without it being noticed. Printed at startup.
 function configProblems() {
     const problems = [];
 
@@ -53,28 +83,36 @@ function configProblems() {
         problems.push('DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET / DISCORD_REDIRECT_URI missing - the panel runs WITHOUT a login.');
         return problems;
     }
-    if (ADMIN_IDS.length === 0 && ADMIN_ROLE_IDS.length === 0) {
-        problems.push('Neither DISCORD_ADMIN_IDS nor DISCORD_ADMIN_ROLE_IDS is set - nobody would get through.');
+    const anyUser = ROLE_ORDER.some(r => ROLE_BY_USER[r].length > 0);
+    if (!anyUser && ALL_ROLE_IDS.length === 0) {
+        problems.push('No Discord ids or roles are mapped to a panel role - nobody would get through.');
     }
-    if (ADMIN_ROLE_IDS.length > 0 && !GUILD_ID) {
-        problems.push('DISCORD_ADMIN_ROLE_IDS without DISCORD_GUILD_ID - roles cannot be checked.');
+    if (ALL_ROLE_IDS.length > 0 && !GUILD_ID) {
+        problems.push('Discord roles are mapped but DISCORD_GUILD_ID is missing - roles cannot be checked.');
+    }
+    if (ROLE_BY_USER.owner.length === 0 && ROLE_BY_GUILD_ROLE.owner.length === 0) {
+        problems.push('Nobody is mapped to Owner - then nobody can change permissions.');
     }
     if (EPHEMERAL_SECRET) {
         problems.push('SESSION_SECRET missing - every restart signs everyone out.');
     }
+    if (USES_LEGACY) {
+        problems.push('DISCORD_ADMIN_IDS / DISCORD_ADMIN_ROLE_IDS are deprecated and are being read as Owner.'
+            + ' Rename them to DISCORD_OWNER_IDS / DISCORD_ROLE_OWNER (or to the role you actually want).');
+    }
     return problems;
 }
 
-// --- OAuth Schritte -------------------------------------------------------
+// --- OAuth steps ----------------------------------------------------------
 
-// Der state-Parameter schuetzt gegen untergeschobene Callbacks: wir merken
-// ihn uns kurz im Cookie und vergleichen ihn auf dem Rueckweg.
+// The state parameter guards against planted callbacks: we keep it in a
+// short-lived cookie and compare it on the way back.
 function buildAuthorizeUrl() {
     const state = crypto.randomBytes(16).toString('hex');
 
-    // Den Guild-Scope nur anfragen, wenn wir ihn wirklich brauchen -
-    // sonst sieht der Anmeldedialog nach mehr Zugriff aus als noetig.
-    const scope = (ADMIN_ROLE_IDS.length > 0 && GUILD_ID)
+    // Only request the guild scope when we actually need it - otherwise
+    // the consent dialog looks like it asks for more access than it does.
+    const scope = (ALL_ROLE_IDS.length > 0 && GUILD_ID)
         ? 'identify guilds.members.read'
         : 'identify';
 
@@ -113,9 +151,9 @@ async function fetchDiscordUser(accessToken) {
     return res.data;
 }
 
-// Rollen des Anmeldenden in der konfigurierten Guild.
-// 404 heisst schlicht "nicht auf dem Server" - das ist kein Fehler,
-// sondern eine gueltige Antwort auf die Zugangsfrage.
+// The signing-in user's roles in the configured guild.
+// A 404 simply means "not on that server" - that is not an error but a
+// valid answer to the access question.
 async function fetchGuildRoles(accessToken) {
     if (!GUILD_ID) return { member: false, roles: [] };
 
@@ -131,49 +169,54 @@ async function fetchGuildRoles(accessToken) {
     }
 }
 
-// --- Entscheidung ---------------------------------------------------------
+// --- Decision -------------------------------------------------------------
 
 function authorize(user, guild) {
-    if (ADMIN_IDS.includes(user.id)) {
-        return { allowed: true, via: 'user-id' };
+    // Top down: whoever matches several roles gets the highest one.
+    // Otherwise the role would depend on the order of the .env file.
+    for (const role of ROLE_ORDER) {
+        if (ROLE_BY_USER[role].includes(user.id)) {
+            return { allowed: true, role, via: 'user-id' };
+        }
+        const hit = guild.roles.find(r => ROLE_BY_GUILD_ROLE[role].includes(r));
+        if (hit) {
+            return { allowed: true, role, via: `role:${hit}` };
+        }
     }
 
-    if (ADMIN_ROLE_IDS.length > 0) {
-        const hit = guild.roles.find(role => ADMIN_ROLE_IDS.includes(role));
-        if (hit) return { allowed: true, via: `role:${hit}` };
-    }
-
-    // Der Grund darf konkret sein, ohne die erlaubten IDs zu verraten.
-    const reason = (ADMIN_ROLE_IDS.length > 0 && GUILD_ID && !guild.member)
-        ? 'You are not a member of the Discord server configured for this panel.'
-        : 'Your Discord account has no admin access to this panel.';
-
-    return { allowed: false, reason };
+    // No panel role. That is not a rejection any more: the same account may
+    // still be a citizen using Veritas ID. The callback decides that, since
+    // it needs the database to see whether a character exists.
+    return { allowed: false, role: null };
 }
 
-// --- Sitzung --------------------------------------------------------------
+// --- Session --------------------------------------------------------------
 
 function cookieOptions(maxAgeMs) {
     return {
         httpOnly: true,
-        sameSite: 'lax', // 'lax' laesst den Rueckweg von Discord durch
-        // Hinter einem HTTPS-Reverse-Proxy sollte das Cookie secure sein.
-        // Ueber http://ip:3001 wuerde secure es unbrauchbar machen, deshalb
-        // haengt das an einem eigenen Schalter statt an NODE_ENV.
+        sameSite: 'lax', // 'lax' lets the return trip from Discord through
+        // Behind an HTTPS reverse proxy the cookie should be secure.
+        // Over http://ip:3001 the secure flag would make it useless, so it
+        // hangs off its own switch rather than off NODE_ENV.
         secure: process.env.COOKIE_SECURE === 'true',
         maxAge: maxAgeMs,
         path: '/'
     };
 }
 
-function issueSession(res, user, via) {
+function issueSession(res, user, via, role, portal) {
     const token = jwt.sign(
         {
             sub: user.id,
             username: user.username,
             globalName: user.global_name || null,
             avatar: user.avatar || null,
-            via
+            via,
+            // A portal-only account has no role at all. 'citizen' would be
+            // a panel role and would hand it panel access it must not have.
+            role: role || null,
+            portal: portal === true
         },
         JWT_SECRET,
         { expiresIn: `${SESSION_HOURS}h` }
@@ -188,7 +231,7 @@ function readSession(req) {
     try {
         return jwt.verify(token, JWT_SECRET);
     } catch {
-        return null; // abgelaufen, manipuliert, oder Secret hat sich geaendert
+        return null; // expired, tampered with, or the secret changed
     }
 }
 
@@ -206,15 +249,22 @@ function publicUser(session) {
             ? `https://cdn.discordapp.com/avatars/${session.sub}/${session.avatar}.png?size=64`
             : null,
         via: session.via,
+        role: session.role || null,
+        roleLabel: session.role ? ROLE_LABELS[session.role] : null,
+        portal: session.portal === true,
+        // The role's current capability list, not the one from sign-in:
+        // a change to the matrix therefore takes effect immediately,
+        // without everyone having to sign in again.
+        capabilities: session.role ? capabilitiesOf(session.role) : [],
         expiresAt: session.exp ? new Date(session.exp * 1000).toISOString() : null
     };
 }
 
 // --- Middleware -----------------------------------------------------------
 
-// Schuetzt alles unter /api ausser den Auth-Routen selbst. Statische Dateien
-// bleiben offen: die ausgelieferte index.html zeigt ohne Sitzung nur den
-// Anmeldebildschirm, die Daten kommen ausschliesslich ueber /api.
+// Guards everything under /api except the auth routes themselves. Static
+// files stay open: without a session the served index.html only shows the
+// sign-in screen, and the data comes exclusively through /api.
 function requireAuth(req, res, next) {
     if (!ENABLED) return next();
     if (!req.path.startsWith('/api/')) return next();
@@ -234,7 +284,8 @@ function requireAuth(req, res, next) {
 }
 
 module.exports = {
-    ENABLED, GUILD_ID, ADMIN_IDS, ADMIN_ROLE_IDS,
+    ENABLED, GUILD_ID, USES_LEGACY,
+    ROLE_ORDER, ROLE_BY_USER, ROLE_BY_GUILD_ROLE,
     SESSION_COOKIE, STATE_COOKIE, SESSION_HOURS,
     configProblems, buildAuthorizeUrl, exchangeCode, fetchDiscordUser,
     fetchGuildRoles, authorize, issueSession, readSession, clearSession,

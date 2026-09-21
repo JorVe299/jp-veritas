@@ -1,14 +1,14 @@
 // backend/utils/slots.js
-// Die reine Slot-Arithmetik des Inventars, bewusst ohne Datenbank und ohne
-// Express: verschieben, stapeln, tauschen und teilen sind die Stellen, an
-// denen ein Fehler stillschweigend Items verdoppelt oder verschluckt.
-// Getrennt, damit sie ohne Produktionsdaten pruefbar sind.
+// The pure slot arithmetic of the inventory, deliberately without a
+// database and without Express: moving, stacking, swapping and splitting
+// are the places where a mistake silently duplicates or swallows items.
+// Kept separate so it can be tested without production data.
 
-// Verschiebt `amount` Stueck von Slot `from` auf Slot `to`.
-// Gibt entweder { ok: true, items, partial } zurueck oder
-// { ok: false, status, error } - der Aufrufer macht daraus eine Antwort.
+// Moves `amount` units from slot `from` to slot `to`.
+// Returns either { ok: true, items, partial } or
+// { ok: false, status, error } - the caller turns that into a response.
 //
-// `items` wird nicht veraendert; das Ergebnis ist eine neue Liste.
+// `items` is never mutated; the result is a new list.
 function applyMove(items, from, to, requestedAmount) {
     const next = items.map(it => ({ ...it }));
 
@@ -26,7 +26,7 @@ function applyMove(items, from, to, requestedAmount) {
     const partial = amount < source.amount;
 
     if (!target) {
-        // Freier Platz: ganz hinueber, oder einen Teilstapel abspalten
+        // Empty slot: move it all, or split off part of the stack
         if (partial) {
             source.amount -= amount;
             next.push({
@@ -42,13 +42,13 @@ function applyMove(items, from, to, requestedAmount) {
             source.slot = to;
         }
     } else if (target.name === source.name && !source.unique) {
-        // Gleiches stapelbares Item: zusammenlegen
+        // Same stackable item: merge them
         target.amount += amount;
         source.amount -= amount;
         if (source.amount <= 0) next.splice(next.indexOf(source), 1);
     } else {
-        // Unterschiedliche Items (oder Einzelstuecke): nur ein vollstaendiger
-        // Tausch ergibt Sinn. Ein Teilstapel haette hier kein Ziel.
+        // Different items (or unique ones): only a complete swap makes
+        // sense here. A partial stack would have nowhere to land.
         if (partial) {
             return {
                 ok: false,

@@ -1,9 +1,9 @@
 import { useId } from 'react';
 
-// Die Wortmarke bleibt "Veritas", das Zeichen ist neu.
-// Motiv: eine Kachel im Seitenverhaeltnis der Wand, aus der ein V als
-// Aussparung geschnitten ist. Der rechte Schenkel laeuft ueber die
-// Kachelkante hinaus und wird dort von der Aussparung zur Vollform.
+// The wordmark stays "Veritas"; the symbol is new.
+// Motif: a tile in the aspect ratio of the wall, with a V cut out of it as
+// a notch. The right leg runs out past the edge of the tile and turns from
+// a notch into a solid form there.
 export default function Mark({ size = 26, className = '' }) {
     const uid = useId().replace(/:/g, '');
     const maskId = `mark-${uid}`;

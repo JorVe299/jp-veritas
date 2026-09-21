@@ -1,5 +1,5 @@
-// Zentrale Formatierung. Die Oberflaeche ist englisch, deshalb en-US mit
-// Tausenderkomma und ohne Nachkommastellen - Betraege werden gross.
+// Central formatting. The surface is English, hence en-US with thousands
+// separators and no decimals - amounts get large.
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
@@ -44,9 +44,58 @@ export function formatTime(date = new Date()) {
     return timeFormatter.format(date);
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+});
+
 /**
- * The API builds jobLabel server-side with German fallbacks ("Kein Job").
- * The label is therefore derived here instead, so nothing leaks through.
+ * Timestamps from the database come in three shapes: as ISO text, as Unix
+ * seconds (that is how a ban stores its expire) and as milliseconds.
+ * Seconds and milliseconds are both numbers - they are told apart by order
+ * of magnitude, because second values do not reach that threshold until
+ * the year 5138.
+ */
+function toDate(value) {
+    if (value === null || value === undefined || value === '') return null;
+
+    if (typeof value === 'number' || /^\d+$/.test(String(value))) {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n <= 0) return null;
+        const date = new Date(n < 1e11 ? n * 1000 : n);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** "Mar 04, 2026, 21:40". Unreadable or missing values become an em dash. */
+export function formatDateTime(value) {
+    const date = toDate(value);
+    return date ? dateTimeFormatter.format(date) : '—';
+}
+
+/** true when the timestamp lies in the past. */
+export function isPast(value) {
+    const date = toDate(value);
+    return date ? date.getTime() < Date.now() : false;
+}
+
+/** World coordinates to one decimal - nobody aims finer than that in game. */
+export function formatCoord(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toFixed(1) : '—';
+}
+
+/**
+ * Derived here rather than taken from the API's jobLabel: the wall needs
+ * the grade alongside the employer, and an unemployed character has to
+ * read the same way everywhere it appears.
  */
 export function jobTitle(player) {
     const job = player?.job;

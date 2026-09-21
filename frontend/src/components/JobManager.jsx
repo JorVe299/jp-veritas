@@ -1,13 +1,21 @@
 import { useState } from 'react';
 import Icon from './Icon';
+import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
 import { updatePlayerJob } from '../api';
+import { useCan } from '../lib/useCan';
 import { jobTitle } from '../utils/format';
 
-// Hinweis: App.jsx gibt diesem Component ein key={citizenid}. Dadurch wird es
-// bei Wechsel des Citizens neu gemountet und der State unten startet
-// automatisch mit dessen Job - kein Sync-Effect noetig.
+// Note: App.jsx gives this component a key={citizenid}. That remounts it when
+// the citizen changes, and the state below then starts with that citizen's
+// job automatically - no sync effect needed.
 export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied }) {
+    // Whoever may see the citizen list may see this card; only someone with
+    // job.edit may change it. The more common case is the first without the
+    // second - then the job stays readable and only the form is shut down.
+    const { can } = useCan();
+    const canEdit = can('job.edit');
+
     const [selectedJob, setSelectedJob] = useState(selectedPlayer?.job?.name || '');
     const [selectedGrade, setSelectedGrade] = useState(String(selectedPlayer?.job?.grade?.level ?? '0'));
     const [saving, setSaving] = useState(false);
@@ -17,8 +25,8 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
     const currentJob = jobList[selectedJob];
     const gradeEntries = currentJob ? Object.entries(currentJob.grades || {}) : [];
 
-    // Abgeleitet statt synchronisiert: faellt der gespeicherte Rang aus der
-    // Liste des gewaehlten Jobs, greift der erste verfuegbare Rang.
+    // Derived instead of synchronized: if the stored rank drops out of the
+    // chosen job's list, the first available rank takes over.
     const gradeValue = currentJob && currentJob.grades?.[selectedGrade]
         ? selectedGrade
         : (gradeEntries[0]?.[0] ?? '');
@@ -26,13 +34,13 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
     const originalJob = selectedPlayer?.job?.name || '';
     const originalGrade = String(selectedPlayer?.job?.grade?.level ?? '0');
     const isDirty = selectedJob !== originalJob || gradeValue !== originalGrade;
-    const canSave = Boolean(selectedJob) && isDirty && !saving;
+    const canSave = Boolean(selectedJob) && isDirty && !saving && canEdit;
     const jobCount = Object.keys(jobList).length;
 
     const handleJobChange = (e) => {
         const next = e.target.value;
         setSelectedJob(next);
-        // Rang auf den ersten Eintrag des neuen Jobs zuruecksetzen
+        // Reset the rank to the first entry of the new job
         setSelectedGrade(Object.keys(jobList[next]?.grades || {})[0] ?? '0');
         setFeedback(null);
     };
@@ -64,7 +72,7 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
                     : 'This citizen is not connected, so the change was written to the database.',
             });
 
-            // Kopfbereich und Wand sofort auf den neuen Stand bringen
+            // Bring the header area and the wall up to date at once
             onApplied?.(
                 {
                     job: {
@@ -97,6 +105,8 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
             </header>
 
             <div className="panel__body">
+                {!canEdit && <PermissionLine what="change jobs or ranks" />}
+
                 {jobsError && (
                     <StatusNote
                         tone="error"
@@ -112,7 +122,7 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
                         className="select"
                         value={selectedJob}
                         onChange={handleJobChange}
-                        disabled={saving || jobCount === 0}
+                        disabled={saving || jobCount === 0 || !canEdit}
                     >
                         <option value="">— Choose a job —</option>
                         {Object.entries(jobList).map(([key, job]) => (
@@ -123,10 +133,10 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
                     </select>
                 </div>
 
-                {/* Die Rangleiter zeigt alle Stufen dieses Jobs auf einmal und
-                    hebt die gewaehlte hervor, statt sie in einer Klappliste zu
-                    verstecken. Der Abstand zwischen zwei Raengen ist damit
-                    sichtbar, nicht nur der Rang selbst. */}
+                {/* The rank ladder shows all grades of this job at once and
+                    highlights the chosen one instead of hiding it away in a
+                    dropdown. That makes the distance between two ranks
+                    visible, not just the rank itself. */}
                 <div className="field">
                     <span className="field__label" id="grade-label">Rank</span>
                     {gradeEntries.length === 0 ? (
@@ -143,7 +153,7 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
                                         aria-checked={active}
                                         className={`ladder__step${active ? ' is-active' : ''}`}
                                         onClick={() => { setSelectedGrade(level); setFeedback(null); }}
-                                        disabled={saving}
+                                        disabled={saving || !canEdit}
                                     >
                                         <span className="ladder__level u-mono">{level}</span>
                                         <span className="ladder__name">{grade.name}</span>

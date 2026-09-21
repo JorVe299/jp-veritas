@@ -1,7 +1,7 @@
 // backend/utils/dbHandler.js
 const mysql = require('mysql2/promise');
 
-// Zentraler DB Pool - alle DB Zugriffe laufen über dieses Modul
+// Central DB pool - every database access goes through this module
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -11,15 +11,15 @@ const db = mysql.createPool({
     connectionLimit: 10
 });
 
-// Whitelist: Spaltennamen können nicht als Prepared-Statement-Parameter
-// übergeben werden, deshalb hier gegen eine feste Liste prüfen
+// Whitelist: column names cannot be passed as prepared-statement
+// parameters, so they are checked against a fixed list here
 const ALLOWED_COLUMNS = [
     'citizenid', 'charinfo', 'money', 'job', 'gang',
     'inventory', 'metadata', 'position', 'license', 'name', 'phone_number'
 ];
 
-// Hilfsfunktion: JSON parsen wenn nötig (MySQL liefert JSON-Spalten
-// je nach Treiber/Version mal als String, mal als Objekt)
+// Helper: parse JSON when needed (depending on driver and version MySQL
+// returns JSON columns sometimes as a string, sometimes as an object)
 function parseJSON(data) {
     if (typeof data === 'string') {
         try { return JSON.parse(data); } catch { return {}; }
@@ -27,7 +27,7 @@ function parseJSON(data) {
     return data || {};
 }
 
-// Hilfsfunktion: Lädt Spielerdaten sicher
+// Helper: loads player data safely
 async function getPlayerData(citizenid, columns = ['money', 'charinfo', 'inventory']) {
     const safeColumns = columns.filter(c => ALLOWED_COLUMNS.includes(c));
     if (safeColumns.length === 0) throw new Error('No valid columns requested');
@@ -37,7 +37,7 @@ async function getPlayerData(citizenid, columns = ['money', 'charinfo', 'invento
 
     if (rows.length === 0) return null;
 
-    // Automatisch alle JSON-Spalten parsen
+    // Parse every JSON column automatically
     const data = rows[0];
     for (const key in data) {
         if (typeof data[key] === 'string' && (data[key].startsWith('{') || data[key].startsWith('['))) {
@@ -51,7 +51,7 @@ async function getPlayerData(citizenid, columns = ['money', 'charinfo', 'invento
     return data;
 }
 
-// Schreibt eine einzelne JSON-Spalte eines Spielers zurück
+// Writes a single JSON column of a player back
 async function updatePlayerColumn(citizenid, column, value) {
     if (!ALLOWED_COLUMNS.includes(column)) throw new Error(`Column ${column} is not allowed`);
 
@@ -63,10 +63,10 @@ async function updatePlayerColumn(citizenid, column, value) {
     return result.affectedRows > 0;
 }
 
-// --- Schema-Introspektion ------------------------------------------------
-// Qbox, QBCore und die diversen Inventar-Resources benennen ihre Spalten
-// unterschiedlich. Statt eine Variante fest zu verdrahten, fragen wir die
-// Datenbank einmal, was tatsächlich da ist, und bauen die Queries danach.
+// --- Schema introspection ------------------------------------------------
+// Qbox, QBCore and the various inventory resources name their columns
+// differently. Rather than hard-wiring one variant, we ask the database
+// once what is actually there and build the queries from that.
 
 const schemaCache = new Map();
 
@@ -88,9 +88,9 @@ async function tableExists(table) {
     return (await getTableColumns(table)).length > 0;
 }
 
-// Reduziert ein Objekt auf die Felder, die es in der Tabelle wirklich gibt.
-// So kippt ein INSERT nicht, nur weil diese Qbox-Version eine Spalte
-// weniger hat als die, gegen die entwickelt wurde.
+// Reduces an object to the fields the table actually has.
+// That way an INSERT does not fail just because this Qbox version has one
+// column fewer than the one it was developed against.
 async function pickExistingColumns(table, data) {
     const columns = await getTableColumns(table);
     const out = {};
@@ -100,11 +100,23 @@ async function pickExistingColumns(table, data) {
     return out;
 }
 
+// Every table in the database. Diagnostics only: it shows which further
+// modules this schema could support at all.
+async function listTables() {
+    const [rows] = await db.execute(
+        `SELECT TABLE_NAME AS name, TABLE_ROWS AS approxRows
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+         ORDER BY TABLE_NAME`
+    );
+    return rows.map(r => ({ name: r.name, approxRows: Number(r.approxRows) || 0 }));
+}
+
 function clearSchemaCache() {
     schemaCache.clear();
 }
 
 module.exports = {
     db, parseJSON, getPlayerData, updatePlayerColumn,
-    getTableColumns, tableExists, pickExistingColumns, clearSchemaCache
+    getTableColumns, tableExists, pickExistingColumns, clearSchemaCache, listTables
 };

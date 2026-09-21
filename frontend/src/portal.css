@@ -1,0 +1,872 @@
+/* ==========================================================================
+   Veritas ID - the player-facing surface
+   Same tokens, same two typefaces, same dark ground as the admin panel, and
+   deliberately not the same room. Everything here is read-only, and the
+   layout is built to say that before a word is read:
+
+     - one centred column instead of an edge-to-edge wall of tiles
+     - a header that sits in the page rather than fixed chrome over it
+     - a wordmark set in the normal width, where the panel's is condensed
+       caps, and a mark that is a card rather than a tile
+     - no search, no switch, no bridge state, no controls beyond a link,
+       a sign-out and the characters themselves
+
+   No colours and no sizes of its own: every value here comes out of
+   index.css. This file is loaded last on purpose, so where it does reach
+   into a shared class (the inventory grid) it wins without having to fight
+   the panel's stylesheet with heavier selectors.
+   ========================================================================== */
+
+/* --- The page ------------------------------------------------------------
+   The document scrolls, rather than a stage inside a fixed frame. That is
+   the panel's shape because the panel is a workspace; this is a page to
+   read, and it behaves like one. */
+
+.id {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    background:
+        radial-gradient(120% 52% at 50% -14%, #1B1815 0%, rgba(13, 12, 11, 0) 62%),
+        var(--c-bg);
+    background-repeat: no-repeat;
+}
+
+.idmain {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-6);
+    flex: 1 0 auto;
+    width: min(64rem, 100%);
+    margin: 0 auto;
+    padding: var(--s-6) var(--gutter) var(--s-7);
+}
+
+/* --- The header ----------------------------------------------------------
+   Short by design. The panel's bar carries a search, an area switch and the
+   state of the game server; none of that belongs to a person looking at
+   their own papers, and leaving it out is the clearest way of saying which
+   surface this is. */
+
+.idbar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    width: min(64rem, 100%);
+    margin: 0 auto;
+    padding: var(--s-4) var(--gutter);
+    border-bottom: 1px solid var(--c-border);
+}
+
+.idbar__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    flex: none;
+    padding: var(--s-2);
+    margin-left: calc(var(--s-2) * -1);
+    border: 0;
+    border-radius: var(--r-control);
+    background: none;
+    color: var(--c-text);
+    cursor: pointer;
+    transition: background 0.14s ease;
+}
+
+.idbar__brand:hover {
+    background: var(--c-surface-2);
+}
+
+/* Already home: still pressable, because a control that vanishes under the
+   cursor is worse than one that does nothing - but it stops inviting. */
+.idbar__brand.is-here,
+.idbar__brand.is-here:hover {
+    cursor: default;
+    background: none;
+}
+
+.idbar__word {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+}
+
+/* The panel's wordmark is condensed caps with wide tracking. This one is
+   set at normal width and carries the two letters as a tag, the way a card
+   carries its kind. Read side by side, the two are not confusable. */
+.idbar__word-id {
+    padding: 0.1em 0.4em;
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-tile);
+    font-size: var(--fs-micro);
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--c-text-muted);
+}
+
+/* True of every screen here, so it stands where the surface names itself
+   rather than being repeated on each card. */
+.idbar__tag {
+    flex: none;
+    padding: 0.2rem var(--s-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-pill);
+    color: var(--c-text-faint);
+}
+
+.idbar__spacer {
+    flex: 1 1 auto;
+}
+
+.idbar__who {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-width: 0;
+}
+
+.idbar__name {
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+    max-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --- The picture ---------------------------------------------------------
+   A rounded square rather than the panel's circle: this surface is about
+   papers, and the photograph on a card is not round. */
+
+.idavatar {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--r-tile);
+    border: 1px solid var(--c-border-strong);
+    background: var(--c-surface-2);
+    object-fit: cover;
+}
+
+.idavatar--mark {
+    display: grid;
+    place-items: center;
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--c-text-muted);
+}
+
+.idavatar--lg {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: var(--fs-md);
+}
+
+/* --- The front door ------------------------------------------------------ */
+
+.idhero {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+}
+
+/* Holds the picture's place while the account is still loading, so the
+   greeting does not jump sideways when it arrives. */
+.idhero__ghost {
+    flex: none;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--r-tile);
+}
+
+.idhero__text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+}
+
+.idhero__kicker {
+    color: var(--c-text-faint);
+}
+
+/* Not the panel's display voice. The billboard there sets a citizen's name
+   in condensed caps at display size, as a headline about somebody else;
+   here it is the reader's own name, and it is set like a name. */
+.idhero__name {
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: var(--lh-tight);
+    overflow-wrap: anywhere;
+}
+
+.idhero__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-4);
+    margin-top: var(--s-2);
+}
+
+.idfact {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.idfact__icon {
+    color: var(--c-text-faint);
+}
+
+/* An account with no characters yet. Written as a sentence in a quiet box,
+   expressly not as a notice with a tone and an icon: a Discord member who
+   has not played yet has done nothing wrong and nothing is broken. */
+.idblank {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-6) var(--s-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-panel);
+}
+
+.idblank__title {
+    font-size: var(--fs-md);
+    font-weight: 700;
+}
+
+.idblank__text {
+    color: var(--c-text-muted);
+    max-width: 58ch;
+}
+
+/* --- The characters ------------------------------------------------------ */
+
+.idlist {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+}
+
+.idlist__title {
+    color: var(--c-text-faint);
+}
+
+.idlist__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: var(--s-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.idlist__gap {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+    max-width: 68ch;
+}
+
+.idcard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    width: 100%;
+    height: 100%;
+    padding: var(--s-4);
+    text-align: left;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-panel);
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+
+.idcard:hover {
+    background: var(--c-surface-2);
+    border-color: var(--c-border-strong);
+}
+
+.idcard:active {
+    transform: translateY(1px);
+}
+
+.idcard__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+}
+
+.idcard__name {
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: var(--lh-snug);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.idcard__job {
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+}
+
+.idcard__money {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-5);
+}
+
+.idcard__foot {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    margin-top: auto;
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--c-border);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.idcard__cid {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.idcard__seen {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.idcard__go {
+    flex: none;
+    color: var(--c-text-faint);
+    transition: transform 0.15s var(--ease-out), color 0.15s ease;
+}
+
+.idcard:hover .idcard__go {
+    color: var(--c-text);
+    transform: translateX(2px);
+}
+
+/* --- Amounts -------------------------------------------------------------
+   A key above the figure rather than beside it: the two balances are read
+   against each other, and a column of pairs makes that comparison without
+   any rules or boxes. */
+
+.idsums {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-4) var(--s-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.idsum {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.idsum__key {
+    color: var(--c-text-faint);
+}
+
+.idsum__value {
+    font-size: var(--fs-md);
+    font-weight: 600;
+}
+
+.idsum__value--big {
+    font-size: var(--fs-xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: var(--lh-tight);
+}
+
+/* --- One character ------------------------------------------------------- */
+
+.idhead {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-2);
+}
+
+.idback {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    padding: var(--s-1) 0;
+    border: 0;
+    background: none;
+    color: var(--c-text-muted);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    transition: color 0.14s ease;
+}
+
+.idback:hover {
+    color: var(--c-text);
+}
+
+.idhead__line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+}
+
+.idhead__name {
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: var(--lh-tight);
+    overflow-wrap: anywhere;
+}
+
+.idhead__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+/* --- The cards a character is made of ------------------------------------
+   The panel's .panel has a bold title over a rule, because there a card is
+   a tool with a form in it. Here a card is a paragraph of a document, so
+   the heading is a quiet label and there is no rule under it. */
+
+.idpanels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: var(--s-4);
+    align-items: start;
+}
+
+/* The inventory and the vehicles want the whole column: five tiles across
+   do not fit in half of one. */
+.idpanels--wide {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.idpanel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-panel);
+}
+
+.idpanel__head {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-4) var(--s-4) 0;
+}
+
+.idpanel__icon {
+    color: var(--c-text-faint);
+}
+
+.idpanel__title {
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 105;
+    color: var(--c-text-muted);
+}
+
+.idpanel__count {
+    margin-left: auto;
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.idpanel__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    padding: var(--s-4);
+}
+
+.idpanel__body--gauges {
+    gap: var(--s-4);
+}
+
+/* Something that is absent, said in words. Never an empty box: a blank
+   space is read as a value that did not load. */
+.idnone {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+    max-width: 62ch;
+}
+
+/* --- Licences ------------------------------------------------------------
+   Held or not held, and the two are equally ordinary. Only the tick carries
+   the signal colour; four green words in a row would turn a list of facts
+   into a scoreboard. */
+
+.idlics {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.idlic {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+}
+
+.idlic__icon {
+    color: var(--c-text-faint);
+}
+
+.idlic__label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.idlic__state {
+    color: var(--c-text-faint);
+}
+
+.idlic--held {
+    color: var(--c-text);
+}
+
+.idlic--held .idlic__icon {
+    color: var(--c-live);
+}
+
+/* --- Rows of things ------------------------------------------------------ */
+
+.idrows {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.idrow {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--c-border);
+}
+
+.idrow:first-child {
+    padding-top: 0;
+}
+
+.idrow:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.idrow__main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.idrow__name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.idrow__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.idrow__sep {
+    color: var(--c-text-faint);
+}
+
+/* --- The inventory grid --------------------------------------------------
+   The panel's tiles, without the panel's hands. .slot--filled is not used
+   here although these tiles are filled: it carries the grab cursor, and a
+   grab cursor on a surface that cannot move anything is a promise broken
+   the moment it is taken up. */
+
+.grid.idgrid {
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.slot--static {
+    background: var(--c-surface-3);
+    cursor: default;
+}
+
+/* Stands in for a tile while the inventory loads. Its own class rather than
+   .slot, whose background would win over the shimmer. */
+.idtile {
+    aspect-ratio: 1;
+    border-radius: var(--r-tile);
+}
+
+/* --- The ban record ------------------------------------------------------
+   Two shapes, and which one appears is the whole message.
+
+   With nothing on record, and only then, there is no card at all: one
+   faint line at the foot of the page. A titled, bordered panel standing
+   empty on every visit would put the question to somebody nobody asked it
+   of. Every other state - a record, a request that failed, a store that
+   could not be read - gets the card, because all three are something the
+   reader has to be able to see they are being told.
+
+   In force against over is carried by grouping, weight and one edge, not
+   by a field of red. Only two things take the signal colour: the pill on
+   a standing ban and the rule down its left side. No new tokens. */
+
+.idbans__quiet {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.idbans__lead {
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+    max-width: 68ch;
+}
+
+/* The answer the reader came for, set apart by weight alone: they should
+   not have to count the rows to find out where they stand. */
+.idbans__verdict {
+    color: var(--c-text);
+    font-weight: 700;
+}
+
+.idbans__group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+}
+
+.idbans__grouptitle {
+    color: var(--c-text-faint);
+}
+
+.idbans__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.idban {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-3) var(--s-4);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-left: 2px solid var(--c-border-strong);
+    border-radius: var(--r-control);
+}
+
+/* Standing today: a heavier ground, a brighter reason and the one red
+   edge. An entry that is over keeps the same box and gives all three up,
+   so the difference is visible before a word of it is read. */
+.idban--standing {
+    background: var(--c-surface-3);
+    border-left-color: var(--c-debit-line);
+}
+
+.idban__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+}
+
+.idban__reason {
+    min-width: 0;
+    color: var(--c-text-muted);
+    overflow-wrap: anywhere;
+}
+
+.idban--standing .idban__reason {
+    color: var(--c-text);
+    font-weight: 700;
+}
+
+.idban__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-2);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.idbans__gap {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+    max-width: 68ch;
+}
+
+/* The server's hint is addressed to whoever set the panel up - it names a
+   configuration key. Folded away rather than dropped: a player has no use
+   for it, and the operator should not need a console to find it. */
+.idbans__hint {
+    color: var(--c-text-faint);
+    max-width: 68ch;
+    overflow-wrap: anywhere;
+}
+
+.idbans__retry {
+    align-self: flex-start;
+}
+
+/* --- A request that did not work out ------------------------------------- */
+
+.idfail {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-3);
+}
+
+/* --- The front door before signing in ------------------------------------
+   The panel's gate centres a card on a radial ground. This one puts the
+   card at the top of the column and sets its heading in a reading voice:
+   whoever arrives here has usually followed a link out of Discord and has
+   never seen the panel. */
+
+.idgate {
+    display: flex;
+    justify-content: center;
+    min-height: 100%;
+    padding: var(--s-7) var(--gutter) var(--s-6);
+    overflow-x: hidden;
+    background:
+        radial-gradient(120% 52% at 50% -14%, #1B1815 0%, rgba(13, 12, 11, 0) 62%),
+        var(--c-bg);
+    background-repeat: no-repeat;
+}
+
+.idgate__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    width: 100%;
+    max-width: 30rem;
+    height: fit-content;
+    padding: var(--s-6);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-panel);
+    box-shadow: var(--sh-panel);
+}
+
+.idgate__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+}
+
+.idgate__word {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+}
+
+.idgate__block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+}
+
+.idgate__title {
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: var(--lh-snug);
+}
+
+.idgate__text {
+    color: var(--c-text-muted);
+    max-width: 52ch;
+}
+
+.idgate__action {
+    align-self: flex-start;
+}
+
+/* --- The last word ------------------------------------------------------- */
+
+.idfoot {
+    width: min(64rem, 100%);
+    margin: 0 auto;
+    padding: var(--s-5) var(--gutter) var(--s-6);
+    border-top: 1px solid var(--c-border);
+}
+
+.idfoot__text {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+    max-width: 68ch;
+}
+
+@media (max-width: 560px) {
+    /* The bar keeps the mark, the tag and the controls. The name goes: the
+       picture next to it says the same thing in less room, and a wrapped
+       header would push the page down before it has said anything. */
+    .idbar__name {
+        display: none;
+    }
+
+    .idhero {
+        align-items: flex-start;
+    }
+
+    .idcard__foot {
+        flex-wrap: wrap;
+    }
+
+    .idcard__seen {
+        margin-left: 0;
+    }
+}

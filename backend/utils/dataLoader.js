@@ -1,17 +1,17 @@
 const fs = require('fs');
 const path = require('path');
 
-// Ziel: Der lokale data Ordner im Backend
+// Target: the local data folder inside the backend
 const LOCAL_DATA_PATH = path.join(__dirname, '../data');
 
-// Quelle: Der Pfad aus der .env
+// Source: the path from .env
 const FIVEM_SOURCE_PATH = process.env.FIVEM_JSON_PATH;
 
-const FILES = ['jobs.json', 'items.json', 'vehicles.json'];
-const CACHE = { jobs: {}, items: {}, vehicles: {} };
+const FILES = ['jobs.json', 'items.json', 'vehicles.json', 'gangs.json'];
+const CACHE = { jobs: {}, items: {}, vehicles: {}, gangs: {} };
 
 function syncAndLoadData() {
-    // 1. Versuche Daten vom FiveM Server zu kopieren (Sync)
+    // 1. Try to copy the data from the FiveM server (sync)
     if (FIVEM_SOURCE_PATH && fs.existsSync(FIVEM_SOURCE_PATH)) {
         console.log('[Data] Checking for FiveM updates...');
         
@@ -21,7 +21,7 @@ function syncAndLoadData() {
                 const destFile = path.join(LOCAL_DATA_PATH, file);
 
                 if (fs.existsSync(sourceFile)) {
-                    // Kopiere Datei von FiveM -> Backend
+                    // Copy the file from FiveM -> backend
                     fs.copyFileSync(sourceFile, destFile);
                     console.log(`   -> Synced ${file}`);
                 }
@@ -33,9 +33,9 @@ function syncAndLoadData() {
         console.log('[Data] No FIVEM_JSON_PATH defined or path invalid. Using local cache only.');
     }
 
-    // 2. Lade Daten aus dem lokalen Cache (Backend Ordner)
-    // Wichtig: try/catch pro Datei - sonst reisst eine kaputte Datei
-    // alle anderen mit und der Cache bleibt komplett leer
+    // 2. Load the data from the local cache (backend folder)
+    // Important: try/catch per file - otherwise one broken file takes all
+    // the others down with it and the cache stays completely empty
     FILES.forEach(file => {
         const key = file.replace('.json', ''); // jobs.json -> jobs
         const filePath = path.join(LOCAL_DATA_PATH, file);
@@ -48,7 +48,7 @@ function syncAndLoadData() {
 
             const raw = fs.readFileSync(filePath, 'utf8');
             if (!raw.trim()) {
-                console.warn(`[Data] Warning: ${file} is empty. Start the jp-veritas resource on the FiveM server to generate it.`);
+                console.warn(`[Data] Warning: ${file} is empty. Start the veritas resource on the FiveM server to generate it.`);
                 return;
             }
 
@@ -58,10 +58,10 @@ function syncAndLoadData() {
         }
     });
 
-    console.log(`[Data] Loaded. Jobs: ${Object.keys(CACHE.jobs).length}, Items: ${Object.keys(CACHE.items).length}, Vehicles: ${Object.keys(CACHE.vehicles).length}`);
+    console.log(`[Data] Loaded. Jobs: ${Object.keys(CACHE.jobs).length}, Gangs: ${Object.keys(CACHE.gangs).length}, Items: ${Object.keys(CACHE.items).length}, Vehicles: ${Object.keys(CACHE.vehicles).length}`);
 }
 
-// Initialer Start
+// Initial start
 if (!fs.existsSync(LOCAL_DATA_PATH)){
     fs.mkdirSync(LOCAL_DATA_PATH);
 }
@@ -70,5 +70,6 @@ module.exports = {
     loadGameData: syncAndLoadData, 
     getJobs: () => CACHE.jobs, 
     getItems: () => CACHE.items, 
-    getVehicles: () => CACHE.vehicles 
+    getVehicles: () => CACHE.vehicles,
+    getGangs: () => CACHE.gangs
 };

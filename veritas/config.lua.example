@@ -1,0 +1,58 @@
+-- veritas/config.lua.example
+-- Settings of the bridge resource. Copy this to config.lua on your server
+-- and fill it in. The config.lua itself is gitignored, so a `git pull` never
+-- overwrites your token - same idea as backend/.env.
+
+Config = {}
+
+-- Which framework to use. 'auto' detects it from the resources that are
+-- running; set it explicitly if you run more than one core at the same time.
+--   'auto' | 'qbox' | 'qbcore' | 'esx' | 'custom'
+Config.Framework = 'auto'
+
+-- Shared secret between backend and bridge.
+--
+-- The bridge hangs off the FiveM HTTP port, and that port is open to the
+-- internet on any public server. Everything below /export can run arbitrary
+-- exports, so that route REFUSES to work until a token is set here and the
+-- backend sends the same one in BRIDGE_TOKEN.
+--
+-- Set it for the other routes too as soon as you can - money and inventory
+-- are worth protecting as well. Generate one with: openssl rand -hex 32
+Config.Token = ''
+
+-- When true, every route requires the token, not just /export.
+-- Leave it false only while you are still setting things up.
+Config.RequireTokenEverywhere = false
+
+-- Exports the panel is allowed to call through /export.
+--
+-- Empty on purpose: nothing is callable until you list it. Each entry is
+-- 'resource:export', and '*' as the export name allows the whole resource.
+-- Only add what you actually need - an export can do anything the resource
+-- can do.
+--
+-- Examples:
+--   'ox_inventory:GetInventory',
+--   'ox_inventory:Search',
+--   'qbx_core:GetPlayers',
+Config.AllowedExports = {
+}
+
+-- Resource files the panel may read through /resource-file.
+-- Same idea: 'resource:path', '*' allows any file inside that resource.
+-- Reading a file cannot change anything, but a config file can still hold
+-- secrets - so this is a list, not a switch.
+Config.AllowedFiles = {
+    -- 'ox_inventory:data/items.lua',
+}
+
+-- Extra data the panel should dump to JSON on resource start, on top of the
+-- framework defaults (jobs, gangs, items, vehicles). The value is a function
+-- that returns a table; the key becomes the file name.
+--
+-- Whatever you put here ends up in the resource folder and is read by the
+-- backend into its cache, so it can serve it to the panel.
+Config.ExtraDumps = {
+    -- ['weapons.json'] = function() return exports.ox_inventory:Items() end,
+}

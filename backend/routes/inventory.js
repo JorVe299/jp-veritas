@@ -1,11 +1,11 @@
 // backend/routes/inventory.js
-// Inventar eines Spielers verwalten.
+// Manage a player's inventory.
 //
-// Zwei Formate im Umlauf, je nachdem welche Inventar-Resource läuft:
-//   ox_inventory : Array  -> [{ slot, name, count, metadata }]
-//   qb-inventory : Objekt -> { "1": { name, amount, slot, info, ... } }
-// Wir erkennen das Format beim Lesen und schreiben im selben Format zurück,
-// statt eine Variante zu erzwingen.
+// Two formats are in circulation, depending on the inventory resource:
+//   ox_inventory : array  -> [{ slot, name, count, metadata }]
+//   qb-inventory : object -> { "1": { name, amount, slot, info, ... } }
+// We detect the format while reading and write back in the same one rather
+// than forcing a single variant.
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -17,16 +17,22 @@ const { applyMove } = require('../utils/slots');
 const router = express.Router();
 
 const MAX_SLOTS = parseInt(process.env.INVENTORY_SLOTS) || 41;
-// ox_inventory rechnet in Gramm, Standard sind 30 kg.
+// ox_inventory counts in grams, the default is 30 kg.
 const MAX_WEIGHT = parseInt(process.env.INVENTORY_MAX_WEIGHT) || 30000;
 
 function detectFormat(raw) {
     if (Array.isArray(raw)) return 'ox';
-    if (raw && typeof raw === 'object') return 'qb';
+    // An empty object carries no evidence either way, and a NULL column
+    // parses to one. Calling that 'qb' would make the first item added to a
+    // fresh character get written in the wrong shape on an ox_inventory
+    // server - so it counts as 'empty', which is written back as an array.
+    if (raw && typeof raw === 'object') {
+        return Object.keys(raw).length === 0 ? 'empty' : 'qb';
+    }
     return 'empty';
 }
 
-// Beide Formate auf eine gemeinsame Darstellung bringen
+// Bring both formats into one common shape
 function normalize(raw) {
     const format = detectFormat(raw);
     const catalog = getItems();
@@ -59,8 +65,8 @@ function normalize(raw) {
                 weight,
                 totalWeight: weight * it.amount,
                 unique: meta?.unique ?? false,
-                // Das Bild kommt aus ox_inventory, falls der Ordner gefunden wurde.
-                // Fehlt es, faellt die Oberflaeche auf eine Textkachel zurueck.
+                // The image comes from ox_inventory if the folder was found.
+                // Without it the UI falls back to a text tile.
                 image: hasImage(it.name) ? `/api/items/${encodeURIComponent(it.name)}/image` : null
             };
         })
@@ -69,7 +75,7 @@ function normalize(raw) {
     return { format, items };
 }
 
-// Zurück ins Originalformat schreiben
+// Write it back in the original format
 function denormalize(items, format) {
     if (format === 'qb') {
         const out = {};
@@ -83,7 +89,7 @@ function denormalize(items, format) {
         });
         return out;
     }
-    // ox und 'empty' schreiben wir als Array
+    // ox and 'empty' are written as an array
     return items.map(it => ({
         slot: it.slot,
         name: it.name,
@@ -104,16 +110,16 @@ function totalWeight(items) {
     return items.reduce((sum, it) => sum + (Number(it.weight) || 0) * it.amount, 0);
 }
 
-// --- Item-Bilder ----------------------------------------------------------
-// ox_inventory legt seine Icons unter web/images/<item>.png ab. Wenn der
-// Ordner erreichbar ist, sieht das Panel aus wie das Inventar im Spiel.
-// Sonst laeuft alles weiter, nur eben ohne Bilder.
+// --- Item images ----------------------------------------------------------
+// ox_inventory keeps its icons under web/images/<item>.png. When that
+// folder is reachable the panel looks like the inventory in game.
+// Otherwise everything keeps working, just without pictures.
 
 function discoverImagePath() {
     if (process.env.ITEM_IMAGE_PATH) return process.env.ITEM_IMAGE_PATH;
 
-    // Aus dem Pfad der eigenen Resource nach oben zum resources-Ordner und
-    // dort die Kategorie-Ordner ([ox], [standalone], ...) durchsehen.
+    // Walk up from our own resource path to the resources folder and look
+    // through the category folders ([ox], [standalone], ...) there.
     const own = process.env.FIVEM_JSON_PATH;
     if (!own) return null;
 
@@ -147,8 +153,8 @@ if (IMAGE_PATH) {
     console.log('[Inventory] no ox_inventory image folder found - the grid falls back to text tiles');
 }
 
-// Der Itemname kommt aus der URL und wird zu einem Dateipfad. Strikte
-// Whitelist statt Blacklist: alles andere koennte den Ordner verlassen.
+// The item name comes from the URL and becomes a file path. A strict
+// whitelist rather than a blacklist: anything else could escape the folder.
 const SAFE_ITEM = /^[a-z0-9_-]{1,64}$/i;
 
 function imageFileFor(name) {
@@ -168,12 +174,12 @@ router.get('/api/items/:name/image', (req, res) => {
     const file = imageFileFor(req.params.name);
     if (!file) return res.status(404).json({ error: 'No image for this item' });
 
-    // Icons aendern sich praktisch nie und werden pro Kachel geladen.
+    // Icons practically never change and are loaded once per tile.
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.sendFile(file);
 });
 
-// --- Inventar lesen -------------------------------------------------------
+// --- Read the inventory ---------------------------------------------------
 router.get('/api/players/:citizenid/inventory', async (req, res) => {
     try {
         const [rows] = await db.execute(
@@ -185,9 +191,9 @@ router.get('/api/players/:citizenid/inventory', async (req, res) => {
         const raw = parseJSON(rows[0].inventory);
         const { format, items } = normalize(raw);
 
-        // Slots umsortieren geht nur offline: solange der Spieler verbunden
-        // ist, haelt der Server das Inventar im Speicher und wuerde jede
-        // direkte Aenderung an der Datenbank beim Speichern ueberschreiben.
+        // Reordering slots only works offline: while the player is
+        // connected the server holds the inventory in memory and would
+        // overwrite any direct database change when it saves.
         const online = await isPlayerOnline(req.params.citizenid);
 
         res.json({
@@ -200,8 +206,8 @@ router.get('/api/players/:citizenid/inventory', async (req, res) => {
             online,
             canReorder: !online,
             imagesAvailable: Boolean(IMAGE_PATH),
-            // Bei ox_inventory liegen Stashes/Kofferraum in einer eigenen
-            // Tabelle - hier sehen wir nur das, was der Spieler am Körper trägt.
+            // With ox_inventory, stashes and trunks live in a table of
+            // their own - here we only see what the player carries.
             hint: format === 'ox'
                 ? 'ox_inventory detected — showing the carried inventory only, no stashes.'
                 : null
@@ -212,7 +218,7 @@ router.get('/api/players/:citizenid/inventory', async (req, res) => {
     }
 });
 
-// --- Inventar ändern ------------------------------------------------------
+// --- Change the inventory -------------------------------------------------
 // action: 'add' | 'remove' | 'set' | 'move'
 router.post('/api/manage/inventory', async (req, res) => {
     const { citizenid, action, item, amount, slot, fromSlot, toSlot } = req.body;
@@ -222,7 +228,7 @@ router.post('/api/manage/inventory', async (req, res) => {
         return res.status(400).json({ error: "action must be 'add', 'remove', 'set' or 'move'" });
     }
 
-    // --- Verschieben: eigener Zweig, weil es kein Item braucht, sondern zwei Slots
+    // --- Moving: its own branch, because it needs two slots, not an item
     if (action === 'move') {
         return handleMove(req, res);
     }
@@ -234,16 +240,16 @@ router.post('/api/manage/inventory', async (req, res) => {
         return res.status(400).json({ error: 'amount must be a whole number >= 0' });
     }
 
-    // Item gegen items.json prüfen. Leerer Katalog -> durchlassen,
-    // sonst wäre die Funktion tot, solange die Resource nie lief.
+    // Check the item against items.json. Empty catalog -> let it through,
+    // otherwise the feature would be dead until the resource has run once.
     const catalog = getItems();
     if (Object.keys(catalog).length > 0 && !catalog[item]) {
         return res.status(404).json({ error: `Item '${item}' is not listed in items.json` });
     }
 
     try {
-        // WEG A: Spieler online -> der Core muss es machen, sonst überschreibt
-        // er unsere DB-Änderung beim nächsten Speichern
+        // PATH A: player online -> the core has to do it, otherwise it
+        // overwrites our database change on its next save
         if (await isPlayerOnline(citizenid)) {
             await callBridge('/update-inventory', { citizenid, action, item, amount: qty, slot });
             return res.json({
@@ -253,7 +259,7 @@ router.post('/api/manage/inventory', async (req, res) => {
             });
         }
 
-        // WEG B: Spieler offline -> direkt in der DB
+        // PATH B: player offline -> straight into the database
         const [rows] = await db.execute('SELECT inventory FROM players WHERE citizenid = ?', [citizenid]);
         if (rows.length === 0) return res.status(404).json({ error: 'Player not found' });
 
@@ -273,7 +279,7 @@ router.post('/api/manage/inventory', async (req, res) => {
             } else if (slot != null && !target) {
                 items.push({ slot: Number(slot), name: item, amount: qty, metadata: {} });
             } else {
-                // Stapelbare Items auf einen vorhandenen Slot legen, unique nicht
+                // Stackable items join an existing slot, unique ones do not
                 const existing = isUnique ? null : items.find(i => i.name === item);
                 if (existing) {
                     existing.amount += qty;
@@ -285,7 +291,7 @@ router.post('/api/manage/inventory', async (req, res) => {
             }
         } else if (action === 'remove') {
             let left = qty;
-            // Wenn ein Slot genannt ist, nur aus diesem raeumen
+            // When a slot is named, only clear that one
             const pool = slot != null
                 ? items.filter(i => i.slot === Number(slot) && i.name === item)
                 : items.filter(i => i.name === item);
@@ -298,7 +304,7 @@ router.post('/api/manage/inventory', async (req, res) => {
             if (left > 0) {
                 return res.status(409).json({ error: `The player only owns ${qty - left}x ${item}` });
             }
-            // Leergeraeumte Slots entfernen
+            // Drop slots that have been emptied
             for (let i = items.length - 1; i >= 0; i--) {
                 if (items[i].amount <= 0) items.splice(i, 1);
             }
@@ -336,10 +342,10 @@ router.post('/api/manage/inventory', async (req, res) => {
     }
 });
 
-// --- Slots verschieben, tauschen, stapeln ---------------------------------
-// Nur offline. Bei einem verbundenen Spieler liegt das Inventar im Speicher
-// des Servers; eine Slot-Aenderung in der Datenbank waere beim naechsten
-// Speichern weg - im schlimmsten Fall mitsamt der verschobenen Items.
+// --- Move, swap and stack slots -------------------------------------------
+// Offline only. For a connected player the inventory lives in the server's
+// memory; a slot change in the database would be gone on its next save - in
+// the worst case together with the items that were moved.
 async function handleMove(req, res) {
     const { citizenid, fromSlot, toSlot, amount } = req.body;
 
@@ -368,8 +374,8 @@ async function handleMove(req, res) {
         const raw = parseJSON(rows[0].inventory);
         const { format, items } = normalize(raw);
 
-        // Die eigentliche Slot-Arithmetik liegt in utils/slots.js und ist
-        // dort ohne Datenbank getestet.
+        // The actual slot arithmetic lives in utils/slots.js and is tested
+        // there without a database.
         const result = applyMove(items, from, to, amount);
         if (!result.ok) return res.status(result.status).json({ error: result.error });
 

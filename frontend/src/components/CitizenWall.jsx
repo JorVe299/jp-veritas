@@ -6,11 +6,11 @@ import { formatCurrency, jobTitle } from '../utils/format';
 import { PAGE_SIZE, useRails } from '../lib/useRoster';
 
 /**
- * Die Wand: waagerecht laufende Schienen aus Kacheln.
+ * The wall: rails of tiles running horizontally.
  *
- * Die Schienen beschreiben ausdruecklich nur die geladene Seite, nicht die
- * Datenbank - die API liefert keine Gesamtzahl. Die Rubriken sind deshalb so
- * formuliert, dass sie nichts behaupten, was nicht geprueft wurde.
+ * The rails expressly describe only the page that was loaded, not the
+ * database - the API returns no grand total. The headings are therefore
+ * worded so that they claim nothing that has not been verified.
  */
 export default function CitizenWall({
     players,
@@ -119,15 +119,20 @@ export default function CitizenWall({
 }
 
 /* -------------------------------------------------------------------------
-   Eine Schiene
+   One rail
    ------------------------------------------------------------------------- */
 
-function Rail({ rail, bridgeDown, selectedId, onSelect }) {
+/**
+ * One rail. Exported because the landing page shows the same thing - the
+ * citizens on the server right now - and a second rail that merely looked
+ * like this one would drift from it at the first change.
+ */
+export function Rail({ rail, bridgeDown, selectedId, onSelect }) {
     const trackRef = useRef(null);
     const [edges, setEdges] = useState({ start: false, end: false });
 
-    // Die Pfeile erscheinen nur, wenn es in diese Richtung ueberhaupt etwas
-    // zu sehen gibt. Sonst stehen in kurzen Schienen tote Schaltflaechen.
+    // The arrows only appear when there is anything at all to see in that
+    // direction. Otherwise short rails would carry dead buttons.
     const measure = useCallback(() => {
         const el = trackRef.current;
         if (!el) return;
@@ -202,7 +207,7 @@ function Rail({ rail, bridgeDown, selectedId, onSelect }) {
 }
 
 /* -------------------------------------------------------------------------
-   Eine Kachel
+   One tile
    ------------------------------------------------------------------------- */
 
 function Tile({ player, statusUnknown, isSelected, onSelect }) {
@@ -240,8 +245,8 @@ function Tile({ player, statusUnknown, isSelected, onSelect }) {
                 <span className="tile__job">{jobTitle(player)}</span>
             </span>
 
-            {/* Erst im Fokus sichtbar: die Angaben, wegen denen man sonst
-                erst oeffnen muesste. */}
+            {/* Only visible on focus: the details you would otherwise have
+                to open the record for. */}
             <span className="tile__reveal" aria-hidden="true">
                 <span className="tile__revealinner">
                     <span className="tile__cid u-mono">{player.citizenid}</span>
@@ -266,7 +271,7 @@ function Tile({ player, statusUnknown, isSelected, onSelect }) {
 }
 
 /* -------------------------------------------------------------------------
-   Zustaende
+   States
    ------------------------------------------------------------------------- */
 
 function SkeletonRail() {

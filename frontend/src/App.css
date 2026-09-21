@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Veritas - Shell, Kopfbereich, Module, Kachelwand
+   Veritas - Shell, top bar, modules, tile wall
    ========================================================================== */
 
 :root {
@@ -8,8 +8,8 @@
 
 /* --------------------------------------------------------------------------
    1. Shell
-   Feste Kopfleiste, darunter genau eine scrollende Flaeche. Die Seite selbst
-   scrollt nie waagerecht - das machen nur die Schienen.
+   A fixed top bar, and exactly one scrolling area beneath it. The page
+   itself never scrolls sideways - only the rails do.
    -------------------------------------------------------------------------- */
 
 .app {
@@ -26,7 +26,7 @@
     scroll-behavior: smooth;
 }
 
-/* --- Kopfleiste ----------------------------------------------------------- */
+/* --- Top bar -------------------------------------------------------------- */
 
 .topbar {
     display: flex;
@@ -44,9 +44,38 @@
     display: flex;
     align-items: center;
     gap: var(--s-3);
+    flex: none;
+    padding: var(--s-2);
+    margin-left: calc(var(--s-2) * -1);
+    border: 0;
+    border-radius: var(--r-control);
+    background: none;
     color: var(--c-text);
     text-decoration: none;
-    flex: none;
+    cursor: pointer;
+    transition: background 0.14s ease, opacity 0.14s ease;
+}
+
+.topbar__brand:hover {
+    background: var(--c-surface-2);
+}
+
+.topbar__brand:active {
+    transform: translateY(1px);
+}
+
+/* Already on the start page: the button stays usable but steps back, so it
+   does not invite a journey that leads nowhere. */
+.topbar__brand.is-here {
+    cursor: default;
+}
+
+.topbar__brand.is-here:hover {
+    background: none;
+}
+
+.topbar__brand.is-here:active {
+    transform: none;
 }
 
 .topbar__word {
@@ -78,9 +107,9 @@
     background: var(--c-surface);
 }
 
-/* --- Zustand der Bruecke --------------------------------------------------
-   Traegt die Unterscheidung, auf der das ganze Produkt steht: "niemand da"
-   ist nicht dasselbe wie "wir wissen es nicht". -------------------------- */
+/* --- State of the bridge --------------------------------------------------
+   Carries the distinction the whole product rests on: "nobody there" is not
+   the same as "we do not know". ------------------------------------------ */
 
 .bridge {
     display: inline-flex;
@@ -106,8 +135,8 @@
     background: var(--c-unknown-soft);
 }
 
-/* Solange die erste Antwort aussteht, wird nichts behauptet - weder eine
-   Verbindung noch ihr Fehlen. Neutral ist hier die richtige Aussage. */
+/* While the first answer is outstanding nothing is claimed - neither a
+   connection nor its absence. Neutral is the right statement here. */
 .bridge--idle {
     color: var(--c-text-faint);
 }
@@ -153,7 +182,7 @@
     mix-blend-mode: overlay;
 }
 
-/* Lange Verlaufsmaske: das Bild traegt Farbe, der Text bleibt lesbar. */
+/* A long gradient mask: the image carries colour, the text stays legible. */
 .billboard__scrim {
     position: absolute;
     inset: 0;
@@ -262,7 +291,7 @@
     letter-spacing: -0.02em;
 }
 
-/* --- Statuspille --- */
+/* --- Status pill --- */
 
 .pill {
     display: inline-flex;
@@ -299,15 +328,15 @@
     background: var(--c-unknown-soft);
 }
 
-/* "Nicht auf dem Server" ist ausdruecklich kein Signal: es ist ein
-   gesicherter, unauffaelliger Normalzustand und behaelt die neutrale
-   Grundform. Steht hier, damit das Absicht bleibt und nicht Zufall. */
+/* "Not on the server" is expressly not a signal: it is a confirmed,
+   unremarkable normal state and keeps the neutral base form. It is written
+   down here so that stays deliberate rather than accidental. */
 .pill--off {
     color: var(--c-text-muted);
 }
 
-/* Beschlagnahmt: kein Normalzustand, sondern ein Eingriff der Verwaltung -
-   und damit der einzige Fahrzeugstatus, der ein Signal traegt. */
+/* Impounded: not a normal state but an intervention by an administrator -
+   and therefore the only vehicle state that carries a signal. */
 .pill--debit {
     color: var(--c-debit);
     border-color: var(--c-debit-line);
@@ -315,10 +344,10 @@
 }
 
 /* --------------------------------------------------------------------------
-   3. Schreibprotokoll
-   Abgeschlossene Vorgaenge bleiben sichtbar. Der Datensatz zeigt damit, was
-   in dieser Sitzung an ihm geaendert wurde, statt es in einer Meldung
-   verschwinden zu lassen.
+   3. Write log
+   Completed operations stay visible. The record thereby shows what was
+   changed on it during this session, instead of letting it disappear into
+   a notification.
    -------------------------------------------------------------------------- */
 
 .ledger {
@@ -379,8 +408,8 @@
 .ledger__row--live { color: var(--c-live); }
 .ledger__row--offline { color: var(--c-unknown); }
 
-/* Die Farbe markiert den Weg, den der Schreibvorgang genommen hat.
-   Der Text selbst bleibt achromatisch und damit ruhig lesbar. */
+/* The colour marks which path the write took.
+   The text itself stays achromatic and therefore calmly readable. */
 .ledger__what {
     color: var(--c-text);
     font-variant-numeric: tabular-nums;
@@ -397,10 +426,342 @@
 }
 
 /* --------------------------------------------------------------------------
-   4. Module
-   Neue Module (Inventar, Fahrzeuge, ...) docken hier als <section
-   class="panel"> an und ordnen sich automatisch ein.
+   4. Modules
+   New modules (inventory, vehicles, ...) dock in here as <section
+   class="panel"> and arrange themselves automatically.
    -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   Start page
+   The only surface in the panel that begins with nothing selected. It
+   therefore carries the mark at full size and says what is actually running.
+   -------------------------------------------------------------------------- */
+
+.home {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 26rem;
+    padding: var(--s-8) var(--gutter) var(--s-7);
+    isolation: isolate;
+    overflow: hidden;
+}
+
+.home__art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+}
+
+.home__art .plate {
+    width: 100%;
+    height: 100%;
+}
+
+.home__grain {
+    position: absolute;
+    inset: 0;
+    background-image: var(--noise);
+    background-size: 150px;
+    opacity: 0.2;
+    mix-blend-mode: overlay;
+}
+
+.home__scrim {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(to top,
+            var(--c-bg) 0,
+            rgba(13, 12, 11, 0.8) 110px,
+            rgba(13, 12, 11, 0.34) 280px,
+            rgba(13, 12, 11, 0.12) 68%,
+            rgba(13, 12, 11, 0.3) 100%),
+        linear-gradient(to right, rgba(13, 12, 11, 0.74) 0%, rgba(13, 12, 11, 0.06) 62%);
+}
+
+.home__inner {
+    max-width: 64ch;
+}
+
+.home__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    color: var(--c-text);
+}
+
+.home__word {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 800;
+    font-variation-settings: 'wdth' 70;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    text-transform: uppercase;
+    text-shadow: 0 2px 22px rgba(0, 0, 0, 0.6);
+}
+
+.home__lede {
+    margin-top: var(--s-5);
+    font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+    font-weight: 700;
+    font-variation-settings: 'wdth' 92;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+}
+
+.home__sub {
+    margin-top: var(--s-3);
+    max-width: 62ch;
+    color: var(--c-text-muted);
+    font-size: var(--fs-md);
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.65);
+}
+
+.home__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-top: var(--s-5);
+}
+
+/* A chip is a checked statement, not a metric tile. */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-pill);
+    background: rgba(13, 12, 11, 0.66);
+    backdrop-filter: blur(8px);
+    color: var(--c-text-muted);
+    font-size: var(--fs-sm);
+}
+
+.chip--live {
+    color: var(--c-live);
+    border-color: var(--c-live-line);
+    background: var(--c-live-soft);
+}
+
+.chip--warn {
+    color: var(--c-unknown);
+    border-color: var(--c-unknown-line);
+    background: var(--c-unknown-soft);
+}
+
+.home__gap {
+    padding: 0 var(--gutter);
+    margin-top: var(--s-4);
+    max-width: 70ch;
+    color: var(--c-text-faint);
+    font-size: var(--fs-sm);
+}
+
+/* --- Destinations --------------------------------------------------------
+   A list, not a grid of cards: it is read top to bottom, and every row
+   earns its place by saying what actually stands behind it. -------------- */
+
+.dests {
+    padding: var(--s-7) var(--gutter) var(--s-8);
+}
+
+.dests__title {
+    max-width: 56rem;
+    color: var(--c-text-muted);
+    margin-bottom: var(--s-3);
+}
+
+.dests__list {
+    list-style: none;
+    margin: 0;
+    max-width: 56rem;
+    padding: 0;
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-panel);
+    background: var(--c-surface);
+    overflow: hidden;
+}
+
+.dests__list li + li .dest {
+    border-top: 1px solid var(--c-border);
+}
+
+.dest {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    width: 100%;
+    padding: var(--s-4);
+    border: 0;
+    background: none;
+    color: var(--c-text);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.14s ease;
+}
+
+.dest:hover {
+    background: var(--c-surface-2);
+}
+
+.dest:active {
+    transform: translateY(1px);
+}
+
+.dest__icon {
+    color: var(--c-text-faint);
+}
+
+.dest:hover .dest__icon,
+.dest:hover .dest__go {
+    color: var(--c-text);
+}
+
+.dest__text {
+    min-width: 0;
+    flex: 1;
+}
+
+.dest__name {
+    display: block;
+    font-weight: 700;
+    font-size: var(--fs-md);
+}
+
+.dest__hint {
+    display: block;
+    margin-top: 2px;
+    color: var(--c-text-faint);
+    font-size: var(--fs-sm);
+}
+
+.dest__go {
+    color: var(--c-text-faint);
+    flex: none;
+}
+
+@media (max-width: 560px) {
+    .home {
+        min-height: 0;
+        padding-block: var(--s-6) var(--s-5);
+    }
+
+    .home__brand {
+        gap: var(--s-3);
+    }
+
+    .home__sub {
+        font-size: var(--fs-base);
+    }
+
+    .dests {
+        padding-block: var(--s-6) var(--s-7);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Section bar
+   Carries the module wall. It sticks below the top bar so the section stays
+   reachable even when a long card (vehicles, bans) runs far down the page.
+   -------------------------------------------------------------------------- */
+
+.tabs {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--c-bg);
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: var(--s-5);
+}
+
+.tabs__list {
+    display: flex;
+    gap: var(--s-1);
+    padding: 0 var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.tabs__list::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    flex: none;
+    padding: var(--s-3) var(--s-3) calc(var(--s-3) - 2px);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--c-text-faint);
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 105;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.14s ease, border-color 0.14s ease;
+}
+
+.tab:hover {
+    color: var(--c-text-muted);
+}
+
+.tab__icon {
+    opacity: 0.7;
+}
+
+/* The only chrome accent, as on the tile's focus ring: white. */
+.tab.is-active {
+    color: var(--c-text);
+    border-bottom-color: var(--c-focus);
+}
+
+.tab.is-active .tab__icon {
+    opacity: 1;
+}
+
+.tab__live {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 50%;
+    background: var(--c-live);
+    animation: pulse 2.6s ease-in-out infinite;
+}
+
+@media (max-width: 560px) {
+    .tabs__list {
+        gap: 0;
+    }
+
+    .tab {
+        padding-inline: var(--s-2);
+    }
+
+    /* On a phone the glyph carries the section and the label only follows
+       on the active one - otherwise the bar does not fit on one line. */
+    .tab:not(.is-active) .tab__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .tab:not(.is-active) {
+        padding-inline: var(--s-3);
+    }
+}
 
 .modules {
     display: grid;
@@ -482,9 +843,38 @@
     color: var(--c-text-faint);
 }
 
-/* --- Rangleiter ----------------------------------------------------------
-   Alle Stufen eines Jobs auf einmal, die gewaehlte nach vorne geholt. Der
-   Abstand zwischen zwei Raengen wird dadurch sichtbar. ------------------- */
+/* Two sections in one card: the stock above, the operation that changes it
+   below (bans, memberships). The line separates them without needing a
+   second heading - it is the same subject. */
+.panel__body + .panel__body,
+.panel__body + .panel__form > .panel__body {
+    border-top: 1px solid var(--c-border);
+}
+
+/* Several equally ranked actions side by side. They share the width and
+   wrap rather than shrink until the label is no longer readable. */
+.acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+}
+
+.acts .btn {
+    flex: 1 1 9rem;
+}
+
+/* X, Y and Z belong together and therefore stay on one line even in a
+   narrow card - three number fields stacked under each other would no
+   longer read as a coordinate. */
+.coords {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-2);
+}
+
+/* --- Grade ladder --------------------------------------------------------
+   Every grade of a job at once, the chosen one brought forward. The distance
+   between two grades becomes visible that way. -------------------------- */
 
 .ladder {
     display: flex;
@@ -607,7 +997,7 @@
     cursor: not-allowed;
 }
 
-/* --- Vorschauzeile im Geld-Modul --- */
+/* --- Preview line in the money module --- */
 
 .preview {
     display: flex;
@@ -634,16 +1024,16 @@
 .preview__value--up { color: var(--c-live); }
 .preview__value--down { color: var(--c-debit); }
 
-/* Waehrend eine neue Katalogabfrage laeuft bleibt die alte Trefferliste
-   stehen, wird aber zurueckgenommen - dieselbe Geste wie an der Wand. */
+/* While a new catalog query runs the old result list stays put but is
+   visibly held back - the same gesture as on the wall. */
 .ladder.is-stale {
     opacity: 0.45;
 }
 
-/* --- Datenzeilen ---------------------------------------------------------
-   Bestandslisten in den Modulen (Fahrzeuge, Inventar). Anders als die
-   Rangleiter ist eine Zeile hier kein Schalter, sondern ein Datensatz mit
-   eigenen Aktionen - deshalb eine eigene Form statt einer Variante.
+/* --- Data rows -----------------------------------------------------------
+   Stock lists inside the modules (vehicles, inventory). Unlike the grade
+   ladder a row here is not a switch but a record with actions of its own -
+   hence a form of its own rather than a variant.
    -------------------------------------------------------------------------- */
 
 .lines {
@@ -655,8 +1045,8 @@
     padding: 0;
 }
 
-/* Ab einer Handvoll Eintraegen scrollt die Liste in sich, damit die Karte
-   neben ihren Nachbarn im Raster nicht ins Endlose waechst. */
+/* Past a handful of entries the list scrolls within itself, so the card
+   does not grow endlessly next to its neighbours in the grid. */
 .lines--scroll {
     max-height: 26rem;
     overflow-y: auto;
@@ -697,6 +1087,21 @@
     flex: none;
 }
 
+/* The balance carries the row - it sits at the far right and at the size of
+   a panel title, because it is the one number the row is read for. */
+.line__amount {
+    margin-left: auto;
+    flex: none;
+    font-size: var(--fs-md);
+    font-weight: 600;
+}
+
+/* While a new query runs the old list stays put but is held back - the same
+   gesture as on the wall and in the grade ladder. */
+.lines.is-stale {
+    opacity: 0.45;
+}
+
 .line__meta {
     display: flex;
     flex-wrap: wrap;
@@ -719,9 +1124,9 @@
     gap: var(--s-2);
 }
 
-/* --- Regler --------------------------------------------------------------
-   Schaetzen und genau setzen am selben Wert: der Schieber fuer die Geste,
-   das Feld fuer die Zahl. -------------------------------------------------- */
+/* --- Sliders -------------------------------------------------------------
+   Estimating and setting precisely on the same value: the slider for the
+   gesture, the field for the number. ------------------------------------- */
 
 .gauge {
     display: grid;
@@ -745,7 +1150,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   5. Die Wand
+   5. The wall
    -------------------------------------------------------------------------- */
 
 .wall {
@@ -756,8 +1161,8 @@
     transition: opacity 0.2s ease;
 }
 
-/* Waehrend eine neue Abfrage laeuft bleibt das alte Ergebnis stehen, wird
-   aber sichtbar zurueckgenommen und leicht entschaerft. */
+/* While a new query runs the old result stays put but is visibly held back
+   and slightly muted. */
 .wall__body.is-stale {
     opacity: 0.4;
     filter: saturate(0.4);
@@ -782,7 +1187,7 @@
     transition: opacity 0.28s var(--ease-out), transform 0.28s var(--ease-out);
 }
 
-/* Die fokussierte Schiene hebt sich, der Rest der Wand tritt zurueck. */
+/* The focused rail lifts, the rest of the wall steps back. */
 .wall__body:has(.tile:hover) .rail {
     opacity: 0.55;
 }
@@ -839,8 +1244,8 @@
     gap: var(--rail-gap);
     list-style: none;
     margin: 0;
-    /* Senkrechte Polsterung: die vergroesserte Kachel und ihr Schatten
-       brauchen Platz, weil overflow-x den Kasten auch senkrecht begrenzt. */
+    /* Vertical padding: the enlarged tile and its shadow need room, because
+       overflow-x bounds the box vertically as well. */
     padding: 0.875rem var(--gutter) 1.75rem;
     overflow-x: auto;
     overflow-y: hidden;
@@ -865,10 +1270,10 @@
     position: relative;
 }
 
-/* --- Kachel --------------------------------------------------------------
-   Der eine gestaltete Bewegungsmoment der Oberflaeche: die Kachel waechst,
-   ihre Nachbarn treten zurueck, und im Inneren erscheinen die Angaben,
-   wegen derer man sie sonst erst oeffnen muesste. ------------------------ */
+/* --- Tile ----------------------------------------------------------------
+   The one designed moment of movement in the interface: the tile grows, its
+   neighbours step back, and inside it appear the details you would otherwise
+   have to open it for. -------------------------------------------------- */
 
 .tile {
     position: relative;
@@ -925,7 +1330,7 @@
     background: linear-gradient(to top, rgba(6, 5, 4, 0.96) 14%, rgba(6, 5, 4, 0.7) 44%, rgba(6, 5, 4, 0.06) 78%);
 }
 
-/* Auswahl: ein durchgehender weisser Ring, der einzige Chrome-Akzent. */
+/* Selection: one continuous white ring, the only chrome accent. */
 .tile.is-selected .tile__art {
     box-shadow: inset 0 0 0 2px var(--c-focus);
 }
@@ -999,16 +1404,16 @@
     -webkit-box-orient: vertical;
 }
 
-/* Die Enthuellung faehrt von unten ueber das Bild, statt die Kachel
-   wachsen zu lassen: dadurch veraendert sie die Zeilenhoehe nicht. */
+/* The reveal rides up over the image from below rather than making the tile
+   grow: that way it does not change the height of the row. */
 .tile__reveal {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
     z-index: 3;
-    /* 0fr -> 1fr statt max-height: das animiert die Rasterspur und loest
-       kein Neuberechnen des Layouts aus. */
+    /* 0fr -> 1fr instead of max-height: this animates the grid track and
+       triggers no layout recalculation. */
     display: grid;
     grid-template-rows: 0fr;
     opacity: 0;
@@ -1060,7 +1465,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   6. Zustaende: leer, Platzhalter, Hinweis
+   6. States: empty, placeholder, notice
    -------------------------------------------------------------------------- */
 
 .empty {
@@ -1117,7 +1522,7 @@
     100% { background-position: -200% 0; }
 }
 
-/* --- Inline-Feedback (ersetzt alert()) --- */
+/* --- Inline feedback (in place of alert()) --- */
 
 .note {
     display: grid;
@@ -1173,13 +1578,15 @@
 }
 
 /* --------------------------------------------------------------------------
-   7. Anmeldung
-   Vorraum, Sitzung in der Kopfleiste, Warnleiste fuer den ungeschuetzten
-   Betrieb. Keine eigenen Farben: alles kommt aus denselben Tokens.
+   7. Sign-in
+   The entrance hall, the session in the top bar, and the warning bar for
+   unprotected operation. No colours of its own: everything comes from the
+   same tokens.
    -------------------------------------------------------------------------- */
 
-/* Der Vorraum. Bewusst leer: hier gibt es genau eine Sache zu tun, und
-   nichts im Hintergrund, das Daten vortaeuscht, die niemand sehen darf. */
+/* The entrance hall. Deliberately empty: there is exactly one thing to do
+   here, and nothing in the background pretending to be data nobody may
+   see yet. */
 .gate {
     position: relative;
     display: grid;
@@ -1249,7 +1656,7 @@
     margin-top: var(--s-1);
 }
 
-/* --- Sitzung in der Kopfleiste -------------------------------------------- */
+/* --- Session in the top bar ----------------------------------------------- */
 
 .session {
     display: flex;
@@ -1269,8 +1676,8 @@
     object-fit: cover;
 }
 
-/* Kein Bild vorhanden oder nicht geladen: Initialen statt eines kaputten
-   Bildsymbols. Gleiche Groesse, gleiche Form, kein Sprung im Layout. */
+/* No picture available, or it failed to load: initials instead of a broken
+   image glyph. Same size, same shape, no jump in the layout. */
 .session__avatar--mark {
     display: grid;
     place-items: center;
@@ -1289,9 +1696,9 @@
     font-weight: 600;
 }
 
-/* --- Warnleiste: Panel laeuft ohne Schutz ---------------------------------
-   Steht ausserhalb der scrollenden Flaeche und laesst sich nicht wegklicken.
-   Eine Meldung, die sich wegscrollen laesst, ist hier zu wenig. */
+/* --- Warning bar: the panel runs unprotected ------------------------------
+   It sits outside the scrolling area and cannot be clicked away.
+   A message that can be scrolled out of sight is not enough here. */
 
 .app--warned {
     grid-template-rows: var(--topbar-h) auto minmax(0, 1fr);
@@ -1306,8 +1713,8 @@
 }
 
 /* --------------------------------------------------------------------------
-   8. Responsiv
-   Ziel: von 360px Telefon bis zum breiten Schreibtisch ohne Bruch.
+   8. Responsive
+   The goal: from a 360px phone to a wide desk without breaking.
    -------------------------------------------------------------------------- */
 
 @media (max-width: 900px) {
@@ -1337,8 +1744,8 @@
         font-size: 0.625rem;
     }
 
-    /* Marke, Bruecke und Sitzung teilen sich die erste Zeile - der Name
-       gibt zuerst nach, Bild und Abmelden bleiben. */
+    /* Mark, bridge and session share the first row - the name gives way
+       first, the picture and sign-out stay. */
     .session__name {
         max-width: 7rem;
     }
@@ -1348,8 +1755,8 @@
         padding-top: var(--s-6);
     }
 
-    /* Flacher Vorspann: so steht die erste Schiene noch im ersten Bild und
-       der Admin sieht sofort, wer gerade auf dem Server ist. */
+    /* A shallower lead-in: that way the first rail is still in the first
+       screenful and the admin sees at once who is on the server. */
     .billboard--idle {
         min-height: 0;
         padding-block: var(--s-5) var(--s-5);
@@ -1379,8 +1786,8 @@
         max-width: none;
     }
 
-    /* Auf dem Telefon reicht die Breite nicht fuer Bruecke, Name und
-       Abmelden. Der Name faellt weg, das Bild bleibt als Kennzeichen. */
+    /* On a phone there is not enough width for bridge, name and sign-out.
+       The name goes, the picture stays as the identifier. */
     .session__name {
         display: none;
     }
@@ -1389,9 +1796,9 @@
         padding: var(--s-5);
     }
 
-    /* Auf dem Telefon steht die kleinste Schrift vor dem dichtesten Teil des
-       Bildes. Der untere Teil der Maske wird deshalb tiefer gezogen, damit
-       Metazeile und Kontostaende nicht auf Palmwedeln liegen. */
+    /* On a phone the smallest type sits in front of the busiest part of the
+       image. The lower part of the mask is therefore pulled deeper, so that
+       the meta line and the balances do not lie on palm fronds. */
     .billboard__scrim {
         background:
             linear-gradient(to top,
@@ -1417,8 +1824,8 @@
         justify-content: space-between;
     }
 
-    /* Auf dem Telefon gibt es keinen Hover-Zustand, der die Vergroesserung
-       traegt - die Kachel bleibt ruhig, nur die Auswahl wird markiert. */
+    /* On a phone there is no hover state to carry the enlargement - the
+       tile stays calm, only the selection is marked. */
     .tile:hover,
     .tile:focus-visible {
         transform: none;
@@ -1441,7 +1848,7 @@
     }
 }
 
-/* Zeigegeraete ohne Hover (Touch): dieselbe Ruhe wie auf dem Telefon. */
+/* Pointing devices without hover (touch): the same calm as on a phone. */
 @media (hover: none) {
     .tile:hover {
         transform: none;
@@ -1454,10 +1861,10 @@
 }
 
 /* --------------------------------------------------------------------------
-   9. Inventar
-   Zusammenfassung in der Karte, das eigentliche Bearbeiten in einer eigenen
-   Flaeche. Das Raster ist dem Inventar im Spiel nachempfunden: gleich grosse
-   Kacheln, Bild mittig, Menge oben rechts, Gewicht unten.
+   9. Inventory
+   A summary in the card, the actual editing in an area of its own. The grid
+   is modelled on the inventory in game: equally sized tiles, image in the
+   middle, amount top right, weight below.
    -------------------------------------------------------------------------- */
 
 .invsum {
@@ -1495,7 +1902,7 @@
     color: var(--c-text);
 }
 
-/* --- Gewichtsbalken ------------------------------------------------------- */
+/* --- Weight bar ----------------------------------------------------------- */
 
 .weigh {
     display: flex;
@@ -1523,20 +1930,24 @@
     overflow: hidden;
 }
 
+/* scaleX rather than width: animating the width triggers a layout
+   recalculation on every change, the transform runs in the compositor. */
 .weigh__fill {
+    width: 100%;
     height: 100%;
     border-radius: inherit;
     background: var(--c-live);
-    transition: width 0.18s var(--ease-out);
+    transform-origin: left center;
+    transition: transform 0.18s var(--ease-out);
 }
 
-/* Ueber der Grenze ist keine Warnung "bald voll", sondern ein Zustand, den
-   der Server so nicht erzeugt haette - deshalb der Debit-Ton. */
+/* Over the limit is not a "nearly full" warning but a state the server
+   would not have produced - hence the debit tone. */
 .weigh__fill--over {
     background: var(--c-debit);
 }
 
-/* --- Vollflaechige Bearbeitung -------------------------------------------- */
+/* --- Full-surface editing ------------------------------------------------- */
 
 .sheet {
     position: fixed;
@@ -1611,11 +2022,22 @@
     min-width: 0;
 }
 
-/* --- Das Raster ----------------------------------------------------------- */
+/* The account list has no side column: a list that is read across the page
+   needs the whole width. */
+.sheet__body--single {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+}
+
+/* --- The grid ------------------------------------------------------------- */
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
+    /* Five slots per row as in the game - the tiles shrink along rather than
+       letting the row wrap. minmax(0,1fr) stops a long item name from
+       pushing the grid apart. */
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: var(--s-2);
     align-content: start;
 }
@@ -1648,8 +2070,8 @@
     cursor: grabbing;
 }
 
-/* Die Kachel, die gerade gezogen wird, bleibt sichtbar aber zurueckgenommen -
-   sonst verliert man beim Ziehen den Ausgangspunkt aus dem Blick. */
+/* The tile currently being dragged stays visible but held back - otherwise
+   you lose sight of where the drag started. */
 .slot--source {
     opacity: 0.35;
 }
@@ -1686,8 +2108,8 @@
     object-fit: contain;
 }
 
-/* Ohne ox_inventory-Icons tragen die Kacheln die ersten Zeichen des
-   Itemnamens - lesbar bleibt das Raster dadurch trotzdem. */
+/* Without ox_inventory icons the tiles carry the first characters of the
+   item name - the grid stays readable even so. */
 .slot__fallback {
     font-size: var(--fs-sm);
     font-weight: 700;
@@ -1716,7 +2138,7 @@
     pointer-events: none;
 }
 
-/* --- Ablegen zum Entfernen ------------------------------------------------ */
+/* --- Drop here to remove -------------------------------------------------- */
 
 .trash {
     display: grid;
@@ -1737,7 +2159,7 @@
     color: var(--c-debit);
 }
 
-/* --- Ausgewaehlte Kachel -------------------------------------------------- */
+/* --- The selected tile ---------------------------------------------------- */
 
 .detail {
     display: flex;
@@ -1786,5 +2208,480 @@
 
     .sheet__body {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   10. Roles and permissions
+   Two things: the line that explains inside a card why nothing can be
+   changed, and the matrix in which the owner changes it. No colours of its
+   own - everything comes from the same tokens as the rest.
+   -------------------------------------------------------------------------- */
+
+/* Once per card, not on every button. Deliberately quiet: this is a note,
+   not an error - nothing is broken, a permission is simply missing. */
+.denied {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s-2);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-base);
+    color: var(--c-text-muted);
+}
+
+.denied__icon {
+    margin-top: 3px;
+    color: var(--c-text-faint);
+}
+
+/* The way to put it right stands behind it, held back: important enough to
+   be there, too incidental to dominate the sentence. */
+.denied__where {
+    color: var(--c-text-faint);
+}
+
+/* --- The matrix ----------------------------------------------------------
+   Rows are capabilities, columns are roles. A real table, because it is one:
+   the header row stays put while scrolling and screen readers name the role
+   and the capability for every checkbox. */
+
+.matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-sm);
+}
+
+.matrix thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: var(--s-3) var(--s-2);
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-border-strong);
+    text-align: center;
+    vertical-align: bottom;
+}
+
+.matrix__role {
+    display: block;
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--c-text);
+}
+
+.matrix__note {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--fs-micro);
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--c-text-faint);
+}
+
+/* The section heading separates the areas without a second heading: the
+   same tracked caps line as everywhere else in the panel. */
+.matrix__group {
+    padding: var(--s-4) var(--s-2) var(--s-2);
+    text-align: left;
+    color: var(--c-text-faint);
+    border-bottom: 1px solid var(--c-border);
+}
+
+.matrix__what {
+    padding: var(--s-2);
+    text-align: left;
+    font-weight: 400;
+    vertical-align: top;
+}
+
+.matrix__label {
+    display: block;
+    color: var(--c-text);
+}
+
+/* The identifier is shown alongside, because that is exactly what appears
+   in the server's 403 response ("required: money.edit"). Without it you
+   would have to guess which row is meant. */
+.matrix__id {
+    display: block;
+    font-size: var(--fs-micro);
+    color: var(--c-text-faint);
+}
+
+.matrix__row:hover {
+    background: var(--c-surface-2);
+}
+
+.matrix__cell {
+    padding: var(--s-2);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.matrix__box {
+    width: 1.125rem;
+    height: 1.125rem;
+    cursor: pointer;
+}
+
+.matrix__box:disabled {
+    cursor: not-allowed;
+}
+
+/* The owner: not a dead checkbox that looks like a control, but a check
+   mark with the word next to it. */
+.matrix__always {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    color: var(--c-live);
+}
+
+.matrix__word {
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-text-faint);
+}
+
+/* --- Role and access in the top bar --------------------------------------- */
+
+.session__role {
+    flex: none;
+}
+
+.topbar__perms {
+    flex: none;
+}
+
+/* --- Bars outside the stage ----------------------------------------------
+   The warning and the permission note share one row of the grid, so the
+   scrolling area below keeps its height - even when both are showing at
+   the same time. */
+
+.banners {
+    position: relative;
+    z-index: 19;
+    display: flex;
+    flex-direction: column;
+}
+
+/* No alarm tone: a withdrawn permission is not an error but a change
+   somebody else made. */
+.banner--perm {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--gutter);
+    border-bottom: 1px solid var(--c-border);
+    background: var(--c-surface-2);
+    color: var(--c-text-muted);
+    font-size: var(--fs-sm);
+}
+
+.banner__text {
+    margin-right: auto;
+}
+
+@media (max-width: 860px) {
+    /* On narrow screens the table does not carry the identifier - the text
+       of the capability stays, and the columns get the room. */
+    .matrix__id {
+        display: none;
+    }
+
+    .matrix__word {
+        display: none;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   11. The server area
+   The second main area. Everything here belongs to the installation rather
+   than to a citizen, so it gets no billboard and no plate - there is no face
+   to put on it. It borrows the section bar, the panel and the data rows from
+   the citizen side unchanged; what follows is only what has no counterpart
+   there.
+   -------------------------------------------------------------------------- */
+
+/* --- The switch in the top bar -------------------------------------------
+   A segment control, the same one the modules use for their two- and
+   three-way choices. A second, bespoke kind of switch for the largest choice
+   on the screen would be one switch language too many. */
+
+.topbar__areas {
+    flex: none;
+}
+
+.topbar__areas .segment__btn {
+    padding-inline: var(--s-3);
+}
+
+/* Takes the width the search would have had. Without it the bridge and the
+   session slide left the moment the field goes, and the bar visibly
+   rearranges itself on every switch. */
+.topbar__spacer {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* --- The heading of the area ---------------------------------------------
+   Deliberately quiet next to the citizen billboard: that one carries a
+   portrait and a name, this one carries a sentence. Making it as loud would
+   claim a subject it does not have. */
+
+.areahead {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-6) var(--gutter) var(--s-5);
+}
+
+.areahead__title {
+    font-size: var(--fs-xl);
+}
+
+.areahead__lede {
+    max-width: 62ch;
+    color: var(--c-text-muted);
+}
+
+/* One column instead of the module grid. Used by the resource section, whose
+   three cards climb from harmless to dangerous - an order that only reads
+   when they sit one under the other rather than side by side. */
+.modules--stack {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* --- Counts side by side -------------------------------------------------
+   Built for the one number pair that must not be merged: how many people
+   work a job right now, and how many memberships are on record for it. Those
+   come from two different tables and can disagree, which is a fact about the
+   server rather than a rounding error. Two figures of equal size next to
+   each other say that; one averaged figure would hide it. */
+
+.tally {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-5);
+}
+
+.tally--wide {
+    gap: var(--s-2) var(--s-6);
+    padding: var(--s-3);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-control);
+}
+
+.tally__item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    min-width: 0;
+}
+
+.tally__value {
+    font-size: var(--fs-md);
+    font-weight: 600;
+}
+
+/* Not a zero. "There is no such number here" keeps the faint tone that every
+   unknown value in this panel wears. */
+.tally__value--none {
+    color: var(--c-text-faint);
+    font-weight: 400;
+}
+
+.tally__key {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+/* The line that names a disagreement between two counts. It stays in the
+   quiet meta tone - nothing is broken, the server simply holds two answers -
+   but it is set off far enough not to be skimmed past. */
+.line__meta--flag {
+    gap: 0;
+    padding-left: var(--s-3);
+    border-left: 2px solid var(--c-unknown-line);
+    color: var(--c-text-muted);
+}
+
+/* --- The opened organisation ---------------------------------------------
+   Account and members, unfolded inside the row rather than in an overlay:
+   what is read here is read against the numbers in the row above it. */
+
+.orgdetail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--c-border);
+}
+
+.orgdetail__part {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    min-width: 0;
+}
+
+.orgdetail__title {
+    color: var(--c-text-muted);
+}
+
+/* The two member lists side by side where there is room, because they are
+   read against each other - who is working it, and who is only on the books.
+   Stacked they would read as two unrelated lists. */
+.orgdetail__lists {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--s-4);
+    align-items: start;
+}
+
+.orgdetail__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    min-width: 0;
+}
+
+/* --- Key and value -------------------------------------------------------
+   The diagnostics read as a report: a fixed left column of names and the
+   readings against it. A real definition list, because that is what it is. */
+
+.kv {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    margin: 0;
+    font-size: var(--fs-sm);
+}
+
+.kv__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s-2) var(--s-3);
+    padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--c-border);
+}
+
+.kv__row:last-child {
+    border-bottom: 0;
+}
+
+.kv__key {
+    flex: 0 0 11rem;
+    color: var(--c-text-faint);
+}
+
+.kv__value {
+    flex: 1 1 10rem;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* A reading the server did not send. Named rather than left blank: an empty
+   row reads like a setting that is switched off. */
+.kv__value--none {
+    color: var(--c-text-faint);
+}
+
+/* --- A file, and what an export gave back --------------------------------
+   Whatever comes back is shown as it arrived: never reflowed, never
+   prettified beyond indentation. It scrolls inside its own box rather than
+   stretching the card. */
+
+.code {
+    max-height: 22rem;
+    margin: 0;
+    padding: var(--s-3);
+    overflow: auto;
+    background: var(--c-bg);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-control);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    color: var(--c-text-muted);
+    white-space: pre;
+    tab-size: 4;
+}
+
+/* --- The card that reaches into the running game server ------------------
+   The only card in the panel that is marked before anything has gone wrong.
+   Listing resources and reading a file are recoverable; calling an export
+   runs somebody else's code with the authority of the game server, and the
+   panel cannot tell which export does what. The tone that everywhere else
+   means "this destroys something" is therefore carried here in advance,
+   standing rather than appearing only on the confirmation step. */
+
+.panel--armed {
+    border-color: var(--c-debit-line);
+}
+
+.panel--armed .panel__head {
+    background: var(--c-debit-soft);
+    border-bottom-color: var(--c-debit-line);
+}
+
+.panel--armed .panel__icon {
+    color: var(--c-debit);
+}
+
+/* --- A list that is usually in the way -----------------------------------
+   Every table in the database is worth having but not worth reading, so it
+   folds away. A details element rather than state of our own: it keeps the
+   keyboard behaviour and works before any script runs. */
+
+.reveal {
+    border-top: 1px solid var(--c-border);
+    padding-top: var(--s-3);
+}
+
+.reveal__summary {
+    cursor: pointer;
+    font-size: var(--fs-sm);
+    color: var(--c-text-muted);
+}
+
+.reveal__summary:hover {
+    color: var(--c-text);
+}
+
+.reveal__body {
+    margin-top: var(--s-3);
+}
+
+@media (max-width: 900px) {
+    /* The switch keeps its labels but gives up its padding before the bar
+       wraps - "Citizens" and "Server" cannot be guessed from a glyph. */
+    .topbar__areas .segment__btn {
+        padding-inline: var(--s-2);
+    }
+
+    .areahead {
+        padding-block: var(--s-5) var(--s-4);
+    }
+}
+
+@media (max-width: 560px) {
+    /* The report loses its column and becomes stacked pairs: 11rem of names
+       plus a reading does not fit, and a squeezed column would break the
+       readings mid-word. */
+    .kv__key {
+        flex: 1 1 100%;
+    }
+
+    .kv__row {
+        gap: 0;
+        padding-block: var(--s-2);
     }
 }

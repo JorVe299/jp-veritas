@@ -3,15 +3,15 @@ import StatusNote from './StatusNote';
 import { useCatalog, CATALOG_LIMIT } from '../lib/useCatalog';
 
 /**
- * Auswahl aus einem der grossen Stammdatenkataloge (Items, Fahrzeuge).
+ * Selection from one of the large reference catalogs (items, vehicles).
  *
- * Bewusst kein <select>: bei rund 900 Fahrzeugen waere eine Klappliste weder
- * ladbar noch bedienbar. Stattdessen ein Suchfeld, das serverseitig filtert,
- * und darunter dieselbe Leiter, die im Job-Modul die Raenge traegt.
+ * Deliberately not a <select>: with around 900 vehicles a dropdown would be
+ * neither loadable nor operable. Instead a search field that filters on the
+ * server, and below it the same ladder that carries grades in the job module.
  *
- * Die getroffene Wahl bleibt sichtbar, auch wenn sie durch eine neue Suche
- * aus der Trefferliste faellt - sonst waere nicht mehr erkennbar, was beim
- * Abschicken eigentlich gesendet wird.
+ * The choice made stays visible even when a new search drops it out of the
+ * result list - otherwise it would no longer be clear what actually gets
+ * sent on submit.
  */
 export default function CatalogPicker({
     id,

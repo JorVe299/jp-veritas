@@ -1,8 +1,8 @@
-// Ein einziger, selbst gezeichneter Icon-Satz. Alle Symbole teilen sich
-// dasselbe 24er Raster, dieselbe Strichstaerke und dieselben Enden, damit
-// sie nebeneinander wie eine Familie wirken. Unicode-Zeichen als Ersatz
-// (⌕, ✓, ⚠) sind bewusst nirgends mehr im Einsatz: sie folgen der
-// Systemschrift und brechen die Linienfuehrung.
+// A single, self-drawn icon set. All symbols share the same 24px grid, the
+// same stroke weight and the same line caps, so that side by side they read
+// as one family. Unicode characters as substitutes (⌕, ✓, ⚠) are
+// deliberately no longer used anywhere: they follow the system font and
+// break the flow of the lines.
 
 const PATHS = {
     search: <><circle cx="11" cy="11" r="6.25" /><path d="M15.6 15.6 20 20" /></>,
@@ -24,6 +24,12 @@ const PATHS = {
     box: <><path d="M12 3.6 20.4 7.8v8.4L12 20.4 3.6 16.2V7.8Z" /><path d="M3.6 7.8 12 12l8.4-4.2" /><path d="M12 12v8.4" /></>,
     id: <><rect x="2.9" y="5" width="18.2" height="14" rx="2" /><circle cx="8.8" cy="10.8" r="2.2" /><path d="M5.5 16.3a3.9 3.9 0 0 1 6.6 0" /><path d="M14.8 10.2h3.8M14.8 13.6h3.8" /></>,
     pulse: <path d="M2.9 12h4.1l2-4.8 3.2 9.6 2.2-4.8h6.7" />,
+    ban: <><circle cx="12" cy="12" r="8.2" /><path d="M6.2 6.2 17.8 17.8" /></>,
+    users: <><circle cx="9.4" cy="9.2" r="3.1" /><path d="M3.6 19a5.9 5.9 0 0 1 11.6 0" /><path d="M16.2 6.4a3.1 3.1 0 0 1 0 5.8" /><path d="M17.4 14.4a5.9 5.9 0 0 1 3 4.6" /></>,
+    pin: <><path d="M12 20.6s6.2-5.6 6.2-10.2a6.2 6.2 0 0 0-12.4 0C5.8 15 12 20.6 12 20.6Z" /><circle cx="12" cy="10.2" r="2.3" /></>,
+    bolt: <path d="M13.4 3.2 5.6 13.4h5.2l-.6 7.4 7.8-10.2h-5.2Z" />,
+    // Two racked units: the installation itself, as opposed to the people on it.
+    server: <><rect x="3.2" y="4.6" width="17.6" height="6.2" rx="1.8" /><rect x="3.2" y="13.2" width="17.6" height="6.2" rx="1.8" /><path d="M6.8 7.7h.01M6.8 16.3h.01" /><path d="M16.4 7.7h2.2M16.4 16.3h2.2" /></>,
 };
 
 export default function Icon({ name, size = 18, className = '', title }) {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
+import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
 import CatalogPicker from './CatalogPicker';
 import { fetchPlayerInventory, updatePlayerInventory } from '../api';
@@ -11,33 +12,33 @@ const modeDetail = (mode) => (mode === 'live'
     ? 'Applied live on the server.'
     : 'The citizen is not connected, so the change went to the database.');
 
-// Gramm sind im Rohwert unlesbar; ox_inventory zeigt selbst Kilogramm.
+// Raw grams are unreadable; ox_inventory itself shows kilograms.
 function kg(grams) {
     const n = Number(grams) || 0;
     return `${(n / 1000).toFixed(2)} kg`;
 }
 
 /**
- * Das Inventar als Raster, dem im Spiel nachempfunden.
+ * The inventory as a grid, modelled on the one in the game.
  *
- * Die Kacheln sind echte Bedienelemente: ziehen verschiebt, tauscht oder
- * legt zusammen, ablegen auf dem Papierkorb bucht aus, der Katalog rechts
- * legt neue Items ein. Was am Ende zaehlt, entscheidet aber immer das
- * Backend - die Antwort jeder Mutation traegt die neue Belegung, und genau
- * die wird angezeigt. Nichts wird optimistisch vorweggenommen, sonst zeigte
- * das Raster nach einem abgelehnten Zug einen Zustand, den es nicht gibt.
+ * The tiles are real controls: dragging moves, swaps or merges, dropping on
+ * the bin books out, the catalog on the right puts new items in. What counts
+ * in the end is always decided by the backend - the answer to every mutation
+ * carries the new layout, and that is exactly what is displayed. Nothing is
+ * anticipated optimistically, otherwise after a rejected move the grid would
+ * show a state that does not exist.
  */
-export default function InventorySheet({ citizenid, playerName, onClose, onApplied }) {
+export default function InventorySheet({ citizenid, playerName, canEdit = false, onClose, onApplied }) {
     const [state, setState] = useState({ status: 'loading', data: null, error: null });
     const [feedback, setFeedback] = useState(null);
     const [busy, setBusy] = useState(false);
     const [dragging, setDragging] = useState(null); // { kind: 'slot'|'catalog', ... }
-    const [dropTarget, setDropTarget] = useState(null); // Slotnummer oder 'trash'
-    const [selected, setSelected] = useState(null); // Slotnummer
+    const [dropTarget, setDropTarget] = useState(null); // slot number or 'trash'
+    const [selected, setSelected] = useState(null); // slot number
     const closeRef = useRef(null);
 
-    // Erstes Laden. Das cancelled-Flag verhindert, dass eine spaete Antwort
-    // eine bereits geschlossene Flaeche noch beschreibt.
+    // First load. The cancelled flag keeps a late answer from writing into
+    // a sheet that has already been closed.
     useEffect(() => {
         let cancelled = false;
         fetchPlayerInventory(citizenid)
@@ -50,8 +51,8 @@ export default function InventorySheet({ citizenid, playerName, onClose, onAppli
         return () => { cancelled = true; };
     }, [citizenid]);
 
-    // Escape schliesst. Der Fokus landet beim Oeffnen auf dem Schliessen-Knopf,
-    // damit Tastaturbedienung nicht hinter der Flaeche weiterlaeuft.
+    // Escape closes. On opening, focus lands on the close button so that
+    // keyboard operation does not carry on behind the sheet.
     useEffect(() => {
         const onKey = (e) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', onKey);
@@ -62,17 +63,27 @@ export default function InventorySheet({ citizenid, playerName, onClose, onAppli
     const data = state.data || {};
     const items = Array.isArray(data.items) ? data.items : [];
     const maxSlots = Number(data.maxSlots) || 41;
-    const canReorder = data.canReorder !== false;
+    // Two reasons why nothing can be moved, and they must not be confused:
+    // the server is holding the inventory itself right now (serverLocked),
+    // or one's own role may not (canEdit). Both lock the same tiles, but
+    // each of them needs its own sentence.
+    const serverLocked = data.canReorder === false;
+    const canReorder = canEdit && !serverLocked;
 
     const bySlot = new Map(items.map((it) => [it.slot, it]));
     const used = Number(data.totalWeight) || 0;
     const max = Number(data.maxWeight) || 0;
     const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
 
-    // Jede Mutation laeuft hier durch: entweder liefert die Antwort die neue
-    // Belegung mit (Offline-Weg), oder wir holen sie nach (Live-Weg, dort
-    // kennt nur der Server das Ergebnis).
+    // Every mutation runs through here: either the answer carries the new
+    // layout (offline route), or we fetch it afterwards (live route, where
+    // only the server knows the result).
     const mutate = useCallback(async (change, logText) => {
+        // Last barrier in the frontend. The backend rejects it anyway; this
+        // one is here so a drag that slipped through does not even look
+        // like an operation.
+        if (!canEdit) return false;
+
         setBusy(true);
         setFeedback(null);
         try {
@@ -107,15 +118,15 @@ export default function InventorySheet({ citizenid, playerName, onClose, onAppli
         } finally {
             setBusy(false);
         }
-    }, [citizenid, onApplied]);
+    }, [canEdit, citizenid, onApplied]);
 
-    // --- Ziehen und Ablegen ------------------------------------------------
+    // --- Drag and drop -----------------------------------------------------
 
     const startSlotDrag = (e, item) => {
         if (!canReorder || busy) { e.preventDefault(); return; }
         setDragging({ kind: 'slot', slot: item.slot, name: item.name, label: item.label, amount: item.amount });
         e.dataTransfer.effectAllowed = 'move';
-        // Firefox startet ohne gesetzte Daten gar keinen Zug.
+        // Without data set, Firefox does not start a drag at all.
         e.dataTransfer.setData('text/plain', String(item.slot));
     };
 
@@ -241,7 +252,11 @@ export default function InventorySheet({ citizenid, playerName, onClose, onAppli
                             </div>
                         </div>
 
-                        {!canReorder && (
+                        {/* Once per sheet, right at the top of the column:
+                            the reason why nothing works below. */}
+                        {!canEdit && <PermissionLine what="add, remove or move items" />}
+
+                        {canEdit && serverLocked && (
                             <StatusNote
                                 tone="warn"
                                 title="Slots cannot be rearranged right now"
@@ -253,6 +268,7 @@ export default function InventorySheet({ citizenid, playerName, onClose, onAppli
                             <SlotDetail
                                 item={selectedItem}
                                 busy={busy}
+                                canEdit={canEdit}
                                 onSet={(amount) => mutate(
                                     { action: 'set', item: selectedItem.name, amount, slot: selectedItem.slot },
                                     `${selectedItem.label} set to ${amount}x`,
@@ -264,12 +280,22 @@ export default function InventorySheet({ citizenid, playerName, onClose, onAppli
                             />
                         )}
 
-                        <CatalogDrag
-                            disabled={busy}
-                            onDragItem={setDragging}
-                            onDragEnd={endDrag}
-                        />
+                        {canEdit && (
+                            <CatalogAdd
+                                disabled={busy}
+                                onAdd={(name, amount, label) => mutate(
+                                    { action: 'add', item: name, amount },
+                                    `${amount}x ${label} added`,
+                                )}
+                                onDragItem={setDragging}
+                                onDragEnd={endDrag}
+                            />
+                        )}
 
+                        {/* The bin stays even without the permission: it is
+                            part of explaining the grid. Without the
+                            permission no tile can be picked up at all, so
+                            nothing ever reaches it. */}
                         <div
                             className={`trash${dropTarget === 'trash' ? ' trash--armed' : ''}`}
                             onDragOver={(e) => allowDrop(e, 'trash')}
@@ -277,7 +303,11 @@ export default function InventorySheet({ citizenid, playerName, onClose, onAppli
                             onDrop={dropOnTrash}
                         >
                             <Icon name="cross" size={18} />
-                            <span>Drop a tile here to remove it</span>
+                            <span>
+                                {canEdit
+                                    ? 'Drop a tile here to remove it'
+                                    : 'Removing items needs inventory.edit'}
+                            </span>
                         </div>
 
                         {feedback && (
@@ -332,7 +362,7 @@ function Slot({
     );
 }
 
-function SlotDetail({ item, busy, onSet, onRemove }) {
+function SlotDetail({ item, busy, canEdit, onSet, onRemove }) {
     const [amount, setAmount] = useState(String(item.amount));
     const parsed = parseAmount(amount);
     const valid = Number.isInteger(parsed) && parsed >= 0;
@@ -360,7 +390,7 @@ function SlotDetail({ item, busy, onSet, onRemove }) {
                     autoComplete="off"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    disabled={busy}
+                    disabled={busy || !canEdit}
                 />
                 {!valid && <span className="field__hint">Enter a whole number from 0.</span>}
             </div>
@@ -369,7 +399,7 @@ function SlotDetail({ item, busy, onSet, onRemove }) {
                 <button
                     type="button"
                     className="btn btn--primary btn--sm"
-                    disabled={!dirty || busy}
+                    disabled={!dirty || busy || !canEdit}
                     onClick={() => onSet(parsed)}
                 >
                     {busy ? 'Saving…' : 'Set'}
@@ -377,7 +407,7 @@ function SlotDetail({ item, busy, onSet, onRemove }) {
                 <button
                     type="button"
                     className="btn btn--danger btn--sm"
-                    disabled={busy}
+                    disabled={busy || !canEdit}
                     onClick={onRemove}
                 >
                     Remove
@@ -387,14 +417,20 @@ function SlotDetail({ item, busy, onSet, onRemove }) {
     );
 }
 
-// Aus dem Katalog wird nicht geklickt, sondern gezogen: dasselbe Verhalten
-// wie zwischen zwei Kacheln, damit es nur eine Bedienlogik gibt.
-function CatalogDrag({ disabled, onDragItem, onDragEnd }) {
+// Two ways in, on purpose.
+//
+// The button is the plain one: it hands the item to the backend without a
+// slot, and the backend drops it on the first free one. Dragging is for
+// when the slot matters. Everything else in this sheet has a button, and
+// adding being drag-only made it look broken to anyone who did not think
+// to drag a tile.
+function CatalogAdd({ disabled, onAdd, onDragItem, onDragEnd }) {
     const [picked, setPicked] = useState(null);
     const [amount, setAmount] = useState('1');
 
     const parsed = parseAmount(amount);
     const validAmount = Number.isInteger(parsed) && parsed > 0;
+    const ready = Boolean(picked) && validAmount && !disabled;
 
     return (
         <div className="detail">
@@ -426,8 +462,8 @@ function CatalogDrag({ disabled, onDragItem, onDragEnd }) {
             </div>
 
             <div
-                className={`slot slot--filled${picked && validAmount ? '' : ' slot--empty'}`}
-                draggable={Boolean(picked) && validAmount && !disabled}
+                className={`slot slot--filled${ready ? '' : ' slot--empty'}`}
+                draggable={ready}
                 onDragStart={(e) => {
                     if (!picked || !validAmount) { e.preventDefault(); return; }
                     onDragItem({
@@ -449,9 +485,22 @@ function CatalogDrag({ disabled, onDragItem, onDragEnd }) {
                     </span>
                 </span>
                 <span className="slot__label">
-                    {picked && validAmount ? 'Drag onto a slot' : 'Pick an item first'}
+                    {ready ? 'Drag onto a slot' : 'Pick an item first'}
                 </span>
             </div>
+
+            <button
+                type="button"
+                className="btn btn--primary btn--sm"
+                disabled={!ready}
+                onClick={() => onAdd(picked.key, parsed, picked.label || picked.key)}
+            >
+                {disabled ? 'Working…' : 'Add to inventory'}
+            </button>
+            <span className="field__hint">
+                Lands on the first free slot. Drag the tile above instead to
+                choose the slot yourself.
+            </span>
         </div>
     );
 }

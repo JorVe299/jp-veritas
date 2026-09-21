@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from './Icon';
+import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
 import {
     fetchPlayerMetadata,
@@ -7,6 +8,7 @@ import {
     updatePlayerLicense,
     updatePlayerStatus,
 } from '../api';
+import { useCan } from '../lib/useCan';
 import { usePlayerResource } from '../lib/usePlayerResource';
 
 const LICENCES = [
@@ -16,8 +18,8 @@ const LICENCES = [
     { key: 'pilot', label: 'Pilot licence' },
 ];
 
-// Die vier Bedürfnisse teilen sich die Skala 0-100, die Haftzeit hat eine
-// eigene und gehoert deshalb nicht an denselben Regler.
+// The four needs share the 0-100 scale; jail time has one of its own and
+// therefore does not belong on the same slider.
 const GAUGES = [
     { key: 'hunger', label: 'Hunger' },
     { key: 'thirst', label: 'Thirst' },
@@ -34,22 +36,42 @@ const modeDetail = (mode) => (mode === 'live'
 const errorText = (err) => err.response?.data?.error || err.message;
 
 /**
- * Lizenzen, Zustandswerte und Charakterdaten.
+ * Licenses, status values and character data.
  *
- * Drei Karten statt einer: die Lizenzen schalten sofort, die Statuswerte
- * werden im Block gespeichert, und die Charakterdaten sind ein Formular mit
- * eigener Folge (die Aenderung greift erst beim naechsten Login). In einer
- * Karte haetten drei verschiedene Speicherlogiken nebeneinander gestanden.
+ * Three cards instead of one: the licenses switch immediately, the status
+ * values are saved as a block, and the character data is a form with a
+ * consequence of its own (the change only takes effect on the next login).
+ * In one card three different saving models would have sat side by side.
  *
- * Die beiden datengetriebenen Karten werden erst gemountet, wenn die
- * Metadaten da sind, und bekommen ein key aus dem Ladestand - damit
- * initialisiert ihr State sich aus den Daten, ohne ihn in einem Effect
- * nachtraeglich zu synchronisieren.
+ * The two data-driven cards are only mounted once the metadata is there,
+ * and they get a key from the load state - that way their state initializes
+ * from the data without having to be synchronized afterwards in an
+ * effect.
+ *
+ * `show` selects which of the three cards are rendered. By subject they do
+ * not actually belong together: licenses and character data describe who
+ * someone is, while status describes how they are doing right now. They
+ * therefore sit in different sections of the module wall, but share this
+ * one data source.
  */
-export default function PlayerDataManager({ selectedPlayer, onApplied }) {
+export default function PlayerDataManager({ selectedPlayer, onApplied, show = ['licences', 'condition', 'charinfo'] }) {
     const citizenid = selectedPlayer?.citizenid;
+    const wants = (part) => show.includes(part);
 
-    const res = usePlayerResource(fetchPlayerMetadata, citizenid);
+    /* The special case among the modules: three cards, three permissions.
+       Licenses and status both read /metadata and need metadata.view for
+       that - without it they are not mounted at all, otherwise their load
+       call would run into a 403. The character data loads nothing extra:
+       it already sits in the selected citizen. That is why its card stays
+       even without metadata.view. */
+    const { can } = useCan();
+    const canViewMeta = can('metadata.view');
+    const canEditLicences = can('licenses.edit');
+    const canEditStatus = can('status.edit');
+    const canEditCharinfo = can('charinfo.edit');
+
+    // Without the read permission nothing loads: no citizenid, no call.
+    const res = usePlayerResource(fetchPlayerMetadata, canViewMeta ? citizenid : null);
     const data = res.data || {};
     const ready = res.status === 'ready';
 
@@ -57,63 +79,75 @@ export default function PlayerDataManager({ selectedPlayer, onApplied }) {
 
     return (
         <>
-            <section className="panel" aria-labelledby="lic-panel-title">
-                <header className="panel__head">
-                    <Icon name="id" size={18} className="panel__icon" />
-                    <div>
-                        <h2 className="panel__title" id="lic-panel-title">Licences</h2>
-                        <p className="panel__hint">Each toggle saves immediately</p>
-                    </div>
-                </header>
+            {canViewMeta && wants('licences') && (
+                <section className="panel" aria-labelledby="lic-panel-title">
+                    <header className="panel__head">
+                        <Icon name="id" size={18} className="panel__icon" />
+                        <div>
+                            <h2 className="panel__title" id="lic-panel-title">Licences</h2>
+                            <p className="panel__hint">
+                                {canEditLicences ? 'Each toggle saves immediately' : 'What this citizen holds'}
+                            </p>
+                        </div>
+                    </header>
 
-                <div className="panel__body">
-                    <LoadState res={res} what="Licences" />
-                    {ready && (
-                        <LicenceBoard
-                            key={`lic-${citizenid}`}
+                    <div className="panel__body">
+                        {!canEditLicences && <PermissionLine what="grant or revoke licences" />}
+                        <LoadState res={res} what="Licences" />
+                        {ready && (
+                            <LicenceBoard
+                                key={`lic-${citizenid}`}
+                                citizenid={citizenid}
+                                licences={data.licences || {}}
+                                canEdit={canEditLicences}
+                                onReport={report}
+                            />
+                        )}
+                    </div>
+                </section>
+            )}
+
+            {canViewMeta && wants('condition') && (
+                <section className="panel" aria-labelledby="status-panel-title">
+                    <header className="panel__head">
+                        <Icon name="pulse" size={18} className="panel__icon" />
+                        <div>
+                            <h2 className="panel__title" id="status-panel-title">Condition</h2>
+                            <p className="panel__hint">Needs, armor and jail time</p>
+                        </div>
+                    </header>
+
+                    {ready ? (
+                        <StatusBoard
+                            key={`status-${citizenid}`}
                             citizenid={citizenid}
-                            licences={data.licences || {}}
+                            meta={data}
+                            canEdit={canEditStatus}
                             onReport={report}
                         />
+                    ) : (
+                        <div className="panel__body">
+                            <LoadState res={res} what="Condition values" />
+                        </div>
                     )}
-                </div>
-            </section>
+                </section>
+            )}
 
-            <section className="panel" aria-labelledby="status-panel-title">
-                <header className="panel__head">
-                    <Icon name="pulse" size={18} className="panel__icon" />
-                    <div>
-                        <h2 className="panel__title" id="status-panel-title">Condition</h2>
-                        <p className="panel__hint">Needs, armor and jail time</p>
-                    </div>
-                </header>
-
-                {ready ? (
-                    <StatusBoard
-                        key={`status-${citizenid}`}
-                        citizenid={citizenid}
-                        meta={data}
-                        onReport={report}
-                    />
-                ) : (
-                    <div className="panel__body">
-                        <LoadState res={res} what="Condition values" />
-                    </div>
-                )}
-            </section>
-
-            <CharinfoBoard
-                citizenid={citizenid}
-                charinfo={selectedPlayer?.charinfo || {}}
-                onApplied={onApplied}
-            />
+            {wants('charinfo') && (
+                <CharinfoBoard
+                    citizenid={citizenid}
+                    charinfo={selectedPlayer?.charinfo || {}}
+                    canEdit={canEditCharinfo}
+                    onApplied={onApplied}
+                />
+            )}
         </>
     );
 }
 
-// Laden, Fehler und "gibt es in diesem Schema nicht" sehen in allen drei
-// Karten gleich aus und stehen deshalb nur einmal hier.
-// `what` ist immer eine Mehrzahl, damit die Saetze unten aufgehen.
+// Loading, errors and "does not exist in this schema" look the same in all
+// three cards and therefore stand here only once.
+// `what` is always a plural so that the sentences below work out.
 function LoadState({ res, what }) {
     if (res.status === 'loading') return <p className="field__hint">Loading {what.toLowerCase()}…</p>;
 
@@ -141,10 +175,10 @@ function LoadState({ res, what }) {
 }
 
 /* -------------------------------------------------------------------------
-   Lizenzen: vier Umschalter, die einzeln schreiben.
+   Licenses: four toggles that write individually.
    ------------------------------------------------------------------------- */
 
-function LicenceBoard({ citizenid, licences, onReport }) {
+function LicenceBoard({ citizenid, licences, canEdit, onReport }) {
     const [values, setValues] = useState(() => {
         const start = {};
         LICENCES.forEach(({ key }) => { start[key] = Boolean(licences[key]); });
@@ -154,7 +188,7 @@ function LicenceBoard({ citizenid, licences, onReport }) {
     const [feedback, setFeedback] = useState(null);
 
     const toggle = async (key, label, next) => {
-        if (values[key] === next || pending) return;
+        if (!canEdit || values[key] === next || pending) return;
 
         setPending(key);
         setFeedback(null);
@@ -195,7 +229,7 @@ function LicenceBoard({ citizenid, licences, onReport }) {
                                     className="segment__btn"
                                     aria-pressed={held}
                                     onClick={() => toggle(key, label, true)}
-                                    disabled={Boolean(pending)}
+                                    disabled={Boolean(pending) || !canEdit}
                                 >
                                     <Icon name="check" size={14} />
                                     Granted
@@ -205,7 +239,7 @@ function LicenceBoard({ citizenid, licences, onReport }) {
                                     className="segment__btn segment__btn--debit"
                                     aria-pressed={!held}
                                     onClick={() => toggle(key, label, false)}
-                                    disabled={Boolean(pending)}
+                                    disabled={Boolean(pending) || !canEdit}
                                 >
                                     <Icon name="cross" size={14} />
                                     Revoked
@@ -225,10 +259,10 @@ function LicenceBoard({ citizenid, licences, onReport }) {
 }
 
 /* -------------------------------------------------------------------------
-   Zustand: vier Regler auf 0-100 plus Haftzeit.
+   Status: four sliders on 0-100 plus jail time.
    ------------------------------------------------------------------------- */
 
-function StatusBoard({ citizenid, meta, onReport }) {
+function StatusBoard({ citizenid, meta, canEdit, onReport }) {
     const status = meta.status || {};
     const start = () => {
         const initial = {};
@@ -237,9 +271,9 @@ function StatusBoard({ citizenid, meta, onReport }) {
         return initial;
     };
 
-    // Der Ausgangspunkt wird nach dem Speichern mitgezogen, statt die Karte
-    // neu zu laden: ein Remount wuerde die Rueckmeldung mitnehmen, die den
-    // Vorgang gerade erst bestaetigt hat.
+    // The baseline is carried along after saving instead of reloading the
+    // card: a remount would take away the feedback that has only just
+    // confirmed the operation.
     const [base, setBase] = useState(start);
     const [values, setValues] = useState(start);
     const [saving, setSaving] = useState(false);
@@ -251,7 +285,7 @@ function StatusBoard({ citizenid, meta, onReport }) {
         const n = Number(value);
         return value !== '' && Number.isFinite(n) && n >= 0 && n <= max;
     });
-    const canSave = changed.length > 0 && allValid && !saving;
+    const canSave = changed.length > 0 && allValid && !saving && canEdit;
 
     const set = (key, value) => {
         setValues((prev) => ({ ...prev, [key]: value }));
@@ -265,8 +299,8 @@ function StatusBoard({ citizenid, meta, onReport }) {
         setSaving(true);
         setFeedback(null);
         try {
-            // Nur schicken, was sich tatsaechlich bewegt hat: das Backend
-            // nimmt jedes Feld einzeln entgegen.
+            // Send only what actually moved: the backend takes each field
+            // on its own.
             const changes = {};
             changed.forEach((key) => { changes[key] = Number(values[key]); });
 
@@ -302,6 +336,8 @@ function StatusBoard({ citizenid, meta, onReport }) {
     return (
         <form className="panel__form" onSubmit={handleSubmit}>
             <div className="panel__body">
+                {!canEdit && <PermissionLine what="change condition values" />}
+
                 {flags.length > 0 && (
                     <div className="line__meta">
                         {flags.map((flag) => <span key={flag}>{flag}</span>)}
@@ -316,7 +352,7 @@ function StatusBoard({ citizenid, meta, onReport }) {
                         max={100}
                         value={values[key]}
                         onChange={(value) => set(key, value)}
-                        disabled={saving}
+                        disabled={saving || !canEdit}
                     />
                 ))}
 
@@ -326,7 +362,7 @@ function StatusBoard({ citizenid, meta, onReport }) {
                     max={JAIL_MAX}
                     value={values.jailtime}
                     onChange={(value) => set('jailtime', value)}
-                    disabled={saving}
+                    disabled={saving || !canEdit}
                 />
 
                 {feedback && (
@@ -348,8 +384,8 @@ function StatusBoard({ citizenid, meta, onReport }) {
     );
 }
 
-// Regler und Zahlenfeld zeigen denselben Wert: der Regler ist zum Schaetzen
-// da, das Feld zum genauen Setzen.
+// Slider and number field show the same value: the slider is for estimating,
+// the field for setting it exactly.
 function Gauge({ id, label, value, onChange, max, disabled }) {
     return (
         <div className="field">
@@ -396,11 +432,11 @@ function gaugeLabel(key) {
 }
 
 /* -------------------------------------------------------------------------
-   Charakterdaten. Quelle ist der ausgewaehlte Citizen, nicht /metadata -
-   deshalb reicht hier das key={citizenid} aus App.jsx.
+   Character data. The source is the selected citizen, not /metadata -
+   which is why the key={citizenid} from App.jsx is enough here.
    ------------------------------------------------------------------------- */
 
-function CharinfoBoard({ citizenid, charinfo, onApplied }) {
+function CharinfoBoard({ citizenid, charinfo, canEdit, onApplied }) {
     const [firstname, setFirstname] = useState(charinfo.firstname ?? '');
     const [lastname, setLastname] = useState(charinfo.lastname ?? '');
     const [phone, setPhone] = useState(charinfo.phone ?? '');
@@ -410,7 +446,7 @@ function CharinfoBoard({ citizenid, charinfo, onApplied }) {
     const isDirty = firstname !== (charinfo.firstname ?? '')
         || lastname !== (charinfo.lastname ?? '')
         || phone !== (charinfo.phone ?? '');
-    const canSave = isDirty && firstname.trim() !== '' && lastname.trim() !== '' && !saving;
+    const canSave = isDirty && firstname.trim() !== '' && lastname.trim() !== '' && !saving && canEdit;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -431,8 +467,8 @@ function CharinfoBoard({ citizenid, charinfo, onApplied }) {
             setFeedback({
                 tone: answer.data?.hint ? 'warn' : 'success',
                 title: answer.data?.message || 'Character details saved',
-                // Der Hinweis des Backends ist hier die eigentliche Nachricht:
-                // die Aenderung greift erst beim naechsten Login.
+                // The backend's hint is the actual message here: the change
+                // only takes effect on the next login.
                 detail: [modeDetail(mode), answer.data?.hint].filter(Boolean).join(' '),
             });
 
@@ -463,6 +499,8 @@ function CharinfoBoard({ citizenid, charinfo, onApplied }) {
 
             <form className="panel__form" onSubmit={handleSubmit}>
                 <div className="panel__body">
+                    {!canEdit && <PermissionLine what="rename this citizen or change their phone number" />}
+
                     <div className="panel__row">
                         <div className="field">
                             <label className="field__label" htmlFor="char-firstname">First name</label>
@@ -473,7 +511,7 @@ function CharinfoBoard({ citizenid, charinfo, onApplied }) {
                                 autoComplete="off"
                                 value={firstname}
                                 onChange={(e) => { setFirstname(e.target.value); setFeedback(null); }}
-                                disabled={saving}
+                                disabled={saving || !canEdit}
                             />
                         </div>
 
@@ -486,7 +524,7 @@ function CharinfoBoard({ citizenid, charinfo, onApplied }) {
                                 autoComplete="off"
                                 value={lastname}
                                 onChange={(e) => { setLastname(e.target.value); setFeedback(null); }}
-                                disabled={saving}
+                                disabled={saving || !canEdit}
                             />
                         </div>
                     </div>
@@ -500,7 +538,7 @@ function CharinfoBoard({ citizenid, charinfo, onApplied }) {
                             autoComplete="off"
                             value={phone}
                             onChange={(e) => { setPhone(e.target.value); setFeedback(null); }}
-                            disabled={saving}
+                            disabled={saving || !canEdit}
                         />
                     </div>
 

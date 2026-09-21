@@ -8,15 +8,15 @@ const INITIAL = {
 };
 
 /**
- * Laedt einen Teildatensatz eines Citizens (Fahrzeuge, Inventar, Metadaten).
+ * Loads one partial record of a citizen (vehicles, inventory, metadata).
  *
- * Der Sonderfall, der hier eigens auftaucht: HTTP 501 heisst nicht "leer",
- * sondern "diese Tabelle gibt es in diesem Schema nicht". Eine leere Liste
- * zu zeigen waere an der Stelle eine Falschaussage - das Modul meldet sich
- * stattdessen als nicht verfuegbar ab.
+ * The special case that shows up explicitly here: HTTP 501 does not mean
+ * "empty" but "this table does not exist in this schema". Showing an empty
+ * list would be a false statement at that point - instead the module signs
+ * itself off as unavailable.
  *
- * `loader` muss stabil sein (die Helfer aus api.js sind es), sonst laeuft
- * der Effect bei jedem Rendern erneut.
+ * `loader` has to be stable (the helpers from api.js are), otherwise the
+ * effect runs again on every render.
  */
 export function usePlayerResource(loader, citizenid, reloadToken = 0) {
     const [state, setState] = useState(INITIAL);
@@ -24,8 +24,8 @@ export function usePlayerResource(loader, citizenid, reloadToken = 0) {
     useEffect(() => {
         if (!citizenid) return undefined;
 
-        // Gegen Race Conditions: eine aeltere Antwort darf eine neuere nach
-        // einem Reload nicht ueberschreiben.
+        // Against race conditions: an older answer must not overwrite a
+        // newer one after a reload.
         let cancelled = false;
 
         loader(citizenid)

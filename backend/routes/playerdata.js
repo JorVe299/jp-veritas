@@ -1,14 +1,14 @@
 // backend/routes/playerdata.js
-// Lizenzen, Spielerstatus (Hunger/Durst/Stress/Haftzeit) und Charakterdaten.
-// Alles davon liegt in JSON-Spalten der players-Tabelle.
+// Licences, player condition (hunger/thirst/stress/jail time) and character
+// details. All of it lives in JSON columns of the players table.
 const express = require('express');
 const { db, parseJSON, updatePlayerColumn, getTableColumns } = require('../utils/dbHandler');
 const { isPlayerOnline, callBridge } = require('../utils/bridge');
 
 const router = express.Router();
 
-// QBCore schreibt "licences" (britisch), manche Forks "licenses".
-// Wir lesen beides und schreiben in den Schlüssel zurück, der schon da ist.
+// QBCore writes "licences" (British), some forks "licenses".
+// We read both and write back into whichever key is already there.
 function licenceKey(metadata) {
     if (metadata && typeof metadata.licenses === 'object' && metadata.licenses !== null) return 'licenses';
     return 'licences';
@@ -16,8 +16,8 @@ function licenceKey(metadata) {
 
 const KNOWN_LICENCES = ['driver', 'business', 'weapon', 'pilot'];
 
-// Numerische Statuswerte, die ein Admin sinnvoll setzen darf,
-// jeweils mit erlaubtem Bereich.
+// Numeric condition values an admin may sensibly set, each with its
+// permitted range.
 const STATUS_FIELDS = {
     hunger: [0, 100],
     thirst: [0, 100],
@@ -32,7 +32,7 @@ async function loadMetadata(citizenid) {
     return parseJSON(rows[0].metadata);
 }
 
-// --- Lesen ----------------------------------------------------------------
+// --- Reading --------------------------------------------------------------
 router.get('/api/players/:citizenid/metadata', async (req, res) => {
     try {
         const metadata = await loadMetadata(req.params.citizenid);
@@ -63,7 +63,7 @@ router.get('/api/players/:citizenid/metadata', async (req, res) => {
     }
 });
 
-// --- Lizenz setzen --------------------------------------------------------
+// --- Set a licence --------------------------------------------------------
 router.post('/api/manage/license', async (req, res) => {
     const { citizenid, license, value } = req.body;
 
@@ -80,7 +80,7 @@ router.post('/api/manage/license', async (req, res) => {
         const key = licenceKey(metadata);
         metadata[key] = { ...(metadata[key] || {}), [license]: value };
 
-        // Online muss der Core es setzen, sonst überschreibt er es beim Speichern
+        // While online the core has to set it, otherwise it overwrites us on save
         if (await isPlayerOnline(citizenid)) {
             await callBridge('/update-metadata', { citizenid, key, value: metadata[key] });
             return res.json({
@@ -103,7 +103,7 @@ router.post('/api/manage/license', async (req, res) => {
     }
 });
 
-// --- Status setzen (Hunger, Durst, Stress, Rüstung, Haftzeit) -------------
+// --- Set condition (hunger, thirst, stress, armor, jail time) -------------
 router.post('/api/manage/status', async (req, res) => {
     const { citizenid, changes } = req.body;
 
@@ -147,7 +147,7 @@ router.post('/api/manage/status', async (req, res) => {
     }
 });
 
-// --- Charakterdaten ändern (Name, Telefonnummer) --------------------------
+// --- Change character details (name, phone number) ------------------------
 router.post('/api/manage/charinfo', async (req, res) => {
     const { citizenid, firstname, lastname, phone } = req.body;
     if (!citizenid) return res.status(400).json({ error: 'citizenid is missing' });
@@ -180,8 +180,8 @@ router.post('/api/manage/charinfo', async (req, res) => {
         const charinfo = { ...parseJSON(rows[0].charinfo), ...changes };
         await updatePlayerColumn(citizenid, 'charinfo', charinfo);
 
-        // Qbox hält die Nummer doppelt: in charinfo.phone und in der Spalte
-        // phone_number. Nur eine davon zu ändern lässt beide auseinanderlaufen.
+        // Qbox keeps the number twice: in charinfo.phone and in the
+        // phone_number column. Changing only one lets them drift apart.
         if (changes.phone !== undefined) {
             const columns = await getTableColumns('players');
             if (columns.includes('phone_number')) {
@@ -189,8 +189,8 @@ router.post('/api/manage/charinfo', async (req, res) => {
             }
         }
 
-        // Charinfo wird vom Core nur beim Laden gelesen - bei einem online
-        // eingeloggten Spieler greift die Änderung erst beim nächsten Login.
+        // The core only reads charinfo on load - for a player who is signed
+        // in the change takes effect at their next login.
         const online = await isPlayerOnline(citizenid);
 
         res.json({

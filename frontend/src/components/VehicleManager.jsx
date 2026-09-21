@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import Icon from './Icon';
+import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
 import CatalogPicker from './CatalogPicker';
 import { createVehicle, deleteVehicle, fetchPlayerVehicles, updateVehicle } from '../api';
+import { useCan } from '../lib/useCan';
 import { usePlayerResource } from '../lib/usePlayerResource';
 import { formatMoney } from '../utils/format';
 
-// 0/1/2 kommen so aus der Datenbank. Das Backend liefert zu jedem Fahrzeug
-// ein stateLabel mit; diese Tabelle traegt die Bedienelemente und springt
-// nur dann ein, wenn das Label fehlt.
+// 0/1/2 come out of the database that way. The backend supplies a
+// stateLabel with every vehicle; this table carries the controls and only
+// steps in when the label is missing.
 const STATES = [
     { value: 1, label: 'In garage', pill: 'pill--live' },
     { value: 0, label: 'Out', pill: 'pill--off' },
@@ -24,26 +26,30 @@ const modeDetail = (mode) => (mode === 'live'
 const errorText = (err) => err.response?.data?.error || err.message;
 
 /**
- * Fahrzeuge eines Citizens. Bewusst zwei Karten statt einer:
- * der Bestand wird gelesen und einzeln korrigiert, das Anlegen ist ein
- * eigener Vorgang mit eigener Modellsuche - in einer Karte wuerden beide
- * einander im Weg stehen.
+ * A citizen's vehicles. Deliberately two cards instead of one:
+ * the record is read and corrected row by row, while adding is an operation
+ * of its own with its own model search - in a single card the two would get
+ * in each other's way.
  *
- * App.jsx gibt dem Modul ein key={citizenid}, deshalb startet der State
- * beim Wechsel des Citizens von selbst neu.
+ * App.jsx gives the module a key={citizenid}, so the state restarts by
+ * itself when the citizen changes.
  */
 export default function VehicleManager({ selectedPlayer, onApplied }) {
+    const { can } = useCan();
+    const canEdit = can('vehicles.edit');
+
     const citizenid = selectedPlayer?.citizenid;
     const [version, setVersion] = useState(0);
     const [listFeedback, setListFeedback] = useState(null);
+    const [addOpen, setAddOpen] = useState(false);
 
     const res = usePlayerResource(fetchPlayerVehicles, citizenid, version);
     const vehicles = Array.isArray(res.data?.vehicles) ? res.data.vehicles : [];
 
     const reload = () => setVersion((v) => v + 1);
 
-    // Ein abgeschlossener Schreibvorgang gehoert ins Protokoll im Kopfbereich,
-    // auch wenn er am Citizen-Datensatz selbst nichts aendert.
+    // A completed write belongs in the log in the header area, even when it
+    // changes nothing on the citizen record itself.
     const report = (mode, text) => onApplied?.({}, { mode, text });
 
     return (
@@ -58,6 +64,8 @@ export default function VehicleManager({ selectedPlayer, onApplied }) {
                 </header>
 
                 <div className="panel__body">
+                    {!canEdit && <PermissionLine what="add, change or delete vehicles" />}
+
                     {res.status === 'unavailable' && (
                         <StatusNote
                             tone="warn"
@@ -86,6 +94,7 @@ export default function VehicleManager({ selectedPlayer, onApplied }) {
                                 <VehicleRow
                                     key={vehicle.id}
                                     vehicle={vehicle}
+                                    canEdit={canEdit}
                                     onFeedback={setListFeedback}
                                     onChanged={reload}
                                     onReport={report}
@@ -102,15 +111,70 @@ export default function VehicleManager({ selectedPlayer, onApplied }) {
                         />
                     )}
                 </div>
+
+                {/* Adding has its own model search and used to sit beside
+                    the record as a second card - a whole column for an
+                    operation that is rarely needed. Behind the button it no
+                    longer blocks the record, just as with the inventory. */}
+                {res.status !== 'unavailable' && (
+                    <footer className="panel__foot">
+                        <span className="panel__footinfo">
+                            {canEdit ? 'Register another vehicle' : 'Read-only'}
+                        </span>
+                        <button
+                            type="button"
+                            className="btn btn--ghost"
+                            onClick={() => setAddOpen(true)}
+                            disabled={res.status === 'error'}
+                        >
+                            <Icon name="plus" size={15} />
+                            Add vehicle
+                        </button>
+                    </footer>
+                )}
             </section>
 
-            {res.status !== 'unavailable' && (
-                <VehicleAdd
-                    citizenid={citizenid}
-                    disabled={res.status === 'error'}
-                    onAdded={reload}
-                    onReport={report}
-                />
+            {addOpen && (
+                <div className="sheet" role="dialog" aria-modal="true" aria-label="Add vehicle">
+                    <button
+                        className="sheet__backdrop"
+                        type="button"
+                        aria-label="Close add vehicle"
+                        onClick={() => setAddOpen(false)}
+                    />
+
+                    <div className="sheet__panel">
+                        <header className="sheet__head">
+                            <Icon name="plus" size={20} />
+                            <div className="sheet__heading">
+                                <h2 className="sheet__title">Add vehicle</h2>
+                                <p className="sheet__sub">
+                                    Register a vehicle to {selectedPlayer?.name || citizenid}.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                onClick={() => setAddOpen(false)}
+                            >
+                                Close
+                            </button>
+                        </header>
+
+                        {/* The sheet stays open after adding: whoever enters
+                            one vehicle often enters the second right after,
+                            and the record behind it is already up to date. */}
+                        <div className="sheet__body sheet__body--single">
+                            <VehicleAdd
+                                citizenid={citizenid}
+                                canEdit={canEdit}
+                                disabled={res.status === 'error' || !canEdit}
+                                onAdded={reload}
+                                onReport={report}
+                            />
+                        </div>
+                    </div>
+                </div>
             )}
         </>
     );
@@ -124,16 +188,16 @@ function listHint(res, count) {
 }
 
 /* -------------------------------------------------------------------------
-   Eine Zeile des Bestands: lesen, bearbeiten, loeschen.
+   One row of the record: read, edit, delete.
    ------------------------------------------------------------------------- */
 
-function VehicleRow({ vehicle, onFeedback, onChanged, onReport }) {
+function VehicleRow({ vehicle, canEdit, onFeedback, onChanged, onReport }) {
     const [editing, setEditing] = useState(false);
     const [plate, setPlate] = useState(vehicle.plate ?? '');
     const [garage, setGarage] = useState(vehicle.garage ?? '');
     const [state, setState] = useState(String(vehicle.state ?? 1));
-    // Zwei Schritte statt confirm(): der Knopf wechselt seine Beschriftung
-    // und bleibt dort stehen, bis bestaetigt oder abgebrochen wird.
+    // Two steps instead of confirm(): the button changes its label and
+    // stays there until confirmed or dismissed.
     const [confirming, setConfirming] = useState(false);
     const [busy, setBusy] = useState(false);
 
@@ -300,7 +364,7 @@ function VehicleRow({ vehicle, onFeedback, onChanged, onReport }) {
                         type="button"
                         className="btn btn--ghost btn--sm"
                         onClick={startEdit}
-                        disabled={busy}
+                        disabled={busy || !canEdit}
                     >
                         Edit
                     </button>
@@ -330,7 +394,7 @@ function VehicleRow({ vehicle, onFeedback, onChanged, onReport }) {
                         type="button"
                         className="btn btn--ghost btn--sm"
                         onClick={() => { setConfirming(true); onFeedback(null); }}
-                        disabled={busy}
+                        disabled={busy || !canEdit}
                     >
                         Delete
                     </button>
@@ -341,10 +405,10 @@ function VehicleRow({ vehicle, onFeedback, onChanged, onReport }) {
 }
 
 /* -------------------------------------------------------------------------
-   Zweite Karte: ein Fahrzeug anlegen.
+   Second card: add a vehicle.
    ------------------------------------------------------------------------- */
 
-function VehicleAdd({ citizenid, disabled, onAdded, onReport }) {
+function VehicleAdd({ citizenid, canEdit, disabled, onAdded, onReport }) {
     const [model, setModel] = useState(null); // { key, name, brand, price }
     const [plate, setPlate] = useState('');
     const [garage, setGarage] = useState('');
@@ -391,90 +455,82 @@ function VehicleAdd({ citizenid, disabled, onAdded, onReport }) {
     };
 
     return (
-        <section className="panel" aria-labelledby="veh-add-title">
-            <header className="panel__head">
-                <Icon name="plus" size={18} className="panel__icon" />
-                <div>
-                    <h2 className="panel__title" id="veh-add-title">Add vehicle</h2>
-                    <p className="panel__hint">Pick a model from the catalog</p>
-                </div>
-            </header>
+        <form className="panel__form" onSubmit={handleSubmit}>
+            <div className="panel__body">
+                {!canEdit && <PermissionLine what="register vehicles" />}
 
-            <form className="panel__form" onSubmit={handleSubmit}>
-                <div className="panel__body">
-                    <CatalogPicker
-                        id="veh-model"
-                        kind="vehicles"
-                        label="Model"
-                        placeholder="Search by model or manufacturer"
-                        selected={model?.key ?? ''}
-                        selectedLabel={model ? [model.brand, model.name].filter(Boolean).join(' ') : ''}
-                        onSelect={(entry) => { setModel(entry); setFeedback(null); }}
-                        disabled={saving || disabled}
-                        title={(entry) => [entry.brand, entry.name].filter(Boolean).join(' ') || entry.key}
-                        meta={(entry) => (Number.isFinite(Number(entry.price)) ? formatMoney(entry.price) : '')}
-                    />
+                <CatalogPicker
+                    id="veh-model"
+                    kind="vehicles"
+                    label="Model"
+                    placeholder="Search by model or manufacturer"
+                    selected={model?.key ?? ''}
+                    selectedLabel={model ? [model.brand, model.name].filter(Boolean).join(' ') : ''}
+                    onSelect={(entry) => { setModel(entry); setFeedback(null); }}
+                    disabled={saving || disabled}
+                    title={(entry) => [entry.brand, entry.name].filter(Boolean).join(' ') || entry.key}
+                    meta={(entry) => (Number.isFinite(Number(entry.price)) ? formatMoney(entry.price) : '')}
+                />
 
-                    <div className="panel__row">
-                        <div className="field">
-                            <label className="field__label" htmlFor="veh-add-plate">Plate</label>
-                            <input
-                                id="veh-add-plate"
-                                className="input u-mono"
-                                type="text"
-                                autoComplete="off"
-                                placeholder="generated"
-                                value={plate}
-                                onChange={(e) => { setPlate(e.target.value); setFeedback(null); }}
-                                disabled={saving || disabled}
-                            />
-                            <span className="field__hint">Leave empty and the server assigns one.</span>
-                        </div>
-
-                        <div className="field">
-                            <label className="field__label" htmlFor="veh-add-garage">Garage</label>
-                            <input
-                                id="veh-add-garage"
-                                className="input"
-                                type="text"
-                                autoComplete="off"
-                                placeholder="Default"
-                                value={garage}
-                                onChange={(e) => { setGarage(e.target.value); setFeedback(null); }}
-                                disabled={saving || disabled}
-                            />
-                        </div>
+                <div className="panel__row">
+                    <div className="field">
+                        <label className="field__label" htmlFor="veh-add-plate">Plate</label>
+                        <input
+                            id="veh-add-plate"
+                            className="input u-mono"
+                            type="text"
+                            autoComplete="off"
+                            placeholder="generated"
+                            value={plate}
+                            onChange={(e) => { setPlate(e.target.value); setFeedback(null); }}
+                            disabled={saving || disabled}
+                        />
+                        <span className="field__hint">Leave empty and the server assigns one.</span>
                     </div>
 
                     <div className="field">
-                        <label className="field__label" htmlFor="veh-add-state">Status</label>
-                        <select
-                            id="veh-add-state"
-                            className="select"
-                            value={state}
-                            onChange={(e) => { setState(e.target.value); setFeedback(null); }}
+                        <label className="field__label" htmlFor="veh-add-garage">Garage</label>
+                        <input
+                            id="veh-add-garage"
+                            className="input"
+                            type="text"
+                            autoComplete="off"
+                            placeholder="Default"
+                            value={garage}
+                            onChange={(e) => { setGarage(e.target.value); setFeedback(null); }}
                             disabled={saving || disabled}
-                        >
-                            {STATES.map((s) => (
-                                <option key={s.value} value={String(s.value)}>{s.label}</option>
-                            ))}
-                        </select>
+                        />
                     </div>
-
-                    {feedback && (
-                        <StatusNote tone={feedback.tone} title={feedback.title} detail={feedback.detail} />
-                    )}
                 </div>
 
-                <footer className="panel__foot">
-                    <span className="panel__footinfo">
-                        {model ? (model.name || model.key) : 'No model selected'}
-                    </span>
-                    <button type="submit" className="btn btn--primary" disabled={!canSave}>
-                        {saving ? 'Creating…' : 'Create vehicle'}
-                    </button>
-                </footer>
-            </form>
-        </section>
+                <div className="field">
+                    <label className="field__label" htmlFor="veh-add-state">Status</label>
+                    <select
+                        id="veh-add-state"
+                        className="select"
+                        value={state}
+                        onChange={(e) => { setState(e.target.value); setFeedback(null); }}
+                        disabled={saving || disabled}
+                    >
+                        {STATES.map((s) => (
+                            <option key={s.value} value={String(s.value)}>{s.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {feedback && (
+                    <StatusNote tone={feedback.tone} title={feedback.title} detail={feedback.detail} />
+                )}
+            </div>
+
+            <footer className="panel__foot">
+                <span className="panel__footinfo">
+                    {model ? (model.name || model.key) : 'No model selected'}
+                </span>
+                <button type="submit" className="btn btn--primary" disabled={!canSave}>
+                    {saving ? 'Creating…' : 'Create vehicle'}
+                </button>
+            </footer>
+        </form>
     );
 }

@@ -1,28 +1,39 @@
 // backend/routes/auth.js
-// Die vier Endpunkte des Anmeldevorgangs.
+// The four endpoints of the sign-in flow.
 //
-// /login und /callback sind Browser-Navigationen, keine XHR-Aufrufe: sie
-// antworten mit Weiterleitungen. /me und /logout sind normale JSON-Routen.
+// /login and /callback are browser navigations, not XHR calls: they answer
+// with redirects. /me and /logout are ordinary JSON routes.
 const express = require('express');
 const crypto = require('crypto');
 const auth = require('../utils/auth');
+const { charactersOf } = require('../utils/identity');
+const { capabilitiesOf } = require('../utils/permissions');
 
 const router = express.Router();
 
-// Wohin nach Anmeldung oder Fehler zurueckgesprungen wird.
-// Immer aus der eigenen Konfiguration, nie aus der Anfrage - sonst
-// waere das hier eine offene Weiterleitung. Im Dev zeigt PANEL_URL auf den
-// Vite-Server, im Betrieb liefert dasselbe Backend das Panel unter '/' aus.
-const PANEL_URL = process.env.PANEL_URL || '/';
+// Where to return after signing in or failing. Always from our own
+// configuration, never from the request - otherwise this would be an open
+// redirect.
+// The same variable as for CORS: the Vite server in dev, empty in
+// production, where the same backend serves the panel under '/'.
+const PANEL_URL = process.env.PANEL_ORIGIN || '/';
 
-function panelRedirect(res, params) {
+// The two surfaces this installation serves, and the only two paths a
+// sign-in can return to. The request picks a KEY from this table; it never
+// supplies a path of its own, which is what keeps this from turning into
+// an open redirect.
+const SURFACE_PATHS = { panel: '', portal: '/id' };
+const SURFACE_COOKIE = 'veritas_oauth_surface';
+
+function panelRedirect(res, params, surface) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    res.redirect(`${PANEL_URL}${query}`);
+    const base = PANEL_URL.endsWith('/') ? PANEL_URL.slice(0, -1) : PANEL_URL;
+    res.redirect(`${base}${SURFACE_PATHS[surface] || '/'}${query}`);
 }
 
-// --- Wer bin ich ----------------------------------------------------------
-// Die einzige Route, die das Frontend beim Start braucht. Antwortet immer
-// mit 200, damit "nicht angemeldet" kein Fehlerfall im Frontend ist.
+// --- Who am I -------------------------------------------------------------
+// The only route the frontend needs at startup. Always answers with 200 so
+// that "not signed in" is not an error case in the frontend.
 router.get('/api/auth/me', (req, res) => {
     if (!auth.ENABLED) {
         return res.json({
@@ -42,42 +53,55 @@ router.get('/api/auth/me', (req, res) => {
     });
 });
 
-// --- Anmeldung starten ----------------------------------------------------
+// --- Start the sign-in ----------------------------------------------------
 router.get('/api/auth/login', (req, res) => {
     if (!auth.ENABLED) return panelRedirect(res);
 
     const { url, state } = auth.buildAuthorizeUrl();
 
-    // Kurzlebiges Cookie, nur fuer den Rueckweg. 10 Minuten reichen fuer
-    // den Discord-Dialog und lassen einen abgebrochenen Versuch verfallen.
+    // Where this sign-in started. A citizen who opens Veritas ID and signs
+    // in has to come back to Veritas ID - without this they land on the
+    // admin panel for a moment and are bounced from there.
+    const surface = req.query.surface === 'portal' ? 'portal' : 'panel';
+    res.cookie(SURFACE_COOKIE, surface, auth.cookieOptions(10 * 60 * 1000));
+
+    // Short-lived cookie, only for the return trip. Ten minutes is enough
+    // for the Discord dialog and lets an abandoned attempt expire.
     res.cookie(auth.STATE_COOKIE, state, auth.cookieOptions(10 * 60 * 1000));
     res.redirect(url);
 });
 
-// --- Rueckweg von Discord -------------------------------------------------
+// --- Return trip from Discord ---------------------------------------------
 router.get('/api/auth/callback', async (req, res) => {
     if (!auth.ENABLED) return panelRedirect(res);
 
     const { code, state, error: oauthError } = req.query;
 
-    // Der Nutzer hat im Discord-Dialog abgebrochen
+    // Read back where this started, and answer there from here on - a
+    // failure has to be reported on the surface the person is looking at.
+    // An unknown value falls back to the panel rather than being trusted.
+    const from = req.cookies?.[SURFACE_COOKIE] === 'portal' ? 'portal' : 'panel';
+    res.clearCookie(SURFACE_COOKIE, { path: '/' });
+    const back = (params, surface) => panelRedirect(res, params, surface || from);
+
+    // The user cancelled in the Discord dialog
     if (oauthError) {
-        return panelRedirect(res, { auth: 'cancelled' });
+        return back({ auth: 'cancelled' });
     }
 
     const expected = req.cookies?.[auth.STATE_COOKIE];
     res.clearCookie(auth.STATE_COOKIE, { path: '/' });
 
     if (!code || !state || !expected) {
-        return panelRedirect(res, { auth: 'error', reason: 'Incomplete callback from Discord.' });
+        return back({ auth: 'error', reason: 'Incomplete callback from Discord.' });
     }
 
-    // Zeitkonstanter Vergleich: der state ist ein Geheimnis auf Zeit.
+    // Constant-time comparison: the state is a secret with a short life.
     const a = Buffer.from(String(state));
     const b = Buffer.from(String(expected));
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
         console.warn('[Auth] state mismatch on callback - request rejected');
-        return panelRedirect(res, { auth: 'error', reason: 'Login request could not be verified. Please try again.' });
+        return back({ auth: 'error', reason: 'Login request could not be verified. Please try again.' });
     }
 
     try {
@@ -86,23 +110,58 @@ router.get('/api/auth/callback', async (req, res) => {
         const guild = await auth.fetchGuildRoles(accessToken);
         const verdict = auth.authorize(user, guild);
 
-        if (!verdict.allowed) {
-            console.warn(`[Auth] denied: ${user.username} (${user.id}) - ${verdict.reason}`);
-            return panelRedirect(res, { auth: 'denied', reason: verdict.reason });
+        // Two separate doors. A panel role opens the admin panel; being a
+        // member of the Discord with at least one character opens Veritas
+        // ID. Most people have exactly one of the two, some have both, and
+        // whoever has neither is turned away.
+        let portal = false;
+        if (guild.member) {
+            try {
+                const own = await charactersOf(user.id);
+                portal = Boolean(own && !own.unsupported && own.characters.length > 0);
+            } catch (e) {
+                // A database that is down must not silently downgrade
+                // someone to "no characters" - say so instead.
+                console.error('[Auth] character lookup failed during sign-in:', e.message);
+                return back({ auth: 'error', reason: 'Could not reach the character database. Try again shortly.' });
+            }
         }
 
-        auth.issueSession(res, user, verdict.via);
-        console.log(`[Auth] signed in: ${user.username} (${user.id}) via ${verdict.via}`);
-        panelRedirect(res, { auth: 'ok' });
+        if (!verdict.allowed && !portal) {
+            const reason = auth.GUILD_ID && !guild.member
+                ? 'You are not a member of the Discord server for this community.'
+                : 'This Discord account has no panel role and no character on this server.';
+            console.warn(`[Auth] denied: ${user.username} (${user.id}) - ${reason}`);
+            return back({ auth: 'denied', reason });
+        }
+
+        auth.issueSession(res, user, verdict.via || 'portal', verdict.role, portal);
+
+        // Where this account can actually get to work. Holding a role is
+        // not the same as being able to use the panel: a role whose
+        // capabilities have all been taken away reaches nothing there. The
+        // frontend draws the same line, and the two have to agree or one
+        // will bounce what the other just sent.
+        const usesPanel = Boolean(verdict.role) && capabilitiesOf(verdict.role).length > 0;
+
+        // Someone who cannot use the panel goes to Veritas ID whichever
+        // door they came through, provided they can use that. Everyone else
+        // returns to where they started - unless that was Veritas ID and
+        // they cannot use it, which would land them on their own 403.
+        const landing = (!usesPanel && portal) ? 'portal'
+            : (from === 'portal' && portal ? 'portal' : 'panel');
+
+        console.log(`[Auth] signed in: ${user.username} (${user.id}) role=${verdict.role || '-'} portal=${portal} -> ${landing}`);
+        back({ auth: 'ok' }, landing);
 
     } catch (e) {
-        // Discord-Fehler gehoeren ins Log, nicht in die URL des Browsers
+        // Discord errors belong in the log, not in the browser's URL
         console.error('[Auth] callback failed:', e.response?.data || e.message);
-        panelRedirect(res, { auth: 'error', reason: 'Discord did not complete the login.' });
+        back({ auth: 'error', reason: 'Discord did not complete the login.' });
     }
 });
 
-// --- Abmelden -------------------------------------------------------------
+// --- Sign out -------------------------------------------------------------
 router.post('/api/auth/logout', (req, res) => {
     auth.clearSession(res);
     res.json({ status: 'success', message: 'Signed out' });

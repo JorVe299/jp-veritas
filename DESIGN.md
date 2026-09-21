@@ -106,6 +106,32 @@ spacing:
   gutter: "clamp(1rem, 3.2vw, 2.75rem)"
   rail-gap: "0.625rem"
 components:
+  home-wordmark:
+    typography: "Archivo 800, wdth 70, uppercase, tracking 0.1em"
+    fontSize: "clamp(2.5rem, 6vw, 4.5rem)"
+    textColor: "{colors.bone}"
+  home-chip:
+    backgroundColor: "rgba(13, 12, 11, 0.66)"
+    borderColor: "{colors.asphalt-border-strong}"
+    rounded: "{rounded.pill}"
+    padding: "0.5rem 0.75rem"
+    typography: "{typography.body-small}"
+  destination-row:
+    backgroundColor: "{colors.asphalt-surface}"
+    borderColor: "{colors.asphalt-border}"
+    padding: "1rem"
+    maxWidth: "56rem"
+  section-tab:
+    textColor: "{colors.bone-faint}"
+    typography: "{typography.micro-caps}"
+    padding: "0.75rem 0.75rem calc(0.75rem - 2px)"
+    borderBottom: "2px solid transparent"
+  section-tab-active:
+    textColor: "{colors.bone}"
+    borderBottom: "2px solid {colors.focus-white}"
+  section-tab-live:
+    dotColor: "{colors.live-green}"
+    dotSize: "0.4375rem"
   button-default:
     backgroundColor: "{colors.asphalt-surface-3}"
     textColor: "{colors.bone}"
@@ -312,6 +338,26 @@ Borders are 1px, single-weight, in two tones: a quiet hairline inside panels and
 - **Press:** all buttons have honest travel — `translateY(1px) scale(0.995)` over 0.08s.
 - **Disabled:** flattens into the surface (surface fill, quiet border, faint text, `not-allowed`) rather than fading out at reduced opacity.
 - **Focus:** a 2px pure-white `:focus-visible` outline at 2px offset, inherited from the global rule.
+
+### Start page
+
+- **Reached by:** the wordmark in the top bar, as on any other site. It is deliberately *not* a third button in the area switch — that switch is for the two places work happens, and a third entry there would imply home was one of them.
+- **Not the default on load.** The panel still opens on Citizens, because the load-bearing task is a repair measured in seconds and a home page would add a click to every session. One line in `Workspace` changes that if the owner prefers otherwise.
+- **Hero:** the mark at 44px beside the wordmark at display scale over a generated wide plate, seeded `veritas-home` so it is the same picture every time — the one place in the panel where the product introduces itself.
+- **Chips, not a dashboard.** Two at most: the bridge state with the count it actually reported, and the signed-in role. Nothing appears here that would still be shown if its check had failed; there is no uptime, no session count, no "all systems healthy".
+- **On the server now:** the same `Rail` component the citizen wall uses, exported rather than re-implemented. Selecting a tile opens that citizen and moves to the Citizens area.
+- **The paging gap is named.** The roster is paged, so the bridge usually counts more connected citizens than the loaded page holds. The difference is spelled out in a line under the rail instead of being smoothed over — the same honesty rule as "offline" versus "unverified".
+- **Destinations are a list, not a card grid:** rows of icon, name, one line of what actually stands behind it, and a chevron; capped at 56rem so the chevron stays near its label. Only destinations the role may enter are offered.
+
+### Section tabs
+- **Job:** the citizen workspace carries up to thirteen panels. They are grouped into five sections — Identity, Money, Assets, Session, Enforcement — and only the active section is mounted, so an admin reads three panels instead of thirteen.
+- **Style:** micro-caps at width-axis 105, faint by default, bone when active, with a 2px pure-white bottom border on the active tab. That white is the same single chrome accent the poster tile's focus ring uses; the tabs introduce no new colour.
+- **Position:** sticky to the top of the scrolling stage, so the section stays reachable while a long panel (Vehicles, Bans) runs past the fold.
+- **Live dot:** the Session tab carries a live-green dot only when the citizen is on the server *and* the bridge is reachable — never when status is merely unverified.
+- **Availability:** a section whose panels are all hidden by permissions is not offered, and the active section falls back to the first available one if a right is withdrawn mid-session.
+- **Narrow screens:** below 560px the inactive tabs drop their labels to icons and the active one keeps its word, so all five hold one row without scrolling.
+- **Keyboard:** a real `tablist` — arrow keys move between tabs and carry focus with them; each panel container is the labelled `tabpanel`.
+- **Persistence:** the chosen section survives switching citizens, because correcting ten balances in a row should not mean re-selecting Money ten times.
 
 ### Inputs / Fields
 - **Style:** 40px tall, surface-2 fill, 1px strong border, 5px radius, bone text, faint placeholder. A field is a stacked group: micro-caps label, control, optional faint hint.

@@ -1,24 +1,26 @@
 // backend/routes/system.js
-// Diagnose und Wartung. Bewusst ausführlich: die Fehler in diesem Projekt
-// waren bisher fast alle stumm - eine Bridge, die nicht antwortet, oder eine
-// Datenbank, die nicht zum Gameserver gehört, sehen von außen gleich aus.
+// Diagnostics and maintenance. Deliberately verbose: almost every fault in
+// this project so far has been silent - a bridge that does not answer and a
+// database that does not belong to the game server look identical from the
+// outside.
 const express = require('express');
 const axios = require('axios');
-const { getTableColumns, tableExists, clearSchemaCache } = require('../utils/dbHandler');
+const { getTableColumns, tableExists, clearSchemaCache, listTables } = require('../utils/dbHandler');
 const { loadGameData, getJobs, getItems, getVehicles } = require('../utils/dataLoader');
 const { FIVEM_API_URL, BRIDGE_TIMEOUT } = require('../utils/bridge');
+const txadmin = require('../utils/txadmin');
 const { checkDatabaseMatchesServer } = require('./players');
 
 const router = express.Router();
 
-// Tabellen/Spalten, auf die sich die Verwaltungsmodule stützen
+// Tables and columns the management modules rely on
 const REQUIRED = {
     players: ['citizenid', 'charinfo', 'job', 'money', 'inventory', 'metadata'],
     player_vehicles: ['citizenid', 'vehicle', 'plate', 'garage', 'state'],
 };
 
-// Zeigt genau, was die Bridge antwortet, und gleicht es gegen die DB ab.
-// Gedacht zum Debuggen von "alle Spieler werden als offline angezeigt".
+// Shows exactly what the bridge answers and checks it against the database.
+// Meant for debugging "every player shows up as offline".
 router.get('/api/system/bridge', async (req, res) => {
     const url = `${FIVEM_API_URL}/get-online-players`;
     const started = Date.now();
@@ -28,8 +30,8 @@ router.get('/api/system/bridge', async (req, res) => {
         const isObject = r.data && typeof r.data === 'object' && !Array.isArray(r.data);
         const onlineIDs = isObject ? r.data : {};
 
-        // Gegenprobe gegen die Datenbank - das ist der Punkt, an dem sich
-        // "Spieler ist wirklich offline" von "falsche Datenbank" trennt
+        // Cross-check against the database - this is where "the player
+        // really is offline" parts ways with "wrong database"
         let dbCheck;
         try {
             const mismatch = await checkDatabaseMatchesServer(onlineIDs);
@@ -46,7 +48,7 @@ router.get('/api/system/bridge', async (req, res) => {
             latencyMs: Date.now() - started,
             httpStatus: r.status,
             contentType: r.headers['content-type'] || null,
-            // Lua macht aus einer leeren Table [] - dann ist schlicht niemand online
+            // Lua turns an empty table into [] - then simply nobody is online
             payloadShape: Array.isArray(r.data) ? 'array (= nobody online)' : typeof r.data,
             onlineCount: Object.keys(onlineIDs).length,
             citizenids: Object.keys(onlineIDs),
@@ -66,12 +68,12 @@ router.get('/api/system/bridge', async (req, res) => {
     }
 });
 
-// Welche Tabellen und Spalten findet das Backend tatsächlich vor?
-// Damit lässt sich vorab klären, ob Fahrzeug- und Inventarverwaltung
-// auf diesem Schema überhaupt funktionieren können.
+// Which tables and columns does the backend actually find?
+// This settles up front whether vehicle and inventory management can work
+// on this schema at all.
 router.get('/api/system/schema', async (req, res) => {
     try {
-        clearSchemaCache(); // bewusst frisch lesen, das ist eine Diagnose-Route
+        clearSchemaCache(); // deliberately read fresh, this is a diagnostics route
 
         const report = {};
         for (const [table, needed] of Object.entries(REQUIRED)) {
@@ -94,7 +96,13 @@ router.get('/api/system/schema', async (req, res) => {
             database: process.env.DB_NAME,
             ok: problems.length === 0,
             problems,
-            tables: report
+            tables: report,
+            // The full list, so it is visible which further modules this
+            // schema would support.
+            allTables: await listTables(),
+            // ?inspect=a,b,c shows the columns of further tables - useful for
+            // checking whether a module fits this schema.
+            inspected: await inspectTables(req.query.inspect)
         });
     } catch (e) {
         console.error('[System] schema check failed:', e.message);
@@ -102,10 +110,43 @@ router.get('/api/system/schema', async (req, res) => {
     }
 });
 
-// Route zum Neuladen der JSON-Daten ohne Neustart
+async function inspectTables(raw) {
+    const names = String(raw || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
+    const out = {};
+    for (const name of names) {
+        // Table names come from the URL; getTableColumns queries them as a
+        // bound parameter, so no interpolation is involved here.
+        out[name] = await getTableColumns(name);
+    }
+    return names.length ? out : undefined;
+}
+
+// Whether txAdmin's ban record can be reached, and from where.
+//
+// Veritas ID answers this per player, but only ever to that player and only
+// as "could not be read". Whoever runs the server needs the other half: the
+// path that was tried and why it did not work. That belongs here, with the
+// rest of the diagnostics, not in front of a citizen.
+router.get('/api/system/txadmin', async (req, res) => {
+    try {
+        const state = await txadmin.status();
+        res.json({
+            ...state,
+            configured: Boolean((process.env.TXADMIN_DB_PATH || '').trim()),
+            showsBanAuthor: txadmin.SHOW_AUTHOR,
+            // So a reader can tell "found nothing" from "never looked".
+            searched: state.available ? undefined : 'TXADMIN_DB_PATH, then a txData folder near the panel',
+        });
+    } catch (e) {
+        console.error('[System] txAdmin check failed:', e.message);
+        res.status(500).json({ available: false, reason: 'The txAdmin check itself failed', hint: e.message });
+    }
+});
+
+// Route for reloading the JSON data without a restart
 router.post('/api/system/refresh', (req, res) => {
     try {
-        loadGameData(); // Führt Sync & Load erneut aus
+        loadGameData(); // runs sync and load again
         console.log('[System] Hot reload of the game data done.');
         res.json({
             success: true,

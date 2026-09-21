@@ -3,22 +3,22 @@ import StatusNote from './StatusNote';
 import { authFeedback } from '../lib/authFeedback';
 
 /**
- * Der Vorraum: alles, was zu sehen ist, solange keine bestaetigte Sitzung
- * vorliegt. Drei Zustaende, bewusst in einem Bauteil, weil sie dieselbe
- * ruhige Flaeche teilen und ineinander uebergehen.
+ * The antechamber: everything that is visible as long as no confirmed
+ * session exists. Three states, deliberately in one component, because they
+ * share the same quiet surface and flow into one another.
  *
- *   'loading'  - die Sitzung wird geprueft. Hier steht ausdruecklich weder
- *                Panel noch Login, sonst blitzt der Login bei jedem Reload auf.
- *   'signin'   - niemand angemeldet.
- *   'offline'  - /api/auth/me selbst hat nicht geantwortet. Eigener Zustand,
- *                denn "Backend tot" ist nicht "du bist nicht angemeldet".
+ *   'loading'  - the session is being checked. Expressly neither panel nor
+ *                login here, otherwise the login flashes up on every reload.
+ *   'signin'   - nobody signed in.
+ *   'offline'  - /api/auth/me itself did not answer. A state of its own,
+ *                because "backend dead" is not "you are not signed in".
  *
- * Keine Spielerliste, keine leeren Karten im Hintergrund.
+ * No player list, no empty cards in the background.
  */
 
-// Meldung auf dem Anmeldebildschirm. Was in dieser Sitzung passiert ist,
-// hat Vorrang vor der Rueckmeldung aus der Adresszeile: die ist aelter und
-// nach einem Abmelden nicht mehr wahr.
+// The message on the sign-in screen. What happened during this session takes
+// precedence over the feedback from the address bar: that one is older and
+// no longer true after a sign-out.
 function noteFor(notice, feedback) {
     if (notice === 'expired') {
         return {
@@ -59,8 +59,8 @@ function noteFor(notice, feedback) {
                 detail: feedback.reason || 'Discord returned an unexpected error. Please try again.',
             };
         case 'ok':
-            // Discord hat bestaetigt, aber /api/auth/me kennt keine Sitzung:
-            // fast immer blockierte Cookies. Das ist eine eigene Aussage.
+            // Discord confirmed, but /api/auth/me knows of no session:
+            // almost always blocked cookies. That is a statement of its own.
             return {
                 tone: 'warn',
                 title: 'Signed in, but no session was kept',

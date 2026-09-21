@@ -1,8 +1,8 @@
 import { useId } from 'react';
 import { getPlate } from '../lib/plate';
 
-// Der Palmen-Umriss liegt einmal als <symbol> im Dokument. Jede Kachel
-// referenziert ihn per <use>, statt denselben Pfad 15x zu wiederholen.
+// The palm outline sits in the document once as a <symbol>. Every tile
+// references it via <use> instead of repeating the same path 15 times.
 export function PlateSprite() {
     return (
         <svg className="sprite" aria-hidden="true" focusable="false">
@@ -20,11 +20,11 @@ export function PlateSprite() {
 }
 
 /**
- * Das erzeugte Schluesselbild eines Citizens.
+ * The generated key image of a citizen.
  *
- * `shape` waehlt den Zuschnitt: 'poster' fuer die Kacheln, 'wide' fuer den
- * Kopfbereich. Das Breitbild wird eigens erzeugt statt das Hochformat zu
- * beschneiden - sonst bliebe von der Komposition nur ein Mittelstreifen.
+ * `shape` picks the crop: 'poster' for the tiles, 'wide' for the header
+ * area. The widescreen one is generated in its own right instead of cropping
+ * the portrait - otherwise only a middle strip of the composition would stay.
  */
 export default function Plate({ citizenid, shape = 'poster', className = '' }) {
     const plate = getPlate(citizenid, shape);
@@ -57,9 +57,9 @@ export default function Plate({ citizenid, shape = 'poster', className = '' }) {
                     <stop offset="55%" stopColor={sky.light} stopOpacity={overcast ? '0.14' : '0.22'} />
                     <stop offset="100%" stopColor={sky.light} stopOpacity="0" />
                 </radialGradient>
-                {/* Dunst braucht weiche Kanten. Als einfaches Rechteck wird
-                    daraus im Breitbild - rund sechsfach vergroessert - ein
-                    Balken mit harter Ober- und Unterkante. */}
+                {/* Haze needs soft edges. As a plain rectangle it turns into
+                    a bar with a hard top and bottom edge in the widescreen
+                    crop, where it is scaled up about sixfold. */}
                 <linearGradient id={bandId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={sky.haze} stopOpacity="0" />
                     <stop offset="50%" stopColor={sky.haze} stopOpacity="1" />
@@ -69,14 +69,14 @@ export default function Plate({ citizenid, shape = 'poster', className = '' }) {
 
             <rect width={width} height={height} fill={`url(#${skyId})`} />
 
-            {/* Lichtquelle: erst der weiche Hof, dann die harte Scheibe.
-                Ein bedeckter Himmel behaelt den Hof und verliert die Scheibe. */}
+            {/* Light source: first the soft halo, then the hard disc.
+                An overcast sky keeps the halo and loses the disc. */}
             <circle cx={light.x} cy={light.y} r={light.r * light.glow} fill={`url(#${glowId})`} />
             {!overcast && (
                 <circle cx={light.x} cy={light.y} r={light.r} fill={sky.light} opacity="0.92" />
             )}
 
-            {/* Dunstbaender ueber dem Horizont */}
+            {/* Haze bands above the horizon */}
             {bands.map((b, i) => (
                 <rect
                     key={i}
@@ -89,10 +89,10 @@ export default function Plate({ citizenid, shape = 'poster', className = '' }) {
                 />
             ))}
 
-            {/* Zwei Ruecken: der hintere blasser, das gibt die Tiefe */}
+            {/* Two ridges: the rear one paler, which gives the depth */}
             <path d={ridgeBack} fill={sky.land} opacity="0.58" />
 
-            {/* Coast: Wasserflaeche mit Lichtspur, zwischen den Ruecken */}
+            {/* Coast: water with a trail of light, between the ridges */}
             {coast && (
                 <g>
                     <rect
@@ -117,7 +117,7 @@ export default function Plate({ citizenid, shape = 'poster', className = '' }) {
                 </g>
             )}
 
-            {/* Skyline: eine Bebauungskante aus Bloecken vor dem Horizont */}
+            {/* Skyline: a built-up edge of blocks in front of the horizon */}
             {towers.length > 0 && (
                 <g fill={sky.land} opacity="0.88">
                     {towers.map((t, i) => (

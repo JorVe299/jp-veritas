@@ -1,17 +1,17 @@
 /* ==========================================================================
-   Veritas - Design Tokens & Basis
-   Kachelwand nach dem Vorbild eines Streaming-Katalogs, uebersetzt in die
-   Welt von Los Santos. Dark-only: die Oberflaeche wird nachts neben einem
-   laufenden Spiel gelesen, nicht bei Tageslicht.
-   Reines CSS, keine Abhaengigkeiten.
+   Veritas - Design tokens & base
+   A wall of tiles modelled on a streaming catalog, translated into the
+   world of Los Santos. Dark only: the surface is read at night next to a
+   running game, not in daylight.
+   Pure CSS, no dependencies.
    ========================================================================== */
 
-/* --- Schriften -----------------------------------------------------------
-   Selbst ausgeliefert, nicht ueber ein CDN. Dieses Panel laeuft neben dem
-   Gameserver, oft in einem LAN ohne Internetzugang: ueber ein CDN geladen
-   wuerde die Anzeigeschrift dort stillschweigend durch system-ui ersetzt -
-   ohne Fehlermeldung, aber mit einem anderen Gesicht.
-   Beide Familien sind variabel; die Achsen stehen in font-variation-settings.
+/* --- Fonts ---------------------------------------------------------------
+   Self-hosted, not from a CDN. This panel runs next to the game server,
+   often on a LAN with no internet access: loaded from a CDN, the display
+   face would silently be replaced by system-ui there - with no error
+   message, but with a different face.
+   Both families are variable; the axes live in font-variation-settings.
    -------------------------------------------------------------------------- */
 
 @font-face {
@@ -61,9 +61,9 @@
 }
 
 :root {
-    /* --- Grund ------------------------------------------------------------
-       Warmes Asphaltschwarz, ausdruecklich kein Blauschwarz. Die Farbe der
-       Oberflaeche steckt in den erzeugten Bildern, nicht im Chrome. */
+    /* --- Ground -----------------------------------------------------------
+       Warm asphalt black, expressly not a blue-black. The color of the
+       surface sits in the generated images, not in the chrome. */
     --c-bg: #0D0C0B;
     --c-surface: #171614;
     --c-surface-2: #211F1C;
@@ -73,13 +73,13 @@
 
     --c-text: #EDE9E1;
     --c-text-muted: #B3ACA3;
-    /* Angehoben: der frueher blassere Ton lag auf der Panelflaeche unter
-       4.5:1 und war damit fuer Fliesstext nicht zulaessig. */
+    /* Raised: the formerly paler tone sat below 4.5:1 on the panel surface
+       and was therefore not permissible for body text. */
     --c-text-faint: #918A80;
 
-    /* --- Signale -----------------------------------------------------------
-       Genau drei. Jedes wird zuerst durch Worte getragen, erst danach durch
-       Farbe - der Status ist auch ohne Farbwahrnehmung lesbar. */
+    /* --- Signals -----------------------------------------------------------
+       Exactly three. Each is carried by words first and only then by
+       color - the status is readable without color perception too. */
     --c-live: #48E08A;
     --c-live-soft: rgba(72, 224, 138, 0.13);
     --c-live-line: rgba(72, 224, 138, 0.42);
@@ -92,10 +92,10 @@
     --c-debit-soft: rgba(240, 80, 60, 0.13);
     --c-debit-line: rgba(240, 80, 60, 0.45);
 
-    /* Der einzige Akzent des Chromes: der Fokusring der Kachel. */
+    /* The only accent in the chrome: the focus ring of the tile. */
     --c-focus: #FFFFFF;
 
-    /* --- Abstandsraster (8px-Basis) --------------------------------------- */
+    /* --- Spacing scale (8px base) ----------------------------------------- */
     --s-1: 0.25rem;
     --s-2: 0.5rem;
     --s-3: 0.75rem;
@@ -105,16 +105,16 @@
     --s-7: 3rem;
     --s-8: 4rem;
 
-    /* --- Typo-Leiter -------------------------------------------------------
-       Jede Stufe traegt genau eine Rolle und taucht ueberall in dieser
-       Groesse auf. Keine Zwischenwerte im Fliesstext. */
-    --fs-micro: 0.6875rem;  /* 11px - getrackte Versalien, Rubriken */
-    --fs-sm: 0.8125rem;     /* 13px - Sekundaertext, Metadaten */
-    --fs-base: 0.875rem;    /* 14px - Basis der Bedienoberflaeche */
-    --fs-md: 1rem;          /* 16px - Panel-Titel */
-    --fs-lg: 1.375rem;      /* 22px - Kacheltitel im Fokus */
-    --fs-xl: 2rem;          /* 32px - Betraege */
-    --fs-display: clamp(2.25rem, 5.4vw, 4.25rem); /* Citizen-Name */
+    /* --- Type scale --------------------------------------------------------
+       Each step carries exactly one role and appears everywhere at that
+       size. No in-between values in body text. */
+    --fs-micro: 0.6875rem;  /* 11px - tracked caps, section headings */
+    --fs-sm: 0.8125rem;     /* 13px - secondary text, metadata */
+    --fs-base: 0.875rem;    /* 14px - base of the control surface */
+    --fs-md: 1rem;          /* 16px - panel titles */
+    --fs-lg: 1.375rem;      /* 22px - tile title on focus */
+    --fs-xl: 2rem;          /* 32px - amounts */
+    --fs-display: clamp(2.25rem, 5.4vw, 4.25rem); /* citizen name */
 
     --lh-tight: 1.08;
     --lh-snug: 1.3;
@@ -126,12 +126,12 @@
     --r-panel: 8px;
     --r-pill: 999px;
 
-    /* Schatten mit echtem Versatz und echter Weichzeichnung. */
+    /* Shadows with a real offset and real blur. */
     --sh-panel: 0 1px 2px rgba(0, 0, 0, 0.45);
     --sh-tile: 0 20px 38px -14px rgba(0, 0, 0, 0.9), 0 4px 10px -4px rgba(0, 0, 0, 0.6);
     --sh-rail: 0 10px 24px -10px rgba(0, 0, 0, 0.8);
 
-    --ctrl-h: 2.5rem; /* 40px - grosszuegig, weil mitten in der Sitzung geklickt wird */
+    --ctrl-h: 2.5rem; /* 40px - generous, because it is clicked mid-session */
 
     --topbar-h: 4rem;
     --tile-w: 11.5rem;
@@ -139,7 +139,7 @@
 
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
-    /* Filmkorn. Liegt einmal als Datei-URI vor und wird mehrfach referenziert. */
+    /* Film grain. Held once as a data URI and referenced several times. */
     --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 
     font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -175,8 +175,8 @@ body {
     font-size: var(--fs-base);
     background-color: var(--c-bg);
     color: var(--c-text);
-    /* Harte Anforderung: nie horizontal scrollen. Die Schienen scrollen
-       intern, die Seite selbst nicht. */
+    /* Hard requirement: never scroll horizontally. The rails scroll
+       internally, the page itself does not. */
     overflow-x: hidden;
 }
 
@@ -188,9 +188,9 @@ p {
     margin: 0;
 }
 
-/* --- Browser-Oberflaechen ------------------------------------------------
-   Auswahl, Cursor, Scrollbalken und Fokusring gehoeren zum Entwurf. Ohne
-   das hier traegt die Seite an genau diesen Stellen fremde Standardfarben. */
+/* --- Browser surfaces ----------------------------------------------------
+   Selection, cursor, scrollbars and the focus ring belong to the design.
+   Without this the page wears foreign default colors in just those spots. */
 
 ::selection {
     background: var(--c-text);
@@ -234,7 +234,7 @@ p {
     border-radius: var(--r-control);
 }
 
-/* --- Schriftrollen -------------------------------------------------------- */
+/* --- Type roles ----------------------------------------------------------- */
 
 .u-caps {
     font-size: var(--fs-micro);
@@ -250,7 +250,7 @@ p {
     letter-spacing: 0;
 }
 
-/* Verdichtete Versalien: die Anzeigestimme der Wand. */
+/* Condensed caps: the display voice of the wall. */
 .u-display {
     font-variation-settings: 'wdth' 78;
     font-weight: 800;
@@ -289,7 +289,7 @@ p {
     display: block;
 }
 
-/* --- Bedienelemente ------------------------------------------------------- */
+/* --- Controls ------------------------------------------------------------- */
 
 input,
 select,
@@ -348,8 +348,8 @@ button {
     outline-offset: 0;
 }
 
-/* Deaktiviert heisst flach in die Flaeche zurueckgenommen, nicht halb
-   durchsichtig weiter vorhanden. */
+/* Disabled means pulled back flat into the surface, not still present at
+   half transparency. */
 .input:disabled,
 .select:disabled {
     background: var(--c-surface);
@@ -361,8 +361,8 @@ button {
 .select {
     appearance: none;
     padding-right: var(--s-7);
-    /* Derselbe Chevron wie in Icon.jsx, gleiche Strichstaerke und Enden:
-       zwei CSS-Dreiecke waeren eine zweite Icon-Sprache auf einem Schirm. */
+    /* The same chevron as in Icon.jsx, same stroke weight and caps: two CSS
+       triangles would be a second icon language on one screen. */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23B3ACA3' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 9.5 12 16l6.5-6.5'/%3E%3C/svg%3E");
     background-position: calc(100% - 0.6rem) 50%;
     background-size: 1.125rem 1.125rem;
@@ -376,8 +376,8 @@ button {
 }
 
 /* --- Buttons --------------------------------------------------------------
-   Alle Schaltflaechen haben echten Tastweg: sie senken sich beim Druck
-   sichtbar ab und geben die Bewegung wieder frei. */
+   Every button has real travel: it visibly sinks on press and releases the
+   movement again. */
 
 .btn {
     display: inline-flex;
@@ -438,9 +438,9 @@ button {
     border-color: #4A443C;
 }
 
-/* Nur fuer Vorgaenge, die Daten endgueltig entfernen. Erscheint erst im
-   zweiten Schritt einer Bestaetigung - vorher steht dort ein ruhiger
-   Geisterknopf, damit die Farbe nicht zur Dauerdrohung wird. */
+/* Only for operations that remove data for good. Appears only in the
+   second step of a confirmation - before that a quiet ghost button stands
+   there, so the color does not become a standing threat. */
 .btn--danger {
     background: var(--c-debit-soft);
     border-color: var(--c-debit-line);

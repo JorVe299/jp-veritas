@@ -1,20 +1,20 @@
 import { useState } from 'react';
 
-// Der angemeldete Nutzer in der Kopfleiste: Bild, Name, Abmelden. Kein
-// Klappmenue - bei genau einem Eintrag waere das ein Klick zu viel.
+// The signed-in user in the top bar: picture, name, role, sign out.
+// No dropdown - with exactly one entry that would be one click too many.
 
-// Aus "Test Admin" wird "TA", aus "testadmin" ein "T". Array.from statt
-// split(''), damit auch Zeichen ausserhalb der BMP heil bleiben.
+// "Test Admin" becomes "TA", "testadmin" becomes "T". Array.from instead
+// of split('') so that characters outside the BMP survive intact too.
 function initialsOf(name) {
     const parts = String(name).trim().split(/\s+/).filter(Boolean).slice(0, 2);
     const letters = parts.map((part) => Array.from(part)[0] ?? '').join('');
     return letters ? letters.toUpperCase() : '?';
 }
 
-export default function SessionMenu({ user, signingOut, onSignOut }) {
-    // avatarUrl kann null sein, und eine gesetzte URL kann trotzdem ins
-    // Leere laufen (CDN nicht erreichbar, Bild geloescht). Beides endet
-    // bei den Initialen, nie bei einem kaputten Bildsymbol.
+export default function SessionMenu({ user, roleLabel, signingOut, onSignOut }) {
+    // avatarUrl can be null, and even a URL that is set can still lead
+    // nowhere (CDN unreachable, image deleted). Both end at the initials,
+    // never at a broken image icon.
     const [avatarFailed, setAvatarFailed] = useState(false);
 
     const name = user?.globalName || user?.username || 'Signed in';
@@ -41,6 +41,11 @@ export default function SessionMenu({ user, signingOut, onSignOut }) {
             )}
 
             <span className="session__name" title={user?.username || undefined}>{name}</span>
+
+            {/* The role sits next to the name, not only where a button is
+                missing: anyone working under limits should know that up front
+                and not puzzle over a greyed-out control. */}
+            {roleLabel && <span className="pill session__role">{roleLabel}</span>}
 
             <button
                 type="button"

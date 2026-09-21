@@ -23,7 +23,7 @@ Veritas is a web administration panel that gives FiveM server admins direct cont
 
 The **hybrid live/offline write path** is the mechanism. Every mutation resolves at request time:
 
-- Player online → the change is pushed through the FiveM bridge resource (`jp-veritas`) and applies live in-session.
+- Player online → the change is pushed through the FiveM bridge resource (`veritas`) and applies live in-session.
 - Player offline → the change is written straight to the MySQL row.
 
 Neighboring tools require the player to be connected, or only ever touch the database and desync the running server. Veritas does both and **tells the admin which path was taken** (`mode: 'live' | 'offline'` comes back on every mutation). That disclosure is not a detail — it is the product.
@@ -33,7 +33,7 @@ A second confirmed commitment: Veritas distinguishes **"offline"** from **"we do
 ## Operating Context
 
 - Runs against a QBCore-shaped MySQL schema; player state lives in JSON columns (`money`, `job`, `charinfo`) on the `players` table.
-- Talks to a companion FiveM resource (the bridge) over HTTP at `FIVEM_API_URL`, default `http://127.0.0.1:30120/jp-veritas`, with a short timeout (`BRIDGE_TIMEOUT`, default 2500ms). **The bridge being down is a normal operating state, not an error condition.**
+- Talks to a companion FiveM resource (the bridge) over HTTP at `FIVEM_API_URL`, default `http://127.0.0.1:30120/veritas`, with a short timeout (`BRIDGE_TIMEOUT`, default 2500ms). **The bridge being down is a normal operating state, not an error condition.**
 - Job and grade master data is loaded from `backend/data/jobs.json`, exported from the game server. Item and vehicle master data exist alongside it (`items.json`, `vehicles.json`) and are not yet surfaced in the UI.
 - Backend: Express on port 3001. Frontend: React 19 + Vite, plain CSS, no UI framework, no CSS framework. In production the backend serves the built frontend from the same origin.
 - Identification is by **citizen ID** — a short opaque string. Admins search by character name or citizen ID; names are not unique, citizen IDs are.

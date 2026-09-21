@@ -3,12 +3,12 @@ import Plate from './Plate';
 import { formatCurrency, jobTitle } from '../utils/format';
 
 /**
- * Der Kopfbereich. Ohne Auswahl bleibt er flach und zeigt nur, was diese
- * Oberflaeche ist. Mit Auswahl wird er zum Schluesselbild des Citizens und
- * beantwortet auf einen Blick "wen habe ich vor mir und was stimmt gerade".
+ * The header area. With nothing selected it stays flat and only shows what
+ * this surface is. With a selection it becomes the citizen's key image and
+ * answers at a glance "who am I looking at and what is true right now".
  *
- * Der Online-Status unterscheidet ausdruecklich zwischen "nicht auf dem
- * Server" und "unbekannt", solange die FiveM-Bruecke nicht antwortet.
+ * The online status expressly distinguishes between "not on the server" and
+ * "unknown" for as long as the FiveM bridge is not answering.
  */
 export default function Billboard({ player, bridgeDown, writeLog, onClear }) {
     if (!player) {
@@ -56,9 +56,9 @@ export default function Billboard({ player, bridgeDown, writeLog, onClear }) {
                         {player.name}
                     </h1>
 
-                    {/* Ohne Trennpunkte: sobald die Zeile umbricht, stuende
-                        sonst ein Punkt verwaist am Zeilenanfang. Der Abstand
-                        allein traegt die Gliederung zuverlaessiger. */}
+                    {/* No separator dots: as soon as the line wraps, one
+                        would otherwise sit orphaned at the start of a line.
+                        Spacing alone carries the grouping more reliably. */}
                     <div className="billboard__meta">
                         <span className={`pill ${status.cls}`}>
                             <span className="pill__dot" aria-hidden="true" />
@@ -95,9 +95,9 @@ export default function Billboard({ player, bridgeDown, writeLog, onClear }) {
                 </div>
             </div>
 
-            {/* Abgeschlossene Schreibvorgaenge bleiben stehen, statt als
-                kurzlebige Meldung zu verschwinden: der Datensatz zeigt,
-                was in dieser Sitzung schon an ihm geaendert wurde. */}
+            {/* Completed writes stay on screen instead of vanishing as a
+                short-lived message: the record shows what has already been
+                changed on it during this session. */}
             {writeLog.length > 0 && (
                 <div className="ledger">
                     <div className="ledger__head">
