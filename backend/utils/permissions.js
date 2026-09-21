@@ -187,6 +187,7 @@ const RULES = [
     ['GET', /^\/api\/players\/[^/]+\/bans$/, 'bans.view'],
     ['GET', /^\/api\/players\/[^/]+\/position$/, 'players.view'],
     ['GET', /^\/api\/accounts$/, 'accounts.view'],
+    ['GET', /^\/api\/bans\/all$/, 'bans.view'],
     ['GET', /^\/api\/bans\/txadmin$/, 'bans.view'],
     ['GET', /^\/api\/bans$/, 'bans.view'],
     ['GET', /^\/api\/items\/[^/]+\/image$/, 'inventory.view'],

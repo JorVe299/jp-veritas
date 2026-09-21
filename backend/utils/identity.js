@@ -188,4 +188,122 @@ async function discordOf(citizenid) {
     return String(raw).replace(/^discord:/, '').trim() || null;
 }
 
-module.exports = { charactersOf, owns, discordVariants, identifiersOf, asIdentifier, discordOf };
+/**
+ * Every identifier a character's account is known by.
+ *
+ * The counterpart to identifiersOf(), asked in the panel's currency
+ * rather than the portal's: staff work in citizenids, and no ban record
+ * stores one. Filtering a ban list "by citizen" therefore means resolving
+ * that citizen to identifiers first and matching on those.
+ *
+ * Returns [] for a character that does not exist, which reads correctly
+ * downstream: no identifiers, so no ban can belong to them.
+ */
+async function identifiersForCitizen(citizenid) {
+    if (!citizenid) return [];
+
+    const fw = await profile();
+    if (fw.id !== 'qb') return [];
+
+    let userColumns;
+    try {
+        userColumns = await getTableColumns('users');
+    } catch {
+        userColumns = [];
+    }
+    const present = Object.keys(IDENTIFIER_COLUMNS).filter(c => userColumns.includes(c));
+
+    // players.license exists on its own in the QB family and is sometimes
+    // the only one filled in, so it is read alongside the users row.
+    const selected = ['p.license AS playerLicense', ...present.map(c => 'u.' + c + ' AS u_' + c)];
+
+    const [rows] = await db.execute(
+        'SELECT ' + selected.join(', ') +
+        ' FROM players p LEFT JOIN users u ON u.userId = p.userId WHERE p.citizenid = ? LIMIT 1',
+        [citizenid]
+    );
+    if (rows.length === 0) return [];
+
+    const out = new Set();
+    const first = asIdentifier('license', rows[0].playerLicense);
+    if (first) out.add(first);
+    for (const column of present) {
+        const identifier = asIdentifier(IDENTIFIER_COLUMNS[column], rows[0]['u_' + column]);
+        if (identifier) out.add(identifier);
+    }
+    return [...out];
+}
+
+/**
+ * The other direction: which characters sit behind these identifiers.
+ *
+ * Used to put a name and a citizenid on a ban row. A ban is issued
+ * against an account, and an account can hold several characters, so the
+ * answer is a list - collapsing it to one would quietly pick a favourite.
+ *
+ * One query for the whole page rather than one per row.
+ */
+async function citizensByIdentifier(identifiers) {
+    const map = new Map();
+    const wanted = [...new Set((identifiers || []).map(i => String(i).toLowerCase()))].slice(0, 400);
+    if (wanted.length === 0) return map;
+
+    const fw = await profile();
+    if (fw.id !== 'qb') return map;
+
+    let userColumns;
+    try {
+        userColumns = await getTableColumns('users');
+    } catch {
+        return map;
+    }
+    const present = Object.keys(IDENTIFIER_COLUMNS).filter(c => userColumns.includes(c));
+    if (present.length === 0) return map;
+
+    // Schemas differ on whether the prefix is stored, so both forms go
+    // into the query and the comparison happens on the normalised value.
+    const values = [];
+    for (const id of wanted) {
+        values.push(id);
+        const colon = id.indexOf(':');
+        if (colon > 0) values.push(id.slice(colon + 1));
+    }
+
+    const placeholders = values.map(() => '?').join(', ');
+    const where = present.map(c => 'LOWER(u.' + c + ') IN (' + placeholders + ')').join(' OR ');
+    const params = [];
+    for (let i = 0; i < present.length; i++) params.push(...values);
+
+    const [rows] = await db.execute(
+        'SELECT p.citizenid, p.charinfo, p.license AS playerLicense, u.username, ' +
+        present.map(c => 'u.' + c + ' AS u_' + c).join(', ') +
+        ' FROM users u JOIN players p ON p.userId = u.userId WHERE ' + where +
+        ' LIMIT 500',
+        params
+    );
+
+    for (const row of rows) {
+        const char = parseJSON(row.charinfo);
+        const entry = {
+            citizenid: row.citizenid,
+            name: `${char.firstname || '?'} ${char.lastname || ''}`.trim(),
+            account: row.username || null,
+        };
+        const owned = [asIdentifier('license', row.playerLicense)];
+        for (const column of present) {
+            owned.push(asIdentifier(IDENTIFIER_COLUMNS[column], row['u_' + column]));
+        }
+        for (const identifier of owned) {
+            if (!identifier) continue;
+            const list = map.get(identifier);
+            if (list) { if (!list.some(e => e.citizenid === entry.citizenid)) list.push(entry); }
+            else map.set(identifier, [entry]);
+        }
+    }
+    return map;
+}
+
+module.exports = {
+    charactersOf, owns, discordVariants, identifiersOf, asIdentifier, discordOf,
+    identifiersForCitizen, citizensByIdentifier,
+};

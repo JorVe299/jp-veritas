@@ -8,6 +8,8 @@ const express = require('express');
 const { db, tableExists, pickExistingColumns } = require('../utils/dbHandler');
 const { isPlayerOnline, callBridge } = require('../utils/bridge');
 const txadmin = require('../utils/txadmin');
+const banlist = require('../utils/banlist');
+const { identifiersForCitizen, citizensByIdentifier } = require('../utils/identity');
 
 const router = express.Router();
 const TABLE = 'bans';
@@ -66,6 +68,131 @@ async function identityFor(citizenid) {
 }
 
 // --- Every ban ------------------------------------------------------------
+// --- Both records, one list -----------------------------------------------
+// The two ban records answer the same question and nobody asking it cares
+// which file the answer came out of. So they are merged - but every row
+// keeps its source, because only the database rows can be lifted from
+// this panel, and an admin who mixes the two goes looking for a button
+// that is not there.
+//
+// Neither record stores a citizenid. Filtering "by citizen" therefore
+// resolves that person to their identifiers first and matches on those;
+// a near miss on an identifier is not a weaker match, it is a different
+// person, so the comparison is exact.
+const MERGE_CEILING = 2000;
+
+router.get('/api/bans/all', async (req, res) => {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+    const needle = String(req.query.q || '').trim().toLowerCase();
+    const citizenid = String(req.query.citizenid || '').trim();
+    const activeOnly = req.query.active === 'true';
+    const wantWarnings = req.query.include === 'warnings';
+    const onlySource = ['database', 'txadmin'].includes(req.query.source) ? req.query.source : null;
+
+    try {
+        // --- Who, if the question is about one person -------------------
+        let identifierSet = null;
+        let identity = null;
+        if (citizenid) {
+            const owned = await identifiersForCitizen(citizenid);
+            identifierSet = new Set(owned);
+            identity = { citizenid, identifiers: owned.length };
+        }
+
+        // --- The database half ------------------------------------------
+        const database = { available: false, count: 0 };
+        let rows = [];
+        if (onlySource !== 'txadmin' && await tableExists(TABLE)) {
+            const [raw] = await db.execute(
+                `SELECT * FROM ${TABLE} ORDER BY id DESC LIMIT ${MERGE_CEILING}`
+            );
+            rows = raw.map(shapeBan).map(banlist.fromDatabase);
+            database.available = true;
+            database.count = rows.length;
+        } else if (onlySource !== 'txadmin') {
+            database.reason = `Table '${TABLE}' does not exist in this database`;
+        }
+
+        // --- The txAdmin half -------------------------------------------
+        // Its availability is reported separately and never folded into
+        // the list. A merged list that quietly drops half its sources is
+        // the exact failure this whole feature exists to undo.
+        const txState = { available: false, count: 0 };
+        let txRows = [];
+        if (onlySource !== 'database') {
+            const result = await txadmin.allActions({
+                types: wantWarnings ? ['ban', 'warn'] : ['ban'],
+                limit: MERGE_CEILING,
+            });
+            if (result.available) {
+                txRows = result.actions.map(banlist.fromTxAdmin);
+                txState.available = true;
+                txState.count = txRows.length;
+                txState.truncated = result.truncated === true;
+            } else {
+                txState.reason = result.reason;
+                txState.hint = result.hint;
+            }
+        }
+
+        // --- One list ----------------------------------------------------
+        let merged = [...rows, ...txRows];
+        if (identifierSet) merged = merged.filter(r => banlist.belongsTo(r, identifierSet));
+        if (activeOnly) merged = merged.filter(r => r.active);
+        if (needle) merged = merged.filter(r => banlist.matchesQuery(r, needle));
+
+        merged = banlist.sortBans(merged);
+
+        const count = merged.length;
+        const activeCount = merged.filter(r => r.active).length;
+        const slice = merged.slice((page - 1) * limit, page * limit);
+
+        // --- Put a face on the page --------------------------------------
+        // Only for the rows actually being sent, and in one query.
+        const owners = await citizensByIdentifier(slice.flatMap(r => r.identifiers));
+        for (const row of slice) {
+            const found = [];
+            for (const identifier of row.identifiers) {
+                for (const entry of owners.get(identifier) || []) {
+                    if (!found.some(e => e.citizenid === entry.citizenid)) found.push(entry);
+                }
+            }
+            row.characters = found;
+            // A ban belongs to an account, and an account can hold several
+            // characters. One citizenid is only stated where there is
+            // exactly one; otherwise the list says how many there are.
+            row.citizenid = found.length === 1 ? found[0].citizenid : null;
+            if (!row.name && found.length > 0) row.name = found[0].name;
+        }
+
+        res.json({
+            bans: slice,
+            count,
+            activeCount,
+            page,
+            limit,
+            pages: Math.max(Math.ceil(count / limit), 1),
+            sources: { database, txadmin: txState },
+            filter: {
+                citizenid: citizenid || null,
+                q: needle || null,
+                active: activeOnly,
+                include: wantWarnings ? 'warnings' : 'bans',
+                source: onlySource,
+            },
+            identity,
+            // Said plainly rather than left to be noticed: the table has no
+            // created-at column, so those rows cannot take part in a sort
+            // by date and are ordered by id among themselves.
+            sort: 'In force first, then newest. The bans table records no date; those rows follow the dated ones.',
+        });
+    } catch (e) {
+        console.error('[Bans] merged list failed:', e.message);
+        res.status(500).json({ error: 'The ban list could not be assembled' });
+    }
+});
+
 // --- The other ban list ---------------------------------------------------
 // A server bans in two places that know nothing about each other: this
 // table, which the framework and this panel write, and txAdmin's own
