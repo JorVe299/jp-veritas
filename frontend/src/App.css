@@ -79,7 +79,7 @@
 }
 
 .topbar__word {
-    font-size: 1.0625rem;
+    font-size: var(--fs-wordmark);
     font-weight: 800;
     font-variation-settings: 'wdth' 70;
     letter-spacing: 0.16em;
@@ -222,7 +222,7 @@
 }
 
 .billboard__lede {
-    font-size: clamp(1.75rem, 3.6vw, 3.25rem);
+    font-size: var(--fs-headline);
     max-width: 24ch;
     text-wrap: balance;
     text-shadow: 0 2px 20px rgba(0, 0, 0, 0.55);
@@ -493,7 +493,7 @@
 }
 
 .home__word {
-    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-size: var(--fs-display);
     font-weight: 800;
     font-variation-settings: 'wdth' 70;
     letter-spacing: 0.1em;
@@ -504,9 +504,9 @@
 
 .home__lede {
     margin-top: var(--s-5);
-    font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+    font-size: var(--fs-lg);
     font-weight: 700;
-    font-variation-settings: 'wdth' 92;
+    font-variation-settings: 'wdth' 100;
     letter-spacing: -0.015em;
     text-wrap: balance;
     text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
@@ -527,30 +527,18 @@
     margin-top: var(--s-5);
 }
 
-/* A chip is a checked statement, not a metric tile. */
-.chip {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--s-2);
+/* The reading size of the pill. Same component, same shape and the same
+   three signal states - only set in sentence case, because the start page
+   states a whole fact ("Game server reachable · 9 on the server") where
+   the tile badge states one word. It used to be a second component called
+   .chip, which was the same pill under another name. */
+.pill--lg {
     padding: var(--s-2) var(--s-3);
-    border: 1px solid var(--c-border-strong);
-    border-radius: var(--r-pill);
-    background: rgba(13, 12, 11, 0.66);
-    backdrop-filter: blur(8px);
-    color: var(--c-text-muted);
     font-size: var(--fs-sm);
-}
-
-.chip--live {
-    color: var(--c-live);
-    border-color: var(--c-live-line);
-    background: var(--c-live-soft);
-}
-
-.chip--warn {
-    color: var(--c-unknown);
-    border-color: var(--c-unknown-line);
-    background: var(--c-unknown-soft);
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    backdrop-filter: blur(8px);
 }
 
 .home__gap {
@@ -1344,11 +1332,11 @@
     align-items: center;
     gap: 5px;
     padding: 3px var(--s-2);
-    border-radius: 3px;
+    border-radius: 4px;
     background: rgba(6, 5, 4, 0.82);
     border: 1px solid var(--c-live-line);
     color: var(--c-live);
-    font-size: 0.625rem;
+    font-size: var(--fs-micro);
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -1381,7 +1369,7 @@
 
 .tile__name {
     display: -webkit-box;
-    font-size: 0.9375rem;
+    font-size: var(--fs-tile);
     line-height: 1.12;
     min-height: 2.24em;
     overflow: hidden;
@@ -1595,7 +1583,7 @@
     padding: var(--s-6) var(--gutter);
     overflow-x: hidden;
     overflow-y: auto;
-    background: radial-gradient(118% 80% at 50% -10%, #1B1815 0%, var(--c-bg) 58%);
+    background: radial-gradient(118% 80% at 50% -10%, var(--c-wash) 0%, var(--c-bg) 58%);
 }
 
 .gate__grain {
@@ -1628,7 +1616,7 @@
 }
 
 .gate__word {
-    font-size: 1.0625rem;
+    font-size: var(--fs-wordmark);
     font-weight: 800;
     font-variation-settings: 'wdth' 70;
     letter-spacing: 0.16em;
@@ -1741,7 +1729,7 @@
     }
 
     .bridge__text {
-        font-size: 0.625rem;
+        font-size: var(--fs-micro);
     }
 
     /* Mark, bridge and session share the first row - the name gives way
@@ -2697,22 +2685,22 @@
     gap: var(--s-2) var(--s-3);
 }
 
-/* A chip that removes itself. The filter it names is the only reason the
+/* A pill that removes itself. The filter it names is the only reason the
    list is short, so the statement and the way out of it are one control. */
-.chip--drop {
+.pill--drop {
     cursor: pointer;
     font: inherit;
     font-size: var(--fs-sm);
     text-align: left;
 }
 
-.chip--drop:hover,
-.chip--drop:focus-visible {
+.pill--drop:hover,
+.pill--drop:focus-visible {
     color: var(--c-text);
     border-color: var(--c-text-faint);
 }
 
-.chip__x {
+.pill__x {
     flex: none;
     opacity: 0.7;
 }

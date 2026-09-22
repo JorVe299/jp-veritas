@@ -71,6 +71,11 @@
     --c-border: #262320;
     --c-border-strong: #3A3631;
 
+    /* The warm top wash over the start page, the gate and the portal. It
+       stood three times as a raw value, which made it a repetition rather
+       than a decision. */
+    --c-wash: #1B1815;
+
     --c-text: #EDE9E1;
     --c-text-muted: #B3ACA3;
     /* Raised: the formerly paler tone sat below 4.5:1 on the panel surface
@@ -115,6 +120,14 @@
     --fs-lg: 1.375rem;      /* 22px - tile title on focus */
     --fs-xl: 2rem;          /* 32px - amounts */
     --fs-display: clamp(2.25rem, 5.4vw, 4.25rem); /* citizen name */
+
+    /* Three further declared roles from the hierarchy. They are steps of
+       their own, not in-between values - but they stood as raw numbers in
+       three stylesheets, where a role nobody can grep for is a role that
+       drifts. */
+    --fs-headline: clamp(1.75rem, 3.6vw, 3.25rem); /* the idle billboard's one statement */
+    --fs-tile: 0.9375rem;                          /* the display voice at catalog scale */
+    --fs-wordmark: 1.0625rem;                      /* the Veritas lockup, this size only */
 
     --lh-tight: 1.08;
     --lh-snug: 1.3;
@@ -316,6 +329,7 @@ button {
 }
 
 .field__hint {
+    max-width: 72ch;
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
 }

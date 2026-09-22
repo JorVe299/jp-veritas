@@ -259,7 +259,7 @@ The three semantic signals. Each appears as a full-strength text/border hue, a ~
 
 **The Word Before the Hue Rule.** No state is carried by colour alone. Green is always accompanied by "On the server now" or "Applied live"; amber always by "Status unverified" or "Unverified"; red always by a written direction or failure. A screenshot in greyscale must still read correctly.
 
-**The Three Lamps Rule.** There are exactly three signal hues. "Not on the server" is a *neutral* state and gets bone, never amber — amber means unverified, and collapsing the two would erase the product's core distinction.
+**The Three Lamps Rule.** There are exactly three signal hues. "Not on the server" is a *neutral* state and gets bone, never amber — amber means unverified, and collapsing the two would erase the product's core distinction. Nor is green a general-purpose yes: a held licence, a granted permission or any other affirmative gets bone and its own word, because every extra meaning lent to the live lamp costs it some of the one it is for.
 
 **The Reserved White Rule.** Pure white appears only where the system says "this one, right now": selection ring, focus ring, focused field border, primary hover. It is never a text or surface colour.
 
@@ -400,6 +400,11 @@ Inline feedback with `role="status"` that replaces `alert()`. A two-column grid 
 ### Empty & Loading States
 Empty states are centred: a 26px faint icon, a 1rem title and a faint 38ch line naming the next action. Loading is a skeleton rail — eight 2:3 blocks with a 1.5s tonal shimmer. A refetch never blanks the wall: the previous result stays, dropped to 0.4 opacity and `saturate(0.4)`, marked `aria-busy`.
 
+### Veritas ID (the player-facing surface)
+A second surface on `/id`, read-only, for the player rather than the admin. It shares every token, both typefaces and the ground; it does not share the room. One centred 64rem column instead of an edge-to-edge wall, a header that sits in the page rather than fixed chrome over it, and no search, no area switch, no bridge state.
+
+What it must still share is the system's substance: a character carries the **same generated plate as in the panel**, from the same citizen id — a 2:3 poster thumbnail on the roster card and the wide crop behind the character's header, with the same scrim and grain. A citizen with no face here would make the portal the only surface in Veritas with no colour in it, and would break the promise that one record always shows one sky. Character names speak the display voice (`wdth` 78, uppercase) exactly as the tiles do, and money is set with `formatCurrency` so the same balance is not written two ways on two screens.
+
 ### Icons
 One authored set: a single 24px grid, `stroke-width: 1.75`, round caps and joins, `fill: none`, `currentColor`, default 18px (14–17px inline, 26px in empty states). No icon font, no Unicode glyph (⌕, ✓, ⚠) substitutes anywhere, including the `<select>` caret.
 
@@ -425,5 +430,6 @@ One authored set: a single 24px grid, `stroke-width: 1.75`, round caps and joins
 - **Don't** let the page scroll horizontally — only rail tracks do.
 - **Don't** add motion beyond the focus expansion, the 2.6s live pulse and the skeleton shimmer; stillness is what makes the one moment read.
 - **Don't** replace persistent inline feedback with a toast or an `alert()`; completed writes stay visible on the record for the session.
-- **Don't** design UI implying authentication, permission tiers or an audit trail — none exist.
+- **Don't** imply an audit trail of who changed what: the session ledger is this session's own writes, and nothing older is recorded.
+- **Don't** show a card whose permission the role lacks. A missing right means the card is not mounted; a right that only forbids *changing* leaves the card standing with its controls locked and one line saying why.
 - **Don't** invent counts, uptime figures or testimonials on any surface.

@@ -65,11 +65,11 @@ export default function HomeArea({
                         the two happened.
                     </p>
 
-                    {/* Facts, not a dashboard. Each chip is something that was
+                    {/* Facts, not a dashboard. Each pill is something that was
                         actually checked; nothing stands here that would still
                         be shown if the check had failed. */}
                     <div className="home__facts">
-                        <span className={`chip${bridgeDown ? ' chip--warn' : bridgeKnown ? ' chip--live' : ''}`}>
+                        <span className={`pill pill--lg${bridgeDown ? ' pill--unknown' : bridgeKnown ? ' pill--live' : ''}`}>
                             <Icon name={bridgeDown ? 'linkOff' : 'link'} size={15} />
                             {rosterStatus === 'loading' && !bridge
                                 ? 'Checking the game server'
@@ -81,7 +81,7 @@ export default function HomeArea({
                         </span>
 
                         {roleLabel && (
-                            <span className="chip">
+                            <span className="pill pill--lg">
                                 <Icon name="users" size={15} />
                                 Signed in as {roleLabel}
                             </span>

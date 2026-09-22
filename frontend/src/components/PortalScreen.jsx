@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import PortalBar from './PortalBar';
+import { PlateSprite } from './Plate';
 import PortalCharacter from './PortalCharacter';
 import PortalNotice from './PortalNotice';
 import PortalRoster from './PortalRoster';
@@ -62,6 +63,11 @@ export default function PortalScreen({
 
     return (
         <div className="id">
+            {/* The palm outline the generated plates reference by <use>.
+                It has to stand in the document that draws them, and this
+                surface draws its own now. */}
+            <PlateSprite />
+
             <PortalBar
                 user={user}
                 /* Whether the address bar is at the list, not whether a

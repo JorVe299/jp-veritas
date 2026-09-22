@@ -1,8 +1,9 @@
 import Icon from './Icon';
+import Plate from './Plate';
 import PortalAvatar from './PortalAvatar';
 import PortalBans from './PortalBans';
 import { characterName, jobLine, numberOrNull, shown } from '../lib/portalText';
-import { formatDateTime, formatMoney } from '../utils/format';
+import { formatCurrency, formatDateTime } from '../utils/format';
 
 /**
  * The front door: who is signed in, which game account that reaches, and
@@ -43,10 +44,18 @@ export default function PortalRoster({ account, onOpen }) {
                 <PortalAvatar name={name} url={account?.avatarUrl} large />
 
                 <div className="idhero__text">
-                    <p className="idhero__kicker u-caps">Signed in with Discord</p>
+                    {/* No line above the heading. "Signed in with Discord"
+                        is a fact about this account, and it belongs with the
+                        other facts underneath the name - not as an eyebrow
+                        propping the heading up. */}
                     <h1 className="idhero__name">{name}</h1>
 
                     <div className="idhero__facts">
+                        <span className="idfact">
+                            <Icon name="users" size={15} className="idfact__icon" />
+                            Signed in with Discord
+                        </span>
+
                         {/* The game account is what ties Discord to the
                             characters. When the server did not send one,
                             that gap is named: it is the reason a list could
@@ -128,28 +137,39 @@ function CharacterCard({ character, onOpen }) {
             className="idcard"
             onClick={() => onOpen?.(character.citizenid)}
         >
-            <span className="idcard__head">
-                <span className="idcard__name">{characterName(character)}</span>
-                {onDuty && <span className="pill pill--live"><span className="pill__dot" />On duty</span>}
+            {/* The same key art the panel draws for this citizen, from the
+                same citizen id. A player recognising their own character
+                here by the sky it always has is the whole point of the
+                image being computed rather than picked. */}
+            <span className="idcard__plate">
+                <Plate citizenid={character?.citizenid} />
+                <span className="idcard__grain" aria-hidden="true" />
             </span>
 
-            <span className="idcard__job">{jobLine(character?.job)}</span>
-
-            <span className="idcard__money">
-                <span className="idsum">
-                    <span className="idsum__key u-caps">Cash</span>
-                    <span className="idsum__value u-mono">{formatMoney(character?.money?.cash)}</span>
+            <span className="idcard__body">
+                <span className="idcard__head">
+                    <span className="idcard__name">{characterName(character)}</span>
+                    {onDuty && <span className="pill pill--live"><span className="pill__dot" />On duty</span>}
                 </span>
-                <span className="idsum">
-                    <span className="idsum__key u-caps">Bank</span>
-                    <span className="idsum__value u-mono">{formatMoney(character?.money?.bank)}</span>
-                </span>
-            </span>
 
-            <span className="idcard__foot">
-                <span className="idcard__cid u-mono">{shown(character?.citizenid)}</span>
-                <span className="idcard__seen">Last seen {formatDateTime(character?.lastSeen)}</span>
-                <Icon name="chevronRight" size={18} className="idcard__go" />
+                <span className="idcard__job">{jobLine(character?.job)}</span>
+
+                <span className="idcard__money">
+                    <span className="idsum">
+                        <span className="idsum__key u-caps">Cash</span>
+                        <span className="idsum__value u-mono">{formatCurrency(character?.money?.cash)}</span>
+                    </span>
+                    <span className="idsum">
+                        <span className="idsum__key u-caps">Bank</span>
+                        <span className="idsum__value u-mono">{formatCurrency(character?.money?.bank)}</span>
+                    </span>
+                </span>
+
+                <span className="idcard__foot">
+                    <span className="idcard__cid u-mono">{shown(character?.citizenid)}</span>
+                    <span className="idcard__seen">Last seen {formatDateTime(character?.lastSeen)}</span>
+                    <Icon name="chevronRight" size={18} className="idcard__go" />
+                </span>
             </span>
         </button>
     );

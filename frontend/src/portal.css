@@ -27,7 +27,7 @@
     flex-direction: column;
     min-height: 100%;
     background:
-        radial-gradient(120% 52% at 50% -14%, #1B1815 0%, rgba(13, 12, 11, 0) 62%),
+        radial-gradient(120% 52% at 50% -14%, var(--c-wash) 0%, rgba(13, 12, 11, 0) 62%),
         var(--c-bg);
     background-repeat: no-repeat;
 }
@@ -50,6 +50,7 @@
 
 .idbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--s-3);
     width: min(64rem, 100%);
@@ -89,7 +90,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--s-2);
-    font-size: 1.0625rem;
+    font-size: var(--fs-wordmark);
     font-weight: 700;
     letter-spacing: -0.005em;
 }
@@ -190,10 +191,6 @@
     gap: var(--s-1);
 }
 
-.idhero__kicker {
-    color: var(--c-text-faint);
-}
-
 /* Not the panel's display voice. The billboard there sets a citizen's name
    in condensed caps at display size, as a headline about somebody else;
    here it is the reader's own name, and it is set like a name. */
@@ -277,9 +274,10 @@
 }
 
 .idcard {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-3);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: var(--s-4);
     width: 100%;
     height: 100%;
     padding: var(--s-4);
@@ -301,6 +299,38 @@
     transform: translateY(1px);
 }
 
+/* The same 2:3 poster the panel's wall is built from, at thumbnail size.
+   The portal used to carry no generated art at all, which left the one
+   surface a player sees as the only place in Veritas where a citizen has
+   no face - and the only place with no colour in it. */
+.idcard__plate {
+    position: relative;
+    display: block;
+    width: 5.5rem;
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    border-radius: var(--r-tile);
+    background: var(--c-surface-2);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.idcard__grain {
+    position: absolute;
+    inset: 0;
+    background-image: var(--noise);
+    background-size: 130px;
+    opacity: 0.17;
+    mix-blend-mode: overlay;
+}
+
+.idcard__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    min-width: 0;
+    height: 100%;
+}
+
 .idcard__head {
     display: flex;
     align-items: center;
@@ -310,9 +340,11 @@
 
 .idcard__name {
     font-size: var(--fs-lg);
-    font-weight: 700;
+    font-weight: 800;
+    font-variation-settings: 'wdth' 78;
+    text-transform: uppercase;
     letter-spacing: -0.02em;
-    line-height: var(--lh-snug);
+    line-height: var(--lh-tight);
     min-width: 0;
     overflow-wrap: anywhere;
 }
@@ -400,11 +432,57 @@
 
 /* --- One character ------------------------------------------------------- */
 
+/* The character's header carries their key art, the way the panel's
+   billboard carries it. Full-bleed inside the column, with the same long
+   scrim and the same grain, so bone text sits on it and reads. */
 .idhead {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--r-panel);
+    border: 1px solid var(--c-border);
+}
+
+.idhead__art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+}
+
+.idhead__art .plate {
+    width: 100%;
+    height: 100%;
+}
+
+.idhead__grain {
+    position: absolute;
+    inset: 0;
+    background-image: var(--noise);
+    background-size: 150px;
+    opacity: 0.2;
+    mix-blend-mode: overlay;
+}
+
+.idhead__scrim {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(to top,
+            var(--c-surface) 0,
+            rgba(23, 22, 20, 0.82) 84px,
+            rgba(23, 22, 20, 0.36) 190px,
+            rgba(23, 22, 20, 0.16) 100%),
+        linear-gradient(to right, rgba(23, 22, 20, 0.76) 0%, rgba(23, 22, 20, 0.1) 62%);
+}
+
+.idhead__inner {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: var(--s-2);
+    min-height: 11rem;
+    justify-content: flex-end;
+    padding: var(--s-5);
 }
 
 .idback {
@@ -434,9 +512,12 @@
 .idhead__name {
     font-size: var(--fs-xl);
     font-weight: 800;
+    font-variation-settings: 'wdth' 78;
+    text-transform: uppercase;
     letter-spacing: -0.02em;
     line-height: var(--lh-tight);
     overflow-wrap: anywhere;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
 }
 
 .idhead__meta {
@@ -559,8 +640,13 @@
     color: var(--c-text);
 }
 
+/* Deliberately not a signal colour. Green in this system means "on the
+   server now", and a held licence is neither that nor a write that went
+   live; lending it the lamp would blunt the one distinction the product
+   is built on. The tick and the full text tone carry it, and the words
+   next to them say it outright. */
 .idlic--held .idlic__icon {
-    color: var(--c-live);
+    color: var(--c-text);
 }
 
 /* --- Rows of things ------------------------------------------------------ */
@@ -699,16 +785,18 @@
     padding: var(--s-3) var(--s-4);
     background: var(--c-surface-2);
     border: 1px solid var(--c-border);
-    border-left: 2px solid var(--c-border-strong);
     border-radius: var(--r-control);
 }
 
-/* Standing today: a heavier ground, a brighter reason and the one red
-   edge. An entry that is over keeps the same box and gives all three up,
-   so the difference is visible before a word of it is read. */
+/* Standing today: the whole edge and a soft debit ground, exactly the way
+   an error note is marked everywhere else in this system. It used to be a
+   thick coloured stripe down the left side - the most worn-out tell in
+   dark dashboards, and a rule the design system bans outright. The state
+   is still written out in words inside the box; the colour only confirms
+   what the badge already says. */
 .idban--standing {
-    background: var(--c-surface-3);
-    border-left-color: var(--c-debit-line);
+    background: var(--c-debit-soft);
+    border-color: var(--c-debit-line);
 }
 
 .idban__top {
@@ -779,7 +867,7 @@
     padding: var(--s-7) var(--gutter) var(--s-6);
     overflow-x: hidden;
     background:
-        radial-gradient(120% 52% at 50% -14%, #1B1815 0%, rgba(13, 12, 11, 0) 62%),
+        radial-gradient(120% 52% at 50% -14%, var(--c-wash) 0%, rgba(13, 12, 11, 0) 62%),
         var(--c-bg);
     background-repeat: no-repeat;
 }
@@ -808,7 +896,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--s-2);
-    font-size: 1.25rem;
+    font-size: var(--fs-lg);
     font-weight: 700;
     letter-spacing: -0.005em;
 }
@@ -852,10 +940,21 @@
 
 @media (max-width: 560px) {
     /* The bar keeps the mark, the tag and the controls. The name goes: the
-       picture next to it says the same thing in less room, and a wrapped
-       header would push the page down before it has said anything. */
+       picture next to it says the same thing in less room. What may never
+       go is the way out - the bar wraps rather than letting the sign-out
+       slide past the edge, where overflow-x: hidden would simply eat it. */
     .idbar__name {
         display: none;
+    }
+
+    /* The spacer would otherwise hold a whole empty row open once the bar
+       breaks onto two lines. */
+    .idbar__spacer {
+        display: none;
+    }
+
+    .idbar__who {
+        margin-left: auto;
     }
 
     .idhero {

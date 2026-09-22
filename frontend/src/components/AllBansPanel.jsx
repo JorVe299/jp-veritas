@@ -132,7 +132,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                     carries no control.
                 </p>
 
-                {/* One citizen, and the way back to everyone. The chip is
+                {/* One citizen, and the way back to everyone. The pill is
                     the control: it states the filter and removes it, so
                     nobody can be looking at a narrowed list without seeing
                     that they are. */}
@@ -140,7 +140,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                     <div className="banfilter">
                         <button
                             type="button"
-                            className="chip chip--drop"
+                            className="pill pill--lg pill--drop"
                             onClick={onClearCitizen}
                             /* The visible words plus what pressing it
                                does - the cross alone is a shape, not a
@@ -154,9 +154,9 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                                 {'Only bans on '}
                                 <span className="u-mono">{citizenid}</span>
                             </span>
-                            <Icon name="cross" size={13} className="chip__x" />
+                            <Icon name="cross" size={13} className="pill__x" />
                         </button>
-                        <span className="field__hint">{chipHint(identity)}</span>
+                        <span className="field__hint">{filterHint(identity)}</span>
                     </div>
                 )}
 
@@ -418,10 +418,10 @@ function SourceFailure({ title, missing, rest, reason, hint }) {
  * with one identifier and a citizen with four are not being asked the same
  * question. Zero is left to the notice below, which says what it means.
  */
-function chipHint(identity) {
+function filterHint(identity) {
     const held = numberOrNull(identity?.identifiers);
-    if (held === null || held < 1) return 'Clear the chip for every ban on the server.';
-    return `Matched on the ${held === 1 ? 'one identifier' : `${held} identifiers`} this citizen carries. Clear the chip for every ban on the server.`;
+    if (held === null || held < 1) return 'Clear the filter for every ban on the server.';
+    return `Matched on the ${held === 1 ? 'one identifier' : `${held} identifiers`} this citizen carries. Clear the filter for every ban on the server.`;
 }
 
 /**

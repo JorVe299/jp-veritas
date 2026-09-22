@@ -1,11 +1,12 @@
 import Icon from './Icon';
+import Plate from './Plate';
 import PortalInventory from './PortalInventory';
 import PortalNotice from './PortalNotice';
 import PortalVehicles from './PortalVehicles';
 import { usePortalResource } from '../lib/usePortal';
 import { fetchMyCharacter } from '../api';
 import { characterName, gangLine, jobLine, numberOrNull, shown } from '../lib/portalText';
-import { formatDateTime, formatMoney } from '../utils/format';
+import { formatCurrency, formatDateTime } from '../utils/format';
 
 // The four licences the portal is told about, in the order they are worth
 // reading. A framework that keeps more of them is not guessed at here.
@@ -66,27 +67,39 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
     return (
         <>
             <header className="idhead">
-                {onBack && (
-                    <button type="button" className="idback" onClick={onBack}>
-                        <Icon name="chevronLeft" size={16} />
-                        All characters
-                    </button>
-                )}
-
-                <div className="idhead__line">
-                    <h1 className="idhead__name">{heading}</h1>
-                    {onDuty && <span className="pill pill--live"><span className="pill__dot" />On duty</span>}
+                {/* The character's own sky, in the wide crop - the same
+                    picture the panel puts behind the same citizen, from the
+                    same id. Generated for this shape rather than cropped
+                    from the poster, which would leave a centre strip. */}
+                <div className="idhead__art" aria-hidden="true">
+                    <Plate citizenid={citizenid} shape="wide" />
+                    <span className="idhead__grain" />
+                    <span className="idhead__scrim" />
                 </div>
 
-                <p className="idhead__meta">
-                    <span className="u-mono">{shown(citizenid)}</span>
-                    {record && (
-                        <>
-                            <span className="idrow__sep" aria-hidden="true">·</span>
-                            Last seen {formatDateTime(record.lastSeen)}
-                        </>
+                <div className="idhead__inner">
+                    {onBack && (
+                        <button type="button" className="idback" onClick={onBack}>
+                            <Icon name="chevronLeft" size={16} />
+                            All characters
+                        </button>
                     )}
-                </p>
+
+                    <div className="idhead__line">
+                        <h1 className="idhead__name">{heading}</h1>
+                        {onDuty && <span className="pill pill--live"><span className="pill__dot" />On duty</span>}
+                    </div>
+
+                    <p className="idhead__meta">
+                        <span className="u-mono">{shown(citizenid)}</span>
+                        {record && (
+                            <>
+                                <span className="idrow__sep" aria-hidden="true">·</span>
+                                Last seen {formatDateTime(record.lastSeen)}
+                            </>
+                        )}
+                    </p>
+                </div>
             </header>
 
             {state.status === 'loading' && (
@@ -156,7 +169,7 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
                                             <li key={row.key} className="idsum idsum--block">
                                                 <span className="idsum__key u-caps">{row.key}</span>
                                                 <span className="idsum__value idsum__value--big u-mono">
-                                                    {formatMoney(row.value)}
+                                                    {formatCurrency(row.value)}
                                                 </span>
                                             </li>
                                         ))}
