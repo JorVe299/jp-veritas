@@ -10,21 +10,6 @@
 //
 // 2. The owner cannot lock themselves out. Their permissions are not
 //    configurable, and only they may hand out permissions at all.
-const fs = require('fs');
-const path = require('path');
-
-const STORE = path.join(__dirname, '../data/permissions.json');
-
-// Order = rank, for display only.
-const ROLES = ['owner', 'administrator', 'supporter', 'citizen'];
-
-const ROLE_LABELS = {
-    owner: 'Owner',
-    administrator: 'Administrator',
-    supporter: 'Supporter',
-    citizen: 'Citizen'
-};
-
 // The capabilities, grouped by area. 'view' and 'edit' are deliberately
 // separate: being allowed to look at an inventory without being allowed
 // to change it is the most common case for supporters.
@@ -107,65 +92,61 @@ const DEFAULTS = {
 // panel settings into the Qbox database, which belongs to the game server,
 // would be the wrong place for them.
 
-let matrix = null;
+// Roles live in utils/roleStore.js now: they are records the owner edits
+// rather than constants in this file. What stays here is the part that has
+// to be code - which capabilities exist, which route needs which, and the
+// two rules that keep an owner from locking themselves out.
+const store = require('./roleStore').createStore({
+    capabilityIds: CAPABILITY_IDS,
+    defaults: DEFAULTS,
+});
 
-function sanitize(raw) {
-    const clean = {};
-    for (const role of ROLES) {
-        const list = Array.isArray(raw?.[role]) ? raw[role] : DEFAULTS[role];
-        // Unknown capabilities are dropped: otherwise every rename would
-        // leave dead entries behind that look like granted permissions.
-        clean[role] = CAPABILITY_IDS.filter(id => list.includes(id));
-    }
-    // The owner always keeps everything, whatever the file says.
-    clean.owner = CAPABILITY_IDS.slice();
-    return clean;
+const STORE = store.STORE;
+const OWNER_ROLE = store.OWNER_ROLE;
+
+/** Every role, in ranking order. The first match wins in authorize(). */
+function listRoles() {
+    return store.list();
 }
 
-function load() {
-    if (matrix) return matrix;
-
-    try {
-        if (fs.existsSync(STORE)) {
-            const raw = fs.readFileSync(STORE, 'utf8');
-            matrix = sanitize(raw.trim() ? JSON.parse(raw) : {});
-            return matrix;
-        }
-    } catch (e) {
-        console.warn(`[Perms] ${STORE} could not be read (${e.message}) - falling back to the defaults`);
-    }
-
-    matrix = sanitize({});
-    return matrix;
+function getRole(id) {
+    return store.get(id);
 }
 
-function save(next) {
-    matrix = sanitize(next);
-    try {
-        fs.mkdirSync(path.dirname(STORE), { recursive: true });
-        fs.writeFileSync(STORE, JSON.stringify(matrix, null, 2), 'utf8');
-    } catch (e) {
-        console.error('[Perms] could not write the permission file:', e.message);
-        throw new Error('The permissions could not be saved');
-    }
-    return matrix;
+/** A role's display name, or the id itself for one that no longer exists. */
+function labelOf(id) {
+    const role = store.get(id);
+    return role ? role.label : (id || null);
+}
+
+function roleIds() {
+    return store.list().map(r => r.id);
 }
 
 function getMatrix() {
-    return load();
+    return store.matrix();
+}
+
+function save(next) {
+    return store.saveMatrix(next);
 }
 
 function can(role, capability) {
-    if (role === 'owner') return true; // without exception
+    if (role === OWNER_ROLE) return true; // without exception
     if (capability === OWNER_ONLY) return false;
-    return load()[role]?.includes(capability) === true;
+    const found = store.get(role);
+    // A session naming a role that has since been deleted holds nothing.
+    // Failing closed is the only safe reading: the alternative is a
+    // permission that outlives the role it came from.
+    return found ? found.capabilities.includes(capability) : false;
 }
 
 // What may this role do in total? Sent to the frontend so it can hide
 // buttons - but the decision is always made here in the backend.
 function capabilitiesOf(role) {
-    const list = role === 'owner' ? CAPABILITY_IDS.slice() : (load()[role] || []);
-    return role === 'owner' ? list.concat(OWNER_ONLY) : list;
+    if (role === OWNER_ROLE) return CAPABILITY_IDS.concat(OWNER_ONLY);
+    const found = store.get(role);
+    return found ? found.capabilities.slice() : [];
 }
 
 // --- Route -> capability -------------------------------------------------
@@ -220,7 +201,11 @@ const RULES = [
 
     // Permission management
     ['GET', /^\/api\/permissions$/, 'players.view'],
-    ['PUT', /^\/api\/permissions$/, OWNER_ONLY]
+    ['PUT', /^\/api\/permissions$/, OWNER_ONLY],
+    ['POST', /^\/api\/permissions\/roles$/, OWNER_ONLY],
+    ['PATCH', /^\/api\/permissions\/roles\/[^/]+$/, OWNER_ONLY],
+    ['DELETE', /^\/api\/permissions\/roles\/[^/]+$/, OWNER_ONLY],
+    ['PUT', /^\/api\/permissions\/roles\/order$/, OWNER_ONLY],
 ];
 
 function requiredFor(method, routePath) {
@@ -268,7 +253,7 @@ function enforce(req, res, next) {
 
     if (!can(role, needed)) {
         return res.status(403).json({
-            error: `Your role (${ROLE_LABELS[role] || role}) is not allowed to do this`,
+            error: `Your role (${labelOf(role) || role}) is not allowed to do this`,
             required: needed,
             role,
             hint: needed === OWNER_ONLY
@@ -281,6 +266,22 @@ function enforce(req, res, next) {
 }
 
 module.exports = {
-    ROLES, ROLE_LABELS, CAPABILITIES, CAPABILITY_IDS, OWNER_ONLY, DEFAULTS,
-    getMatrix, save, can, capabilitiesOf, requiredFor, enforce, STORE, SELF_PREFIX
+    CAPABILITIES, CAPABILITY_IDS, OWNER_ONLY, DEFAULTS,
+    OWNER_ROLE, BUILT_IN_ROLES: store.BUILT_IN, MAX_ROLES: store.MAX_ROLES,
+    listRoles, getRole, labelOf, roleIds,
+    createRole: store.create, updateRole: store.update,
+    deleteRole: store.remove, reorderRoles: store.reorder,
+    getMatrix, save, can, capabilitiesOf, requiredFor, enforce, STORE, SELF_PREFIX,
 };
+
+// Kept as getters so callers written against the old constants keep
+// working while roles were still four names in the source.
+Object.defineProperty(module.exports, 'ROLES', { get: roleIds, enumerable: true });
+Object.defineProperty(module.exports, 'ROLE_LABELS', {
+    enumerable: true,
+    get() {
+        const out = {};
+        for (const role of listRoles()) out[role.id] = role.label;
+        return out;
+    },
+});

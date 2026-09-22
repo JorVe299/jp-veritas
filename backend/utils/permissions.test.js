@@ -37,7 +37,9 @@ test('an unknown role may do nothing at all', () => {
 
 test('every default refers to a capability that exists', () => {
     const known = new Set([...perms.CAPABILITY_IDS, perms.OWNER_ONLY]);
-    for (const cap of perms.ROLES.flatMap(r => perms.DEFAULTS[r])) {
+    // Over the defaults themselves, not over the live role list: roles
+    // are editable now, and one created at runtime has no default to check.
+    for (const cap of Object.values(perms.DEFAULTS).flat()) {
         assert.ok(known.has(cap), `default names an unknown capability: ${cap}`);
     }
 });

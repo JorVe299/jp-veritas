@@ -91,12 +91,12 @@ app.listen(PORT, () => {
     console.log(`[Data] Jobs: ${Object.keys(getJobs()).length}, Items: ${Object.keys(getItems()).length}, Vehicles: ${Object.keys(getVehicles()).length}`);
 
     if (auth.ENABLED) {
-        const total = auth.ROLE_ORDER.reduce((n, r) =>
-            n + auth.ROLE_BY_USER[r].length + auth.ROLE_BY_GUILD_ROLE[r].length, 0);
+        const summary = auth.mappingSummary();
+        const total = summary.reduce((n, r) => n + r.users + r.guildRoles, 0);
         console.log(`[Auth] Discord login active - ${total} mapping(s) configured`);
         console.log(`[Auth] Sessions last ${auth.SESSION_HOURS}h`);
-        const mapped = auth.ROLE_ORDER
-            .map(r => `${r}: ${auth.ROLE_BY_USER[r].length} id(s) / ${auth.ROLE_BY_GUILD_ROLE[r].length} role(s)`)
+        const mapped = summary
+            .map(r => `${r.label}: ${r.users} id(s) / ${r.guildRoles} role(s)`)
             .join(', ');
         console.log(`[Perms] ${mapped}`);
     }

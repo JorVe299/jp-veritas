@@ -12,7 +12,8 @@
 const crypto = require('crypto');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-const { ROLE_LABELS, capabilitiesOf } = require('./permissions');
+const perms = require('./permissions');
+const { capabilitiesOf } = perms;
 
 const DISCORD_API = 'https://discord.com/api/v10';
 
@@ -31,9 +32,17 @@ function splitList(raw) {
 }
 
 // --- Role mapping ---------------------------------------------------------
-// Exactly one variable per role and per way of assigning it. Whoever
-// matches several gets the highest - the ranking lives in ROLE_ORDER, not
-// in the order of the .env file.
+// Two sources, on purpose.
+//
+// The .env keeps a variable per built-in role. That is the way back in: a
+// panel that can edit its own door needs a key kept somewhere it cannot
+// reach, and these are read before anything the panel wrote.
+//
+// Everything else - including every role the owner creates - carries its
+// own Discord ids in the role store, edited in the panel.
+//
+// Whoever matches several roles gets the highest. The ranking is the order
+// of the role list, not the order of the .env file.
 
 // Before roles existed there were only these two lists, and whoever was in
 // them could do everything. They are still read so that a server with an
@@ -57,12 +66,34 @@ const ROLE_BY_GUILD_ROLE = {
     citizen: splitList(process.env.DISCORD_ROLE_CITIZEN)
 };
 
-// Order = rank. The first match wins.
-const ROLE_ORDER = ['owner', 'administrator', 'supporter', 'citizen'];
+// Order = rank. Read at call time, because roles can be created and
+// removed while the panel is running.
+function roleOrder() {
+    return perms.roleIds();
+}
 
-// The guild scope is needed as soon as any role is assigned via Discord
-// roles - not just for one particular one.
-const ALL_ROLE_IDS = ROLE_ORDER.flatMap(r => ROLE_BY_GUILD_ROLE[r]);
+/** Every Discord id mapped to a role, from both sources. */
+function mappingFor(roleId) {
+    const stored = perms.getRole(roleId);
+    return {
+        users: (ROLE_BY_USER[roleId] || []).concat(stored ? stored.discordUserIds : []),
+        guildRoles: (ROLE_BY_GUILD_ROLE[roleId] || []).concat(stored ? stored.discordRoleIds : []),
+    };
+}
+
+// The guild scope is needed as soon as any role is assigned via a Discord
+// role - not just for one particular one.
+function allGuildRoleIds() {
+    return roleOrder().flatMap(id => mappingFor(id).guildRoles);
+}
+
+/** One line per role, for the startup banner and the diagnostics. */
+function mappingSummary() {
+    return roleOrder().map(id => {
+        const m = mappingFor(id);
+        return { id, label: perms.labelOf(id), users: m.users.length, guildRoles: m.guildRoles.length };
+    });
+}
 
 // Auth is active as soon as a Discord app is configured. Without one the
 // panel keeps running open, so that an incomplete deployment does not lock
@@ -83,14 +114,16 @@ function configProblems() {
         problems.push('DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET / DISCORD_REDIRECT_URI missing - the panel runs WITHOUT a login.');
         return problems;
     }
-    const anyUser = ROLE_ORDER.some(r => ROLE_BY_USER[r].length > 0);
-    if (!anyUser && ALL_ROLE_IDS.length === 0) {
+    const summary = mappingSummary();
+    const guildRoleIds = allGuildRoleIds();
+    if (summary.every(r => r.users === 0) && guildRoleIds.length === 0) {
         problems.push('No Discord ids or roles are mapped to a panel role - nobody would get through.');
     }
-    if (ALL_ROLE_IDS.length > 0 && !GUILD_ID) {
+    if (guildRoleIds.length > 0 && !GUILD_ID) {
         problems.push('Discord roles are mapped but DISCORD_GUILD_ID is missing - roles cannot be checked.');
     }
-    if (ROLE_BY_USER.owner.length === 0 && ROLE_BY_GUILD_ROLE.owner.length === 0) {
+    const owner = mappingFor(perms.OWNER_ROLE);
+    if (owner.users.length === 0 && owner.guildRoles.length === 0) {
         problems.push('Nobody is mapped to Owner - then nobody can change permissions.');
     }
     if (EPHEMERAL_SECRET) {
@@ -173,12 +206,14 @@ async function fetchGuildRoles(accessToken) {
 
 function authorize(user, guild) {
     // Top down: whoever matches several roles gets the highest one.
-    // Otherwise the role would depend on the order of the .env file.
-    for (const role of ROLE_ORDER) {
-        if (ROLE_BY_USER[role].includes(user.id)) {
+    // Otherwise the role would depend on the order of the .env file, or on
+    // the order somebody happened to create their teams in.
+    for (const role of roleOrder()) {
+        const { users, guildRoles } = mappingFor(role);
+        if (users.includes(user.id)) {
             return { allowed: true, role, via: 'user-id' };
         }
-        const hit = guild.roles.find(r => ROLE_BY_GUILD_ROLE[role].includes(r));
+        const hit = guild.roles.find(r => guildRoles.includes(r));
         if (hit) {
             return { allowed: true, role, via: `role:${hit}` };
         }
@@ -250,7 +285,10 @@ function publicUser(session) {
             : null,
         via: session.via,
         role: session.role || null,
-        roleLabel: session.role ? ROLE_LABELS[session.role] : null,
+        // Looked up rather than mapped from a constant: a session can name
+        // a role that has since been deleted, and that has to read as "no
+        // label" instead of crashing or inventing one.
+        roleLabel: session.role ? perms.labelOf(session.role) : null,
         portal: session.portal === true,
         // A session minted before Veritas ID existed carries no portal
         // field at all. That is not the same as "not allowed": it is an
@@ -291,8 +329,9 @@ function requireAuth(req, res, next) {
 
 module.exports = {
     ENABLED, GUILD_ID, USES_LEGACY,
-    ROLE_ORDER, ROLE_BY_USER, ROLE_BY_GUILD_ROLE,
+    ROLE_BY_USER, ROLE_BY_GUILD_ROLE,
     SESSION_COOKIE, STATE_COOKIE, SESSION_HOURS,
+    roleOrder, mappingFor, mappingSummary, allGuildRoleIds,
     configProblems, buildAuthorizeUrl, exchangeCode, fetchDiscordUser,
     fetchGuildRoles, authorize, issueSession, readSession, clearSession,
     publicUser, cookieOptions, requireAuth
