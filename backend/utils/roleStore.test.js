@@ -277,3 +277,34 @@ test('a role can be renamed to what it already is', () => {
     store.create({ id: 'team-one', label: 'Fleet Team' });
     assert.equal(store.update('team-one', { label: 'Fleet Team' }).label, 'Fleet Team');
 });
+
+// --- The frontend copy of these rules -------------------------------------
+// The role editor validates in the field so a pasted username is refused
+// where it was typed instead of vanishing on save. That means two copies of
+// the same rule, and two copies drift. This does not make the frontend
+// authoritative - the store still decides - it just makes a drift fail here
+// rather than in somebody's face.
+
+test('the frontend validates role ids by the same rule', () => {
+    const mirror = fs.readFileSync(
+        path.join(__dirname, '../../frontend/src/lib/roleEditing.js'), 'utf8');
+    const source = fs.readFileSync(path.join(__dirname, 'roleStore.js'), 'utf8');
+
+    const ours = source.match(/const ID_PATTERN = (\/.+\/);/);
+    const theirs = mirror.match(/const ID_PATTERN = (\/.+\/);/);
+    assert.ok(ours && theirs, 'both files should declare ID_PATTERN');
+    assert.equal(theirs[1], ours[1], 'the role id rule has drifted apart');
+});
+
+test('the frontend validates Discord ids by the same rule', () => {
+    const mirror = fs.readFileSync(
+        path.join(__dirname, '../../frontend/src/lib/roleEditing.js'), 'utf8');
+    const source = fs.readFileSync(path.join(__dirname, 'roleStore.js'), 'utf8');
+
+    const theirs = mirror.match(/const SNOWFLAKE = (\/.+\/);/);
+    assert.ok(theirs, 'the editor should declare SNOWFLAKE');
+    assert.ok(
+        source.includes(theirs[1].slice(1, -1)),
+        `the snowflake rule has drifted apart: the editor uses ${theirs[1]}`,
+    );
+});

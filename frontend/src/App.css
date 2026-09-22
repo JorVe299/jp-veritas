@@ -2336,6 +2336,160 @@
     color: var(--c-text-faint);
 }
 
+/* --- The roster ----------------------------------------------------------
+   The roles themselves, above the grid: what exists, in which order, and
+   who holds it. It borrows the data row from the modules unchanged - a role
+   is a record with actions of its own, which is exactly what that row is
+   for - and adds only the rank in front and the form that folds out of it. */
+
+.roster,
+.roster__grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+}
+
+.roster__head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+}
+
+.roster__title {
+    font-size: var(--fs-micro);
+    color: var(--c-text-faint);
+}
+
+/* The rank is the one number in the row that means something on its own:
+   it decides who wins when somebody matches twice. It keeps a fixed width
+   so the names below each other start at the same place. */
+.role__rank {
+    flex: none;
+    min-width: 1.5rem;
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+/* The sentence that a deletion reaches backwards needs the whole row: cut
+   into a column beside two counts it would read as a footnote. */
+.role__warn {
+    flex: 1 1 100%;
+    color: var(--c-text-muted);
+}
+
+/* The form inside the row. A column rather than the module's two-up grid:
+   a list of Discord ids is nothing to put in half a row. */
+.role__edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--c-border);
+}
+
+.role__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-bottom: var(--s-1);
+}
+
+.role__add {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+}
+
+.role__add .input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Wrong, not broken: the field keeps the hint's place and only takes the
+   colour that says the id would have been thrown away. */
+.role__problem {
+    color: var(--c-debit);
+}
+
+/* Making a role is an addition, not a record - hence the dashed edge that
+   the drop area uses, rather than the solid one of a row that exists. */
+.roster__new {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    padding: var(--s-4);
+    border: 1px dashed var(--c-border-strong);
+    border-radius: var(--r-control);
+}
+
+.roster__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: var(--s-3);
+}
+
+.roster__foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-3);
+}
+
+/* --- Columns that no longer fit ------------------------------------------
+   Roles are made now, so the grid can be ten columns wide. It keeps them
+   rather than turning into a one-role view: the question it is read for is
+   what this role may do that the other one may not, and a dropdown answers
+   that by asking you to remember the other column. So the capability column
+   stays put while the rest scrolls under it. */
+
+.matrix__what {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--c-surface);
+}
+
+/* The corner belongs to both sticky edges and therefore has to sit above
+   the header row it shares its line with. */
+.matrix__corner {
+    z-index: 2;
+}
+
+/* Without this the rows would slide out from under the sticky column and
+   show through it. */
+.matrix__row:hover .matrix__what {
+    background: var(--c-surface-2);
+}
+
+/* A column that shrinks to its ticks is no longer readable as a role, so
+   they keep their width and the sheet scrolls sideways instead. */
+.matrix__col {
+    min-width: 7rem;
+}
+
+.matrix__folds {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+}
+
+.matrix__foldlabel {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+}
+
+.matrix__foldrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+}
+
+/* Folded away, not switched off: it keeps its name and steps back, because
+   pressing it again is the only way to bring the column back. */
+.matrix__folded {
+    opacity: 0.45;
+}
+
 /* --- Role and access in the top bar --------------------------------------- */
 
 .session__role {

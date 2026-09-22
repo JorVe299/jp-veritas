@@ -86,14 +86,20 @@ const isPortalRoute = (url) => {
     return path === '/me' || path.startsWith('/me/');
 };
 
-// PUT /permissions is exempt: there a 403 is the expected answer for anyone
-// who is not the owner. That is information, not a permission being taken
-// away - the message belongs on the surface, not on the bar above it all.
+// Writes under /permissions are exempt: there a 403 is the expected answer
+// for anyone who is not the owner. That is information, not a permission
+// being taken away - the message belongs on the surface, not on the bar
+// above it all. The role routes below the path count too: creating,
+// renaming, reordering and deleting a role are the same answer to the same
+// question.
+const WRITE_METHODS = ['put', 'post', 'patch', 'delete'];
+
 const isPermissionWrite = (config) => {
     const method = String(config?.method || '').toLowerCase();
-    if (method !== 'put') return false;
-    const path = String(config?.url || '').split('?')[0].replace(/^\/api/, '');
-    return path === '/permissions' || path === 'permissions';
+    if (!WRITE_METHODS.includes(method)) return false;
+    const raw = String(config?.url || '').split('?')[0].replace(/^\/api/, '');
+    const path = raw.startsWith('/') ? raw : `/${raw}`;
+    return path === '/permissions' || path.startsWith('/permissions/');
 };
 
 api.interceptors.response.use(
@@ -195,6 +201,26 @@ export const fetchPlayerPosition = (citizenid) => api.get(`/players/${seg(citize
 // question, not an error.
 export const fetchPermissions = () => api.get('/permissions');
 export const savePermissions = (matrix) => api.put('/permissions', { matrix });
+
+// The roles themselves. Four names compiled into the source were enough for
+// one server and for no other: a installation with a support lead, a vehicle
+// crew and a whitelist team needs its own, and creating one must not mean a
+// redeploy. Every one of these is owner-only and answers 403 otherwise.
+//
+// `body` is { label, id?, capabilities?, copyFrom?, discordUserIds?,
+// discordRoleIds? } - everything but the label optional.
+export const createRole = (body) => api.post('/permissions/roles', body);
+
+// Any of { label, capabilities, discordUserIds, discordRoleIds }. What is
+// not sent stays as it is; the owner keeps its capabilities whatever the
+// patch says.
+export const updateRole = (id, patch) => api.patch(`/permissions/roles/${seg(id)}`, patch);
+
+export const deleteRole = (id) => api.delete(`/permissions/roles/${seg(id)}`);
+
+// The order is the ranking, not the layout: whoever matches two roles in
+// Discord gets the one nearer the top.
+export const saveRoleOrder = (order) => api.put('/permissions/roles/order', { order });
 
 // --- Organisations --------------------------------------------------------
 // Jobs and gangs seen as bodies in their own right, not as a field on a
