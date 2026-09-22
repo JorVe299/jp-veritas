@@ -57,10 +57,7 @@ const CAPABILITIES = [
     { id: 'system.view', group: 'System', label: 'See diagnostics and schema' },
     { id: 'system.edit', group: 'System', label: 'Reload game data' },
 
-    { id: 'orgs.view', group: 'Server', label: 'See jobs and gangs as organisations' },
-    { id: 'resources.view', group: 'Server', label: 'See the resources on the game server' },
-    { id: 'resources.read', group: 'Server', label: 'Read config files out of a resource' },
-    { id: 'resources.exec', group: 'Server', label: 'Call exports on any resource' }
+    { id: 'orgs.view', group: 'Server', label: 'See jobs and gangs as organisations' }
 ];
 
 const CAPABILITY_IDS = CAPABILITIES.map(c => c.id);
@@ -192,13 +189,10 @@ const RULES = [
     ['GET', /^\/api\/bans$/, 'bans.view'],
     ['GET', /^\/api\/items\/[^/]+\/image$/, 'inventory.view'],
     ['GET', /^\/api\/meta\//, 'players.view'],
-    ['GET', /^\/api\/system\/framework$/, 'resources.view'],
+    ['GET', /^\/api\/system\/framework$/, 'system.view'],
     ['GET', /^\/api\/system\//, 'system.view'],
     ['GET', /^\/api\/jobs$/, 'orgs.view'],
     ['GET', /^\/api\/jobs\/[^/]+\/members$/, 'orgs.view'],
-    ['GET', /^\/api\/resources$/, 'resources.view'],
-    ['POST', /^\/api\/resources\/file$/, 'resources.read'],
-    ['POST', /^\/api\/resources\/export$/, 'resources.exec'],
 
     // Writing
     ['POST', /^\/api\/manage\/money$/, 'money.edit'],

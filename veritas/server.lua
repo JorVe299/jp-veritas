@@ -205,82 +205,9 @@ Veritas.route('GET', '/status', function(_, res)
         inventory = Items.detect(),
         tokenConfigured = (Config.Token or '') ~= '',
         tokenRequiredEverywhere = Config.RequireTokenEverywhere == true,
-        allowedExports = #Config.AllowedExports,
-        allowedFiles = #Config.AllowedFiles,
         adapters = detected,
     })
 end)
-
--- --- Any resource on the server ---------------------------------------------
-
--- Everything that is running, with whatever metadata it declares.
-Veritas.route('GET', '/resources', function(_, res)
-    local list = {}
-    for i = 0, GetNumResources() - 1 do
-        local name = GetResourceByFindIndex(i)
-        if name and GetResourceState(name) == 'started' then
-            list[#list + 1] = {
-                name = name,
-                version = GetResourceMetadata(name, 'version', 0),
-                author = GetResourceMetadata(name, 'author', 0),
-            }
-        end
-    end
-    table.sort(list, function(a, b) return a.name < b.name end)
-    sendJson(res, { resources = list, count = #list })
-end)
-
-local function allowed(list, resource, item)
-    for _, entry in ipairs(list) do
-        if entry == resource .. ':' .. item or entry == resource .. ':*' then
-            return true
-        end
-    end
-    return false
-end
-
--- Read a file out of any resource - config files, data tables, whatever the
--- panel needs to show. Reading changes nothing, but a config file can hold
--- secrets, so it goes through the allow list all the same.
-Veritas.route('POST', '/resource-file', function(body, res)
-    local resource, file = body.resource, body.file
-    if type(resource) ~= 'string' or type(file) ~= 'string' then
-        return Veritas.fail(res, 'resource and file are required')
-    end
-    if not allowed(Config.AllowedFiles, resource, file) then
-        return Veritas.fail(res, ("Not allowed. Add '%s:%s' to Config.AllowedFiles."):format(resource, file))
-    end
-
-    local content = LoadResourceFile(resource, file)
-    if not content then return Veritas.fail(res, 'File not found') end
-    sendJson(res, { success = true, resource = resource, file = file, content = content })
-end)
-
--- Call an export on any resource. This one can do whatever the target
--- resource can do, so it carries two locks: the token, always, and an allow
--- list that starts empty.
-Veritas.route('POST', '/export', function(body, res)
-    local resource, method = body.resource, body.method
-    if type(resource) ~= 'string' or type(method) ~= 'string' then
-        return Veritas.fail(res, 'resource and method are required')
-    end
-    if not allowed(Config.AllowedExports, resource, method) then
-        return Veritas.fail(res, ("Not allowed. Add '%s:%s' to Config.AllowedExports."):format(resource, method))
-    end
-    if GetResourceState(resource) ~= 'started' then
-        return Veritas.fail(res, ("Resource '%s' is not running"):format(resource))
-    end
-
-    local args = type(body.args) == 'table' and body.args or {}
-    local ok, result = pcall(function()
-        return exports[resource][method](nil, table.unpack(args))
-    end)
-
-    if not ok then
-        return Veritas.fail(res, 'The export threw: ' .. tostring(result))
-    end
-    sendJson(res, { success = true, resource = resource, method = method, result = result })
-end, { needsToken = true })
 
 -- --- Dispatch ---------------------------------------------------------------
 

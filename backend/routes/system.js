@@ -9,6 +9,7 @@ const { getTableColumns, tableExists, clearSchemaCache, listTables } = require('
 const { loadGameData, getJobs, getItems, getVehicles } = require('../utils/dataLoader');
 const { FIVEM_API_URL, BRIDGE_TIMEOUT } = require('../utils/bridge');
 const txadmin = require('../utils/txadmin');
+const { fetchStatus, HAS_TOKEN } = require('../utils/bridge');
 const { identifiersOf, discordOf } = require('../utils/identity');
 const { checkDatabaseMatchesServer } = require('./players');
 
@@ -121,6 +122,28 @@ async function inspectTables(raw) {
     }
     return names.length ? out : undefined;
 }
+
+// What the bridge reports about itself: which framework it found, which
+// inventory, and whether the two ends agree about the token. It used to
+// live with the resource browser, which is gone; it belongs here, with
+// everything else that answers "is this installation wired up right".
+router.get('/api/system/framework', async (req, res) => {
+    const status = await fetchStatus();
+
+    if (!status.reachable) {
+        return res.status(502).json({
+            reachable: false,
+            error: status.error,
+            hint: 'Without the bridge the panel still works from the database, but live actions do not.',
+        });
+    }
+
+    res.json({
+        ...status,
+        backendHasToken: HAS_TOKEN,
+        tokenMatchLikely: HAS_TOKEN === Boolean(status.tokenConfigured),
+    });
+});
 
 // Whether txAdmin's ban record can be reached, and from where.
 //

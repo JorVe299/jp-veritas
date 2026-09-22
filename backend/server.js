@@ -59,7 +59,6 @@ app.use(require('./routes/bans').router);         // bans
 app.use(require('./routes/actions').router);      // live actions on connected players
 app.use(require('./routes/meta').router);         // reference data for dropdowns
 app.use(require('./routes/jobs').router);         // jobs and gangs as organisations
-app.use(require('./routes/resources').router);    // resource browser, exports
 app.use(require('./routes/permissions').router);  // roles and permissions
 app.use(require('./routes/system').router);       // diagnostics, schema, refresh
 

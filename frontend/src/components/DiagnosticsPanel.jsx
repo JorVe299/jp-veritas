@@ -16,15 +16,15 @@ import { failureNote, successNote } from '../lib/writeFeedback';
  * on an export, far away from its cause. This is the page that says which
  * of those it is.
  *
- * The four cards hang off two different permissions - the framework probe
- * off resources.view, the rest off system.view - so each one is mounted
- * only when its own route would answer. Mounting them anyway would mean a
- * card reporting an error where nothing is broken.
+ * Every card hangs off system.view, including the framework probe, which
+ * moved here when the resource browser was removed. The gate stays in
+ * place so a card is only mounted when its own route would answer -
+ * mounting it anyway would mean reporting a fault where none exists.
  */
 export default function DiagnosticsPanel() {
     const { can } = useCan();
-    const canSeeFramework = can('resources.view');
     const canSeeSystem = can('system.view');
+    const canSeeFramework = canSeeSystem;
 
     return (
         <>

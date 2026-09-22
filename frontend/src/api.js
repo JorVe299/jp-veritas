@@ -205,15 +205,6 @@ export const fetchOrganisationMembers = (name, params) =>
     api.get(`/jobs/${seg(name)}/members`, { params });
 
 // --- Resources on the game server -----------------------------------------
-// Three calls, three very different levels of risk. Listing is harmless,
-// reading a file changes nothing, and calling an export can do whatever the
-// target resource can do. They are kept apart here as well so that no
-// wrapper quietly makes them look alike.
-export const fetchResources = () => api.get('/resources');
-export const readResourceFile = (resource, file) => api.post('/resources/file', { resource, file });
-export const callResourceExport = (resource, method, args = []) =>
-    api.post('/resources/export', { resource, method, args });
-
 // --- Diagnostics ----------------------------------------------------------
 // The framework probe answers 502 when the bridge is silent - that is an
 // answer, not a failure, and the panel says so.

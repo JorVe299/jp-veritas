@@ -3,7 +3,6 @@ import AllBansPanel from './AllBansPanel';
 import CitizenTabs from './CitizenTabs';
 import DiagnosticsPanel from './DiagnosticsPanel';
 import OrganisationsPanel from './OrganisationsPanel';
-import ResourcesPanel from './ResourcesPanel';
 
 /**
  * The second main area: everything on this server that belongs to nobody.
@@ -56,14 +55,11 @@ export default function ServerArea({
             />
 
             <div
-                /* Resources stacks instead of laying out in columns: its
-                   three cards climb from harmless to dangerous, and that
-                   order only reads if they sit one under the other. Bans
-                   stacks because it is one wide list: its rows carry a
-                   source, a state, who they are against and what they hang
-                   off, and squeezed into a grid column they wrap into
-                   something nobody can scan. */
-                className={`modules${activeTab === 'resources' || activeTab === 'bans' ? ' modules--stack' : ''}`}
+                /* Bans stacks instead of laying out in columns: it is one
+                   wide list whose rows carry a source, a state, who they
+                   are against and what they hang off, and squeezed into a
+                   grid column they wrap into something nobody can scan. */
+                className={`modules${activeTab === 'bans' ? ' modules--stack' : ''}`}
                 role="tabpanel"
                 id={`tabpanel-${activeTab}`}
                 aria-labelledby={`tab-${activeTab}`}
@@ -77,7 +73,6 @@ export default function ServerArea({
                         onClearCitizen={onClearBansCitizen}
                     />
                 )}
-                {activeTab === 'resources' && <ResourcesPanel />}
                 {activeTab === 'system' && <DiagnosticsPanel />}
             </div>
         </>

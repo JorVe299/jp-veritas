@@ -31,7 +31,6 @@ const SERVER_HINTS = {
     orgs: 'The jobs and gangs players belong to, and who is in them.',
     accounts: 'Every account on this server, personal and company.',
     bans: 'Everyone kept out, including identifiers with no character.',
-    resources: 'The code the game server is running right now.',
     system: 'What this installation is, when something looks wrong.',
 };
 
@@ -204,19 +203,16 @@ export default function Workspace({
        request would come back 403 and the section would report a fault
        where there is none.
 
-       Diagnostics hangs off two permissions - the framework probe needs
-       resources.view, the rest system.view - and either one on its own is
-       enough for the section to have something to show. */
+       Diagnostics needs system.view, which now also covers the framework
+       probe - that check moved in with the rest of the diagnostics when
+       the resource browser was removed. */
     const serverTabs = useMemo(() => {
         const list = [];
 
         if (can('orgs.view')) list.push({ id: 'orgs', label: 'Organisations', icon: 'briefcase' });
         if (can('accounts.view')) list.push({ id: 'accounts', label: 'Accounts', icon: 'bank' });
         if (can('bans.view')) list.push({ id: 'bans', label: 'Bans', icon: 'ban' });
-        if (can('resources.view')) list.push({ id: 'resources', label: 'Resources', icon: 'box' });
-        if (can('system.view') || can('resources.view')) {
-            list.push({ id: 'system', label: 'Diagnostics', icon: 'pulse' });
-        }
+        if (can('system.view')) list.push({ id: 'system', label: 'Diagnostics', icon: 'pulse' });
 
         return list;
     }, [can]);
