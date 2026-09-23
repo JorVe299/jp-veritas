@@ -1,10 +1,14 @@
 import { Fragment } from 'react';
+import CooldownLabel from './CooldownLabel';
 import Icon from './Icon';
 import PortalNotice from './PortalNotice';
 import StatusNote from './StatusNote';
+import { useCooldown } from '../lib/useCooldown';
 import { usePortalBans } from '../lib/usePortal';
 import { DASH, numberOrNull } from '../lib/portalText';
 import { formatDateTime } from '../utils/format';
+
+const RETRY_KEY = 'portal-bans-retry';
 
 /**
  * What is on record against this account.
@@ -41,6 +45,16 @@ import { formatDateTime } from '../utils/format';
  */
 export default function PortalBans() {
     const state = usePortalBans();
+
+    // Three buttons can ask for the record again - the notice, the one under
+    // an unreadable record and the one under a partial one - and they all
+    // send the same request. So they share one cooldown: which of them was
+    // pressed says nothing about how often the backend was asked.
+    const retryCooldown = useCooldown(RETRY_KEY);
+    const retry = () => {
+        retryCooldown.start();
+        state.reload();
+    };
 
     const bans = Array.isArray(state.data?.bans) ? state.data.bans : [];
 
@@ -110,10 +124,13 @@ export default function PortalBans() {
                         error={state.error}
                         hint={state.hint}
                         onRetry={state.reload}
+                        cooldownKey={RETRY_KEY}
                     />
                 )}
 
-                {unreadable && <Unreadable data={state.data} onRetry={state.reload} />}
+                {unreadable && (
+                    <Unreadable data={state.data} onRetry={retry} wait={retryCooldown.remaining} />
+                )}
 
                 {/* Above the entries, not below them: a reader who stops
                     after the first one they recognise still has to have
@@ -134,9 +151,10 @@ export default function PortalBans() {
                     <button
                         type="button"
                         className="btn btn--ghost btn--sm idbans__retry"
-                        onClick={state.reload}
+                        onClick={retry}
+                        disabled={!retryCooldown.ready}
                     >
-                        Try again
+                        <CooldownLabel text="Try again" remaining={retryCooldown.remaining} />
                     </button>
                 )}
             </div>
@@ -236,7 +254,7 @@ function PartialGap({ data, missing }) {
  * who has no .env to edit. Folded, not dropped: the operator is often the
  * same person, and they should not have to open a console to find it.
  */
-function Unreadable({ data, onRetry }) {
+function Unreadable({ data, onRetry, wait }) {
     const reason = trimmed(data?.reason);
     const hint = trimmed(data?.hint);
 
@@ -254,8 +272,13 @@ function Unreadable({ data, onRetry }) {
 
             {hint && <Hint text={hint} />}
 
-            <button type="button" className="btn btn--ghost btn--sm idbans__retry" onClick={onRetry}>
-                Try again
+            <button
+                type="button"
+                className="btn btn--ghost btn--sm idbans__retry"
+                onClick={onRetry}
+                disabled={wait > 0}
+            >
+                <CooldownLabel text="Try again" remaining={wait} />
             </button>
         </>
     );

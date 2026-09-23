@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import AllBansLine from './AllBansLine';
+import CooldownLabel from './CooldownLabel';
 import Icon from './Icon';
 import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
 import { numberOrNull } from '../lib/portalText';
 import { useAllBans } from '../lib/useAllBans';
 import { useCan } from '../lib/useCan';
+import { useCooldown } from '../lib/useCooldown';
 
 const LIMIT = 50;
 
@@ -102,6 +104,15 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
     };
 
     const reload = () => setToken((v) => v + 1);
+
+    // The retry asks txAdmin and the database both. When a line reports a
+    // change the list reloads through reload() directly; only the button is
+    // held to one attempt a minute.
+    const retryCooldown = useCooldown('allbans-retry');
+    const retryByHand = () => {
+        retryCooldown.start();
+        reload();
+    };
 
     return (
         <section className="panel" aria-labelledby="allbans-panel-title">
@@ -289,10 +300,10 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                         <button
                             type="button"
                             className="btn btn--ghost btn--sm"
-                            onClick={reload}
-                            disabled={res.isStale}
+                            onClick={retryByHand}
+                            disabled={res.isStale || !retryCooldown.ready}
                         >
-                            Try both records again
+                            <CooldownLabel text="Try both records again" remaining={retryCooldown.remaining} />
                         </button>
                     </div>
                 )}

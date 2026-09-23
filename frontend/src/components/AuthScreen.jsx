@@ -1,6 +1,8 @@
+import CooldownLabel from './CooldownLabel';
 import Mark from './Mark';
 import StatusNote from './StatusNote';
 import { authFeedback } from '../lib/authFeedback';
+import { useCooldown } from '../lib/useCooldown';
 
 /**
  * The antechamber: everything that is visible as long as no confirmed
@@ -74,6 +76,15 @@ function noteFor(notice, feedback) {
 export default function AuthScreen({ mode, notice = null, error, onSignIn, onRetry }) {
     const note = mode === 'signin' ? noteFor(notice, authFeedback) : null;
 
+    // The recheck swaps this screen for the loading state and back, so the
+    // cooldown has to outlive the button - which useCooldown does. The key
+    // is shared with the portal's gate: both ask the same session route.
+    const retryCooldown = useCooldown('session-recheck');
+    const retry = () => {
+        retryCooldown.start();
+        onRetry();
+    };
+
     return (
         <main className="gate">
             <span className="gate__grain" aria-hidden="true" />
@@ -113,8 +124,13 @@ export default function AuthScreen({ mode, notice = null, error, onSignIn, onRet
                             It may be restarting. Nothing is known about your session until it does.
                         </p>
                         <StatusNote tone="error" title="Session check failed" detail={error} />
-                        <button type="button" className="btn gate__action" onClick={onRetry}>
-                            Try again
+                        <button
+                            type="button"
+                            className="btn gate__action"
+                            onClick={retry}
+                            disabled={!retryCooldown.ready}
+                        >
+                            <CooldownLabel text="Try again" remaining={retryCooldown.remaining} />
                         </button>
                     </div>
                 )}

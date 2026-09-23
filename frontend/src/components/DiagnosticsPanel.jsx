@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import CooldownLabel from './CooldownLabel';
 import Icon from './Icon';
 import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
 import { fetchBridgeReport, fetchFramework, fetchSchema, refreshGameData } from '../api';
 import { useCan } from '../lib/useCan';
+import { useCooldown } from '../lib/useCooldown';
 import { useServerFetch } from '../lib/useServerData';
 import { failureNote, successNote } from '../lib/writeFeedback';
 
@@ -40,9 +42,26 @@ export default function DiagnosticsPanel() {
    What the bridge says it is running.
    ------------------------------------------------------------------------- */
 
-function FrameworkCard() {
+/**
+ * The "ask again" of a read-only card: a token that makes the fetch run once
+ * more, and the cooldown the button waits out afterwards. Each card has its
+ * own key, since each asks something different of the bridge or database.
+ */
+function useAskAgain(key) {
     const [token, setToken] = useState(0);
-    const res = useServerFetch(fetchFramework, { token });
+    const cooldown = useCooldown(key);
+
+    const again = () => {
+        cooldown.start();
+        setToken((v) => v + 1);
+    };
+
+    return { token, again, remaining: cooldown.remaining };
+}
+
+function FrameworkCard() {
+    const ask = useAskAgain('diagnostics-framework');
+    const res = useServerFetch(fetchFramework, { token: ask.token });
 
     const data = res.data || {};
     const adapters = data.adapters && typeof data.adapters === 'object' ? data.adapters : {};
@@ -132,10 +151,10 @@ function FrameworkCard() {
                 <button
                     type="button"
                     className="btn btn--ghost btn--sm"
-                    onClick={() => setToken((v) => v + 1)}
-                    disabled={res.status === 'loading' && res.waiting}
+                    onClick={ask.again}
+                    disabled={(res.status === 'loading' && res.waiting) || ask.remaining > 0}
                 >
-                    Ask again
+                    <CooldownLabel text="Ask again" remaining={ask.remaining} />
                 </button>
             </footer>
         </section>
@@ -157,8 +176,8 @@ function frameworkHint(res, data) {
    ------------------------------------------------------------------------- */
 
 function BridgeCard() {
-    const [token, setToken] = useState(0);
-    const res = useServerFetch(fetchBridgeReport, { token });
+    const ask = useAskAgain('diagnostics-bridge');
+    const res = useServerFetch(fetchBridgeReport, { token: ask.token });
 
     const data = res.data || {};
     const ids = Array.isArray(data.citizenids) ? data.citizenids : [];
@@ -240,10 +259,10 @@ function BridgeCard() {
                 <button
                     type="button"
                     className="btn btn--ghost btn--sm"
-                    onClick={() => setToken((v) => v + 1)}
-                    disabled={res.status === 'loading' && res.waiting}
+                    onClick={ask.again}
+                    disabled={(res.status === 'loading' && res.waiting) || ask.remaining > 0}
                 >
-                    Check again
+                    <CooldownLabel text="Check again" remaining={ask.remaining} />
                 </button>
             </footer>
         </section>
@@ -281,8 +300,8 @@ function mismatchText(check) {
    ------------------------------------------------------------------------- */
 
 function SchemaCard() {
-    const [token, setToken] = useState(0);
-    const res = useServerFetch(fetchSchema, { token });
+    const ask = useAskAgain('diagnostics-schema');
+    const res = useServerFetch(fetchSchema, { token: ask.token });
 
     const data = res.data || {};
     const problems = Array.isArray(data.problems) ? data.problems : [];
@@ -396,10 +415,10 @@ function SchemaCard() {
                 <button
                     type="button"
                     className="btn btn--ghost btn--sm"
-                    onClick={() => setToken((v) => v + 1)}
-                    disabled={res.status === 'loading' && res.waiting}
+                    onClick={ask.again}
+                    disabled={(res.status === 'loading' && res.waiting) || ask.remaining > 0}
                 >
-                    Read again
+                    <CooldownLabel text="Read again" remaining={ask.remaining} />
                 </button>
             </footer>
         </section>
@@ -423,10 +442,14 @@ function schemaHint(res, data, problemCount) {
 function ReferenceDataCard({ canEdit }) {
     const [busy, setBusy] = useState(false);
     const [feedback, setFeedback] = useState(null);
+    const cooldown = useCooldown('diagnostics-refdata');
 
     const run = async () => {
-        if (!canEdit) return;
+        if (!canEdit || !cooldown.ready) return;
 
+        // Every press counts, not only the ones that worked - the same way
+        // the server counts them.
+        cooldown.start();
         setBusy(true);
         setFeedback(null);
         try {
@@ -444,7 +467,23 @@ function ReferenceDataCard({ canEdit }) {
                 counted.length > 0 ? `Now holding ${counted.join(', ')}.` : undefined,
             ));
         } catch (err) {
-            setFeedback(failureNote('The reference data could not be reloaded', err));
+            if (err.response?.status === 429) {
+                // Not a fault: the server allows this once a minute per
+                // user, and was asked sooner. Its count is the one that
+                // holds - after a page reload this browser has forgotten
+                // the last press, the server has not - so the button follows
+                // the server's remaining time rather than its own.
+                const wait = retryAfterSeconds(err.response);
+                if (wait !== null) cooldown.start(wait * 1000);
+                setFeedback({
+                    tone: 'warn',
+                    title: 'Reloaded only a moment ago',
+                    detail: err.response.data?.error
+                        || 'The reference data can be reloaded once a minute.',
+                });
+            } else {
+                setFeedback(failureNote('The reference data could not be reloaded', err));
+            }
         } finally {
             setBusy(false);
         }
@@ -480,13 +519,31 @@ function ReferenceDataCard({ canEdit }) {
                     type="button"
                     className="btn btn--ghost"
                     onClick={run}
-                    disabled={!canEdit || busy}
+                    disabled={!canEdit || busy || !cooldown.ready}
                 >
-                    {busy ? 'Reloading…' : 'Reload reference data'}
+                    {busy
+                        ? 'Reloading…'
+                        : <CooldownLabel text="Reload reference data" remaining={cooldown.remaining} />}
                 </button>
             </footer>
         </section>
     );
+}
+
+/**
+ * How long a 429 said to wait, in whole seconds. The body's retryAfter
+ * first, the Retry-After header as the fallback; null when neither holds a
+ * usable number, and the button then keeps the cooldown it started itself.
+ */
+function retryAfterSeconds(response) {
+    const candidates = [response?.data?.retryAfter, response?.headers?.['retry-after']];
+    for (const value of candidates) {
+        const seconds = Number(value);
+        if (value !== null && value !== undefined && value !== '' && Number.isFinite(seconds) && seconds >= 0) {
+            return Math.ceil(seconds);
+        }
+    }
+    return null;
 }
 
 /* --- Small shared pieces -------------------------------------------------- */

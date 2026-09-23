@@ -426,6 +426,12 @@ button {
     cursor: not-allowed;
 }
 
+/* The seconds a button still waits before it may ask the backend again.
+   Tabular numerals, so the count does not make the button twitch. */
+.btn__wait {
+    font-variant-numeric: tabular-nums;
+}
+
 .btn--primary {
     background: var(--c-text);
     color: var(--c-bg);

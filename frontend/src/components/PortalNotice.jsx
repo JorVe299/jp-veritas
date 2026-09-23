@@ -1,4 +1,6 @@
+import CooldownLabel from './CooldownLabel';
 import StatusNote from './StatusNote';
+import { useCooldown } from '../lib/useCooldown';
 
 /**
  * A failed request, turned into one sentence a player can act on.
@@ -69,20 +71,42 @@ function wordsFor(code, error, hint) {
     }
 }
 
-export default function PortalNotice({ code = null, error = null, hint = null, onRetry = null }) {
+/**
+ * `cooldownKey` lets a caller share the retry's cooldown with its own retry
+ * buttons for the same request. Left out, every notice on the portal shares
+ * one: the point is how often the backend is asked, not which card asks.
+ */
+export default function PortalNotice({
+    code = null,
+    error = null,
+    hint = null,
+    onRetry = null,
+    cooldownKey = 'portal-retry',
+}) {
     const note = wordsFor(code, error, hint);
+    const cooldown = useCooldown(cooldownKey);
 
     // Trying again only helps where the answer could turn out differently.
     // A 403 will be a 403 again, and a button that changes nothing is worse
     // than none at all.
     const retryable = Boolean(onRetry) && (code === null || code === undefined || code >= 500);
 
+    const retry = () => {
+        cooldown.start();
+        onRetry();
+    };
+
     return (
         <div className="idfail">
             <StatusNote tone={note.tone} title={note.title} detail={note.detail} />
             {retryable && (
-                <button type="button" className="btn btn--ghost btn--sm" onClick={onRetry}>
-                    Try again
+                <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    onClick={retry}
+                    disabled={!cooldown.ready}
+                >
+                    <CooldownLabel text="Try again" remaining={cooldown.remaining} />
                 </button>
             )}
         </div>

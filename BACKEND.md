@@ -44,10 +44,10 @@ app's own routes is fine; ad-hoc scripts against the DB are not.
 catalog JSON files are runtime state. If a test creates them, delete them
 again and say what the state was before and after.
 
-**Commits go to `main`.** The server deploys by pulling `main`, so a branch
-breaks the deploy path. Ask before committing unless the owner has said to
-push directly in that session — they have said it before, but scoped to one
-session.
+**Commits go to `main`, and get pushed.** The server deploys by pulling
+`main`, so a branch breaks the deploy path, and an unpushed fix never reaches
+it. The owner has said to commit and push every finished change without
+asking.
 
 ---
 
@@ -94,6 +94,7 @@ data/                Runtime state. Gitignored. Written by the panel and by
 | `bridge.js` | HTTP to the FiveM resource. |
 | `dbHandler.js` | The MySQL pool, plus column/table discovery. |
 | `framework.js` | Which framework this schema is (`qb` / `esx`). |
+| `rateLimit.js` | `oncePer(name, ms)`: one request per window per person, 429 + `Retry-After` otherwise. |
 
 ---
 
@@ -145,6 +146,12 @@ file and renames it into place, and only adopts the new state after the write
 succeeded. It used to do the reverse, which left the process holding roles
 the file knew nothing about.
 
+**Manual refresh buttons wait a minute.** Every "refresh" / "try again"
+button in the frontend goes through `lib/useCooldown.js` and is disabled for
+60 s after a press. That is a courtesy, not a guard: routes where a request
+is expensive also carry `oncePer(...)` server-side (currently
+`POST /api/system/refresh`).
+
 ---
 
 ## 5. Configuration
@@ -184,7 +191,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 121 tests
+cd backend  && npm test         # node --test, currently 128 tests
 cd frontend && npx eslint . && npx vite build
 ```
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import CooldownLabel from './CooldownLabel';
 import Icon from './Icon';
 import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
@@ -11,6 +12,7 @@ import {
     teleportPlayer,
 } from '../api';
 import { useCan } from '../lib/useCan';
+import { useCooldown } from '../lib/useCooldown';
 import { usePlayerResource } from '../lib/usePlayerResource';
 import { failureNote, successNote } from '../lib/writeFeedback';
 import { formatCoord, formatDateTime } from '../utils/format';
@@ -84,6 +86,16 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
 
     const position = res.data?.position || null;
     const reload = () => setVersion((v) => v + 1);
+
+    // Only the button waits out a cooldown. The reloads after a kick, a
+    // teleport or a 409 are the card keeping itself honest and stay
+    // unthrottled. One key for every citizen: the point is the request
+    // rate, not fairness between players.
+    const refreshCooldown = useCooldown('live-position-refresh');
+    const refreshByHand = () => {
+        refreshCooldown.start();
+        reload();
+    };
 
     /**
      * Every action runs through here. A 409 is not a bug in the program but
@@ -368,10 +380,10 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
                     <button
                         type="button"
                         className="btn btn--ghost"
-                        onClick={reload}
-                        disabled={res.status === 'loading' || busy !== null}
+                        onClick={refreshByHand}
+                        disabled={res.status === 'loading' || busy !== null || !refreshCooldown.ready}
                     >
-                        Refresh
+                        <CooldownLabel text="Refresh" remaining={refreshCooldown.remaining} />
                     </button>
                 </footer>
             </section>

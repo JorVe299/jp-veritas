@@ -12,6 +12,7 @@ const txadmin = require('../utils/txadmin');
 const { fetchStatus, HAS_TOKEN } = require('../utils/bridge');
 const { identifiersOf, discordOf } = require('../utils/identity');
 const { checkDatabaseMatchesServer } = require('./players');
+const { oncePer } = require('../utils/rateLimit');
 
 const router = express.Router();
 
@@ -212,8 +213,10 @@ function verdictFor(report) {
     return `None of this account's identifiers appear in the store. It keys actions by [${kinds}]; this account resolves to [${mine}]. If the ban was issued against an identifier the users table does not hold, the two can never meet.`;
 }
 
-// Route for reloading the JSON data without a restart
-router.post('/api/system/refresh', (req, res) => {
+// Route for reloading the JSON data without a restart. Once a minute per
+// person: it rereads every catalog file, and the button that calls it is
+// not the only way to send it.
+router.post('/api/system/refresh', oncePer('system.refresh', 60_000), (req, res) => {
     try {
         loadGameData(); // runs sync and load again
         console.log('[System] Hot reload of the game data done.');

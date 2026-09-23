@@ -1,6 +1,8 @@
+import CooldownLabel from './CooldownLabel';
 import IdMark from './IdMark';
 import StatusNote from './StatusNote';
 import { authFeedback } from '../lib/authFeedback';
+import { useCooldown } from '../lib/useCooldown';
 
 /**
  * The front door of Veritas ID: everything that is visible while no
@@ -79,6 +81,16 @@ function noteFor(notice, feedback) {
 export default function PortalGate({ mode, notice = null, error = null, onSignIn, onRetry }) {
     const note = mode === 'signin' ? noteFor(notice, authFeedback) : null;
 
+    // The recheck swaps this screen for the loading state and back, so the
+    // cooldown has to outlive the button - which useCooldown does. The key
+    // is shared with the panel's sign-in screen: both ask the same session
+    // route.
+    const retryCooldown = useCooldown('session-recheck');
+    const retry = () => {
+        retryCooldown.start();
+        onRetry();
+    };
+
     return (
         <main className="idgate">
             <section className="idgate__card">
@@ -121,8 +133,13 @@ export default function PortalGate({ mode, notice = null, error = null, onSignIn
                             does, so nothing is shown.
                         </p>
                         <StatusNote tone="error" title="Session check failed" detail={error} />
-                        <button type="button" className="btn idgate__action" onClick={onRetry}>
-                            Try again
+                        <button
+                            type="button"
+                            className="btn idgate__action"
+                            onClick={retry}
+                            disabled={!retryCooldown.ready}
+                        >
+                            <CooldownLabel text="Try again" remaining={retryCooldown.remaining} />
                         </button>
                     </div>
                 )}
