@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "test": "node --test \"utils/*.test.js\"",
+    "test": "node --test",
     "start": "node server.js",
     "dev": "node --watch server.js",
     "build:web": "npm --prefix ../frontend run build"
