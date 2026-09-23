@@ -1,9 +1,15 @@
+import Amount from './Amount';
 import Icon from './Icon';
 import Plate from './Plate';
 import PortalAvatar from './PortalAvatar';
 import PortalBans from './PortalBans';
 import { characterName, jobLine, numberOrNull, shown } from '../lib/portalText';
-import { formatCurrency, formatDateTime } from '../utils/format';
+import { formatDateTime } from '../utils/format';
+
+// The card's text column is about 9rem wide beside the poster. Up to a
+// billion a balance fits it in full; from there it is shortened ("$1.23B"),
+// with the exact figure in the title, spoken, and in full on the character.
+const CARD_COMPACT_FROM = 1e9;
 
 /**
  * The front door: who is signed in, which game account that reaches, and
@@ -157,16 +163,18 @@ function CharacterCard({ character, onOpen }) {
                 <span className="idcard__money">
                     <span className="idsum">
                         <span className="idsum__key u-caps">Cash</span>
-                        <span className="idsum__value u-mono">{formatCurrency(character?.money?.cash)}</span>
+                        <Amount value={character?.money?.cash} compactFrom={CARD_COMPACT_FROM} className="idsum__value u-mono" />
                     </span>
                     <span className="idsum">
                         <span className="idsum__key u-caps">Bank</span>
-                        <span className="idsum__value u-mono">{formatCurrency(character?.money?.bank)}</span>
+                        <Amount value={character?.money?.bank} compactFrom={CARD_COMPACT_FROM} className="idsum__value u-mono" />
                     </span>
                 </span>
 
                 <span className="idcard__foot">
-                    <span className="idcard__cid u-mono">{shown(character?.citizenid)}</span>
+                    <span className="idcard__cid u-mono" title={shown(character?.citizenid)}>
+                        {shown(character?.citizenid)}
+                    </span>
                     <span className="idcard__seen">Last seen {formatDateTime(character?.lastSeen)}</span>
                     <Icon name="chevronRight" size={18} className="idcard__go" />
                 </span>

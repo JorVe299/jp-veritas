@@ -279,7 +279,10 @@ function VehicleRow({ vehicle, canEdit, onFeedback, onChanged, onReport }) {
         <li className="line">
             <div className="line__top">
                 <span className="line__name">{name || 'Unknown model'}</span>
-                <span className={`pill ${badge?.pill ?? 'pill--unknown'} line__badge`}>{stateLabel}</span>
+                {/* The label can be the server's own word for a state. */}
+                <span className={`pill pill--fit ${badge?.pill ?? 'pill--unknown'} line__badge`} title={stateLabel}>
+                    <span className="u-clip">{stateLabel}</span>
+                </span>
             </div>
 
             <div className="line__meta">

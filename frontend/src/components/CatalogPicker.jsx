@@ -84,7 +84,7 @@ export default function CatalogPicker({
                                         onClick={() => onSelect(entry)}
                                         disabled={disabled}
                                     >
-                                        <span className="ladder__name">{title(entry)}</span>
+                                        <span className="ladder__name" title={title(entry)}>{title(entry)}</span>
                                         {meta && <span className="ladder__now u-mono">{meta(entry)}</span>}
                                     </button>
                                 );

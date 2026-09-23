@@ -284,6 +284,41 @@ p {
     border: 0;
 }
 
+/* --- Overflow safeguards --------------------------------------------------
+   Everything the server sends can be longer than the box it lands in: a
+   name with no spaces, a Discord handle, a balance in the trillions. A
+   value may wrap (overflow-wrap: anywhere, set on the component rules that
+   hold names and ids), be cut with an ellipsis (.u-clip, text only) or
+   shrink to fit (.u-fit, figures only). Hiding it behind overflow: hidden
+   on the panel is not one of the options - that does not fit the content,
+   it just stops anyone from seeing it. */
+
+/* One line, cut with an ellipsis. Text only, never a number - a clipped
+   figure reads as a different figure. Whatever carries this also carries
+   the full text in a title. */
+.u-clip {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A figure that shrinks until it fits, instead of breaking or being cut.
+   The box around it states the room (--fit-room, usually in container
+   units) and the ceiling (--fit-max, its normal size); <Amount> states the
+   character count. 0.61em per character is Spline Sans Mono's advance
+   (0.608em, read from the font file) rounded up. At everyday values the
+   result is --fit-max, so nothing changes until the figure would actually
+   spill. If the arithmetic is ever off, the figure wraps rather than
+   overflowing.
+   !important because the component sheets load after this one and every
+   figure already carries a size of its own there - the utility has to win
+   over it, whichever file comes last. */
+.u-fit {
+    font-size: min(var(--fit-max), calc(var(--fit-room) / (var(--fit-chars, 1) * 0.61))) !important;
+    overflow-wrap: anywhere;
+}
+
 .sprite {
     position: absolute;
     width: 0;
@@ -332,6 +367,8 @@ button {
     max-width: 72ch;
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
+    /* Hints echo search terms and server hints back verbatim. */
+    overflow-wrap: anywhere;
 }
 
 .input,

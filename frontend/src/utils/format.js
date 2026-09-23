@@ -39,6 +39,44 @@ export function formatDelta(value) {
     return `${formatted.slice(0, 1)}$${formatted.slice(1)}`;
 }
 
+// Three significant digits: "$1.23B" is short enough for the tightest box
+// it is used in, and still says which billion.
+const compactFormatter = new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumSignificantDigits: 3,
+});
+
+// Compact notation stops at T and then grows digit by digit again
+// ("1,230,000T"). Past that point a mantissa and an exponent are the only
+// bounded way to write it - and above 2^53 the trailing digits a full
+// number would show are float noise anyway.
+const scientificFormatter = new Intl.NumberFormat('en-US', {
+    notation: 'scientific',
+    maximumSignificantDigits: 3,
+});
+
+// 999.5T and up would round to "1000T" in compact notation.
+const COMPACT_CEILING = 9.995e14;
+
+/**
+ * 1234567 -> "1.23M", for display only where a box is genuinely too narrow
+ * for the full figure. Never for a value somebody acts on, and never alone:
+ * whatever shows this also carries the exact figure (title and
+ * screen-reader text) - <Amount> does both, and decides from which size on.
+ */
+export function formatCompact(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return Math.abs(n) >= COMPACT_CEILING ? scientificFormatter.format(n) : compactFormatter.format(n);
+}
+
+/** 1234567890 -> "$1.23B". Same "$" placement as formatCurrency. */
+export function formatCurrencyCompact(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return `$${formatCompact(n)}`;
+}
+
 /** 02:14 - used on the write records so each one is placeable in time. */
 export function formatTime(date = new Date()) {
     return timeFormatter.format(date);

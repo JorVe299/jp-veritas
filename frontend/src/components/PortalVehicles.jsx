@@ -81,7 +81,10 @@ export default function PortalVehicles({ citizenid }) {
                                         </span>
                                     </span>
 
-                                    <span className={`pill ${known?.pill ?? 'pill--unknown'}`}>{label}</span>
+                                    {/* The server's own word for the state, so it may run long. */}
+                                    <span className={`pill pill--fit ${known?.pill ?? 'pill--unknown'}`} title={label}>
+                                        <span className="u-clip">{label}</span>
+                                    </span>
                                 </li>
                             );
                         })}

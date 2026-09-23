@@ -1,8 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import Amount from './Amount';
 import Icon from './Icon';
 import Plate from './Plate';
 import StatusNote from './StatusNote';
-import { formatCurrency, jobTitle } from '../utils/format';
+import { jobTitle } from '../utils/format';
 import { PAGE_SIZE, useRails } from '../lib/useRoster';
 
 /**
@@ -210,6 +211,12 @@ export function Rail({ rail, bridgeDown, selectedId, onSelect }) {
    One tile
    ------------------------------------------------------------------------- */
 
+// A tile is the narrowest box a balance is ever put in - about 70px beside
+// its key at the mid breakpoint. Up to ten million the figure stays exact
+// (and shrinks a little if it has to); from there it goes compact, with the
+// exact figure in the title. The billboard shows it in full.
+const TILE_COMPACT_FROM = 1e7;
+
 function Tile({ player, statusUnknown, isSelected, onSelect }) {
     const statusText = statusUnknown
         ? 'Status unknown'
@@ -249,15 +256,29 @@ function Tile({ player, statusUnknown, isSelected, onSelect }) {
                 to open the record for. */}
             <span className="tile__reveal" aria-hidden="true">
                 <span className="tile__revealinner">
-                    <span className="tile__cid u-mono">{player.citizenid}</span>
+                    {/* One line: the reveal rides up by a fixed distance,
+                        so a second line would slide under the caption. The
+                        id is spoken in full below and stands on the
+                        billboard once the tile is opened. */}
+                    <span className="tile__cid u-mono u-clip" title={player.citizenid}>
+                        {player.citizenid}
+                    </span>
                     <span className="tile__money">
                         <span className="tile__moneyrow">
                             <span className="tile__moneykey u-caps">Cash</span>
-                            <span className="u-mono">{formatCurrency(player.money?.cash)}</span>
+                            <Amount
+                                value={player.money?.cash}
+                                compactFrom={TILE_COMPACT_FROM}
+                                className="tile__moneyvalue u-mono u-fit"
+                            />
                         </span>
                         <span className="tile__moneyrow">
                             <span className="tile__moneykey u-caps">Bank</span>
-                            <span className="u-mono">{formatCurrency(player.money?.bank)}</span>
+                            <Amount
+                                value={player.money?.bank}
+                                compactFrom={TILE_COMPACT_FROM}
+                                className="tile__moneyvalue u-mono u-fit"
+                            />
                         </span>
                     </span>
                 </span>

@@ -447,7 +447,7 @@ function TeleportForm({ start, disabled, working, onSubmit }) {
                             onClick={() => pick(dest)}
                             disabled={disabled}
                         >
-                            <span className="ladder__name">{dest.name}</span>
+                            <span className="ladder__name" title={dest.name}>{dest.name}</span>
                             <span className="ladder__now u-mono">
                                 {`${formatCoord(dest.x)} / ${formatCoord(dest.y)}`}
                             </span>

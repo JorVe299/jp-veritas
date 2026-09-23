@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Amount from './Amount';
 import Icon from './Icon';
 import PermissionLine from './PermissionLine';
 import StatusNote from './StatusNote';
 import CatalogPicker from './CatalogPicker';
 import { fetchPlayerInventory, updatePlayerInventory } from '../api';
 import { parseAmount } from '../utils/format';
+
+// Up to 9,999 a count fits the corner of a slot as it is; past that it is
+// shortened ("12.3K") rather than running into the slot number.
+const SLOT_COMPACT_FROM = 10000;
 
 const errorText = (err) => err.response?.data?.error || err.message;
 
@@ -348,7 +353,18 @@ function Slot({
             aria-label={item ? `Slot ${number}: ${item.amount}x ${item.label}` : `Slot ${number}, empty`}
         >
             <span className="slot__num">{number}</span>
-            {item && <span className="slot__count u-mono">{item.amount}</span>}
+            {/* The count shares the slot's top edge with the slot number,
+                and a five-slot row leaves a phone about 3rem per slot: from
+                ten thousand on it goes compact. The exact count is in the
+                slot's aria-label and in the title of its name below. */}
+            {item && (
+                <Amount
+                    value={item.amount}
+                    currency={false}
+                    compactFrom={SLOT_COMPACT_FROM}
+                    className="slot__count u-mono"
+                />
+            )}
 
             <span className="slot__art">
                 {item && (item.image
@@ -357,7 +373,7 @@ function Slot({
                 )}
             </span>
 
-            {item && <span className="slot__label">{item.label}</span>}
+            {item && <span className="slot__label" title={`${item.amount}× ${item.label}`}>{item.label}</span>}
         </button>
     );
 }
@@ -478,7 +494,9 @@ function CatalogAdd({ disabled, onAdd, onDragItem, onDragEnd }) {
                 onDragEnd={onDragEnd}
             >
                 <span className="slot__num">new</span>
-                {picked && validAmount && <span className="slot__count u-mono">{parsed}</span>}
+                {picked && validAmount && (
+                    <Amount value={parsed} currency={false} compactFrom={SLOT_COMPACT_FROM} className="slot__count u-mono" />
+                )}
                 <span className="slot__art">
                     <span className="slot__fallback">
                         {picked ? picked.key.slice(0, 3) : '—'}

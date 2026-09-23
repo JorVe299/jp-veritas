@@ -213,7 +213,7 @@ export default function GroupManager({ selectedPlayer, gangs, gangsError, onAppl
                                         disabled={saving || !canEdit || blocked}
                                     >
                                         <span className="ladder__level u-mono">{level}</span>
-                                        <span className="ladder__name">{grade.name}</span>
+                                        <span className="ladder__name" title={grade.name}>{grade.name}</span>
                                         {level === originalGrade && (
                                             <span className="ladder__now u-caps">Now</span>
                                         )}

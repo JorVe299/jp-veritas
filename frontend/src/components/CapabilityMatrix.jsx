@@ -66,12 +66,13 @@ export default function CapabilityMatrix({
                                 <button
                                     key={role.id}
                                     type="button"
-                                    className={`pill pill--drop ${open ? '' : 'matrix__folded'}`.trim()}
+                                    className={`pill pill--drop pill--fit ${open ? '' : 'matrix__folded'}`.trim()}
                                     onClick={() => fold(role.id)}
                                     aria-pressed={open}
+                                    title={role.label}
                                 >
                                     <Icon name={open ? 'check' : 'plus'} size={13} className="pill__x" />
-                                    {role.label}
+                                    <span className="u-clip">{role.label}</span>
                                 </button>
                             );
                         })}

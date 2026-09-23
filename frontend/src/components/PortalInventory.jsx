@@ -1,3 +1,4 @@
+import Amount from './Amount';
 import Icon from './Icon';
 import PortalNotice from './PortalNotice';
 import { usePortalResource } from '../lib/usePortal';
@@ -68,7 +69,15 @@ export default function PortalInventory({ citizenid }) {
                                 className="slot slot--static"
                             >
                                 <span className="slot__num">{item?.slot ?? '—'}</span>
-                                <span className="slot__count u-mono">{item?.amount ?? '?'}</span>
+                                {/* Shortened from ten thousand on, the way the
+                                    panel's slots are; the exact count is spoken
+                                    and sits in the title. */}
+                                <Amount
+                                    value={item?.amount ?? '?'}
+                                    currency={false}
+                                    compactFrom={10000}
+                                    className="slot__count u-mono"
+                                />
                                 <span className="slot__art">
                                     {/* No item images here: the portal's API
                                         sends the plain item name and nothing
@@ -80,7 +89,10 @@ export default function PortalInventory({ citizenid }) {
                                         {String(item?.name ?? '?').slice(0, 3)}
                                     </span>
                                 </span>
-                                <span className="slot__label" title={item?.name || undefined}>
+                                <span
+                                    className="slot__label"
+                                    title={item?.name ? `${item?.amount ?? '?'}× ${item.name}` : undefined}
+                                >
                                     {item?.name ?? 'Unnamed item'}
                                 </span>
                             </li>

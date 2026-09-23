@@ -1,6 +1,13 @@
+import Amount from './Amount';
 import Icon from './Icon';
 import Plate from './Plate';
-import { formatCurrency, jobTitle } from '../utils/format';
+import { jobTitle } from '../utils/format';
+
+// The billboard shows the exact balance - it is where an admin reads it
+// before changing it - and shrinks the type to fit instead. Only past a
+// quadrillion, where a double can no longer hold every digit exactly, does
+// the figure go compact.
+const AMOUNT_COMPACT_FROM = 1e15;
 
 /**
  * The header area. With nothing selected it stays flat and only shows what
@@ -83,14 +90,22 @@ export default function Billboard({ player, bridgeDown, writeLog, onClear }) {
                             <Icon name="cash" size={14} />
                             Cash
                         </span>
-                        <span className="balance__value u-mono">{formatCurrency(player.money?.cash)}</span>
+                        <Amount
+                            value={player.money?.cash}
+                            compactFrom={AMOUNT_COMPACT_FROM}
+                            className="balance__value u-mono u-fit"
+                        />
                     </div>
                     <div className="balance">
                         <span className="balance__key u-caps">
                             <Icon name="bank" size={14} />
                             Bank
                         </span>
-                        <span className="balance__value u-mono">{formatCurrency(player.money?.bank)}</span>
+                        <Amount
+                            value={player.money?.bank}
+                            compactFrom={AMOUNT_COMPACT_FROM}
+                            className="balance__value u-mono u-fit"
+                        />
                     </div>
                 </div>
             </div>

@@ -155,6 +155,11 @@
     padding: var(--s-8) var(--gutter) var(--s-6);
     isolation: isolate;
     overflow: hidden;
+    /* The balance figures size themselves against this width (.u-fit).
+       The billboard rather than its inner row: it is already the isolated
+       layer the plate sits in, so containing it adds no new layer between
+       the cards' backdrop blur and the picture it blurs. */
+    container-type: inline-size;
 }
 
 .billboard--idle {
@@ -248,6 +253,8 @@
 }
 
 .billboard__cid {
+    min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--c-text);
     padding: 2px var(--s-2);
     background: rgba(0, 0, 0, 0.45);
@@ -256,8 +263,14 @@
     font-size: var(--fs-sm);
 }
 
+/* Each fact moves to the next line as a whole - the meta line is a
+   wrapping flex row, so a fact that fits is never broken, and nowrap added
+   nothing but the failure case: one fact wider than the whole line (a long
+   job label on a phone) ran out of the billboard and was clipped by it.
+   Now only that fact breaks, and only then. */
 .billboard__fact {
-    white-space: nowrap;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .billboard__balances {
@@ -286,6 +299,13 @@
     display: block;
     margin-top: var(--s-1);
     font-size: var(--fs-xl);
+    /* .u-fit keeps it at --fs-xl for any everyday balance. The room: two
+       cards share the billboard's width, each minus its own padding and
+       border, minus the gap between them. On a phone that is less than
+       a five-figure sum needs at full size, so there the figure shrinks
+       rather than running out of its card. */
+    --fit-max: var(--fs-xl);
+    --fit-room: calc((100cqi - 4.75rem) / 2);
     font-weight: 500;
     line-height: 1.1;
     letter-spacing: -0.02em;
@@ -307,6 +327,16 @@
     text-transform: uppercase;
     color: var(--c-text-muted);
     white-space: nowrap;
+}
+
+/* A pill whose words come from the server or from an owner - a role
+   label, a vehicle state. It may never be wider than the row it sits in:
+   its words sit in a .u-clip span and give way with an ellipsis, and the
+   pill carries the full words as its title. The fixed pills ("Live",
+   "Frozen") stay as they are - they cannot outgrow anything. */
+.pill--fit {
+    max-width: 100%;
+    min-width: 0;
 }
 
 .pill__dot {
@@ -411,6 +441,8 @@
 /* The colour marks which path the write took.
    The text itself stays achromatic and therefore calmly readable. */
 .ledger__what {
+    min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--c-text);
     font-variant-numeric: tabular-nums;
 }
@@ -539,6 +571,13 @@
     letter-spacing: 0;
     text-transform: none;
     backdrop-filter: blur(8px);
+    /* A whole sentence, sometimes with a role label or a citizen id in it.
+       It sits in wrapping rows, so it moves to its own line first and only
+       breaks inside once it is wider than the row - on a 320px phone,
+       "Game server unreachable · online status unverified" is. */
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .home__gap {
@@ -753,7 +792,9 @@
 
 .modules {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr));
+    /* min(): a 21rem column is wider than a 360px phone leaves after the
+       gutters, and would push every card past the right edge there. */
+    grid-template-columns: repeat(auto-fit, minmax(min(21rem, 100%), 1fr));
     gap: var(--s-4);
     padding: 0 var(--gutter) var(--s-6);
     align-items: start;
@@ -780,6 +821,13 @@
 .panel__icon {
     margin-top: 2px;
     color: var(--c-text-faint);
+}
+
+/* The heading's text column. Its hint is often assembled from data
+   ("Currently Los Santos Police Department · Lieutenant"). */
+.panel__head > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .panel__title {
@@ -826,6 +874,8 @@
 }
 
 .panel__footinfo {
+    min-width: 0;
+    overflow-wrap: anywhere;
     margin-right: auto;
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
@@ -1004,7 +1054,12 @@
     color: var(--c-text-muted);
 }
 
+/* The exact figure an action will produce, so it is never shortened. The
+   row wraps, so a long value first drops under its label and only breaks
+   inside once it is wider than the whole row. */
 .preview__value {
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-weight: 600;
 }
 
@@ -1066,6 +1121,10 @@
 
 .line__slot {
     flex: none;
+    /* An identifier (a gang or role id, a row count). Kept whole beside the
+       name, but never wider than the row. */
+    max-width: 100%;
+    overflow-wrap: anywhere;
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
 }
@@ -1073,6 +1132,7 @@
 .line__badge {
     margin-left: auto;
     flex: none;
+    max-width: 100%;
 }
 
 /* The balance carries the row - it sits at the far right and at the size of
@@ -1080,6 +1140,11 @@
 .line__amount {
     margin-left: auto;
     flex: none;
+    /* Never cut and never shortened - it is the figure the row's controls
+       act on. Past the width of the row (only a nonsensical balance gets
+       there) it breaks rather than running out of the card. */
+    max-width: 100%;
+    overflow-wrap: anywhere;
     font-size: var(--fs-md);
     font-weight: 600;
 }
@@ -1096,6 +1161,13 @@
     gap: var(--s-1) var(--s-4);
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
+    /* Account ids, licenses, IPs, "Opened by" names: copied by staff, so
+       they break rather than being cut. */
+    overflow-wrap: anywhere;
+}
+
+.line__meta > * {
+    min-width: 0;
 }
 
 .line__edit {
@@ -1196,6 +1268,11 @@
     display: inline-flex;
     align-items: center;
     gap: var(--s-2);
+    /* A rail is named after an employer, and an employer's label is
+       whatever the server calls it. A long one wraps under itself rather
+       than pushing the scroll arrows off the row. */
+    min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--c-text);
 }
 
@@ -1223,6 +1300,7 @@
 
 .rail__nav {
     display: flex;
+    flex: none;
     gap: var(--s-2);
     margin-left: auto;
 }
@@ -1412,6 +1490,9 @@
     min-height: 0;
     overflow: hidden;
     padding: 0 var(--s-3) var(--s-3);
+    /* The balances size themselves against the tile (.u-fit). Its width is
+       the tile's, never its content's, so containing it changes nothing. */
+    container-type: inline-size;
 }
 
 .tile:hover .tile__reveal,
@@ -1452,6 +1533,14 @@
     color: var(--c-text-faint);
 }
 
+/* The room is the tile minus the key ("CASH", "BANK" in tracked caps,
+   2.5rem) and the 0.5rem gap beside it. */
+.tile__moneyvalue {
+    --fit-max: var(--fs-micro);
+    --fit-room: calc(100cqi - 3rem);
+    text-align: right;
+}
+
 /* --------------------------------------------------------------------------
    6. States: empty, placeholder, notice
    -------------------------------------------------------------------------- */
@@ -1473,8 +1562,11 @@
 }
 
 .empty__title {
+    max-width: 100%;
     font-size: var(--fs-md);
     font-weight: 700;
+    /* It quotes the search back, and a search can be one long word. */
+    overflow-wrap: anywhere;
 }
 
 .empty__text {
@@ -1531,6 +1623,8 @@
 .note__title {
     font-weight: 700;
     color: var(--c-text);
+    /* Titles carry server messages and names too, not only fixed words. */
+    overflow-wrap: anywhere;
 }
 
 .note__detail {
@@ -1676,6 +1770,7 @@
 }
 
 .session__name {
+    min-width: 0;
     max-width: 10rem;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1875,6 +1970,8 @@
 }
 
 .invsum__chip {
+    max-width: 100%;
+    overflow-wrap: anywhere;
     display: inline-flex;
     align-items: center;
     gap: var(--s-2);
@@ -1983,12 +2080,14 @@
 }
 
 .sheet__title {
+    overflow-wrap: anywhere;
     font-size: var(--fs-lg);
     font-weight: 600;
     line-height: var(--lh-tight);
 }
 
 .sheet__sub {
+    overflow-wrap: anywhere;
     margin-top: 2px;
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
@@ -2043,6 +2142,9 @@
     text-align: left;
     cursor: default;
     transition: border-color 0.12s var(--ease-out), background 0.12s var(--ease-out);
+    /* The monogram sizes itself against the slot. Its width comes from the
+       grid, never from its content. */
+    container-type: inline-size;
 }
 
 .slot--filled {
@@ -2098,8 +2200,13 @@
 
 /* Without ox_inventory icons the tiles carry the first characters of the
    item name - the grid stays readable even so. */
+/* Five slots across a small phone leave barely 2rem inside each, less
+   than three bold capitals need at the normal size (about 2.35em) - the
+   monogram ran out of its slot. 40cqi is that width with a little to
+   spare: wherever three capitals fit at --fs-sm they stay at --fs-sm, and
+   only a slot too narrow for them makes them smaller. */
 .slot__fallback {
-    font-size: var(--fs-sm);
+    font-size: min(var(--fs-sm), 40cqi);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -2160,6 +2267,7 @@
 }
 
 .detail__name {
+    overflow-wrap: anywhere;
     font-size: var(--fs-md);
     font-weight: 600;
     line-height: var(--lh-tight);
@@ -2171,6 +2279,11 @@
     gap: var(--s-1) var(--s-3);
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
+    overflow-wrap: anywhere;
+}
+
+.detail__meta > * {
+    min-width: 0;
 }
 
 .detail__actions {
@@ -2217,6 +2330,11 @@
     color: var(--c-text-muted);
 }
 
+.denied > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
 .denied__icon {
     margin-top: 3px;
     color: var(--c-text-faint);
@@ -2250,8 +2368,15 @@
     vertical-align: bottom;
 }
 
+/* A role label is named by the owner. The column keeps it whole up to a
+   point and then wraps it, rather than growing one column across the
+   sheet. break-word, not anywhere: an ordinary label must keep the column
+   as wide as its longest word, as before. */
 .matrix__role {
     display: block;
+    max-width: 12rem;
+    margin-inline: auto;
+    overflow-wrap: break-word;
     font-size: var(--fs-micro);
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -2492,8 +2617,11 @@
 
 /* --- Role and access in the top bar --------------------------------------- */
 
+/* A role label is whatever the owner named it. It gives way before the
+   bar does, with the full label in its title. */
 .session__role {
     flex: none;
+    max-width: 10rem;
 }
 
 .topbar__perms {
@@ -2622,12 +2750,18 @@
 
 .tally__item {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     gap: var(--s-2);
     min-width: 0;
 }
 
+/* A total across every account can be long. Figure and key share a line
+   while they fit; past that the key drops below, and only a figure wider
+   than the whole card breaks - never shortened, it is the exact sum. */
 .tally__value {
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-size: var(--fs-md);
     font-weight: 600;
 }
@@ -2682,7 +2816,8 @@
    Stacked they would read as two unrelated lists. */
 .orgdetail__lists {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    /* min(): inside a row inside a card, 16rem is more than a phone has. */
+    grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
     gap: var(--s-4);
     align-items: start;
 }
@@ -2789,6 +2924,7 @@
 }
 
 .reveal__summary {
+    overflow-wrap: anywhere;
     cursor: pointer;
     font-size: var(--fs-sm);
     color: var(--c-text-muted);
@@ -2819,7 +2955,10 @@
     align-items: baseline;
     gap: var(--s-2);
     margin-left: auto;
-    flex: none;
+    /* Allowed to narrow (never below its widest pill), so on a phone the
+       two pills stack instead of running out of the row together. */
+    flex: 0 1 auto;
+    max-width: 100%;
 }
 
 /* Provenance, not a verdict: it keeps the neutral pill and gives up the

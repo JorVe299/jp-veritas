@@ -260,7 +260,8 @@
 
 .idlist__items {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    /* min(): never a column wider than the page has, at the 320px floor. */
+    grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
     gap: var(--s-4);
     margin: 0;
     padding: 0;
@@ -331,8 +332,14 @@
     height: 100%;
 }
 
+/* Wraps: at three cards to a row the name and the On duty pill do not fit
+   side by side, and squeezed beside the pill the name broke mid-word
+   ("JORDA / N") even though it fit its own line. Now the pill drops under
+   the name instead, and a name only breaks inside a word when that one word
+   is wider than the whole card. */
 .idcard__head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--s-3);
@@ -352,6 +359,7 @@
 .idcard__job {
     font-size: var(--fs-sm);
     color: var(--c-text-muted);
+    overflow-wrap: anywhere;
 }
 
 .idcard__money {
@@ -360,8 +368,14 @@
     gap: var(--s-2) var(--s-5);
 }
 
+/* The card's text column is only 9-10rem wide once the poster has its
+   share - narrower than id, "Last seen Mar 04, 2026, 21:40" and the chevron
+   in one row. On one line the date ran out of the card and squeezed the id
+   beside it down to nothing, at any width. The row wraps now: the id stays
+   whole, and the date moves under it where it does not fit beside it. */
 .idcard__foot {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--s-3);
     margin-top: auto;
@@ -379,7 +393,7 @@
 
 .idcard__seen {
     margin-left: auto;
-    white-space: nowrap;
+    min-width: 0;
 }
 
 .idcard__go {
@@ -423,8 +437,12 @@
     font-weight: 600;
 }
 
+/* .u-fit keeps it at --fs-xl for any everyday balance and makes it smaller
+   once the full figure would no longer fit the card. */
 .idsum__value--big {
     font-size: var(--fs-xl);
+    --fit-max: var(--fs-xl);
+    --fit-room: 100cqi;
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: var(--lh-tight);
@@ -527,6 +545,11 @@
     gap: var(--s-2);
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
+    overflow-wrap: anywhere;
+}
+
+.idhead__meta > * {
+    min-width: 0;
 }
 
 /* --- The cards a character is made of ------------------------------------
@@ -536,7 +559,7 @@
 
 .idpanels {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
     gap: var(--s-4);
     align-items: start;
 }
@@ -587,6 +610,9 @@
     flex-direction: column;
     gap: var(--s-3);
     padding: var(--s-4);
+    /* The balances size themselves against this (.u-fit). Its width comes
+       from the grid column, never from its content. */
+    container-type: inline-size;
 }
 
 .idpanel__body--gauges {
@@ -696,6 +722,11 @@
     gap: var(--s-2);
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
+    overflow-wrap: anywhere;
+}
+
+.idrow__meta > * {
+    min-width: 0;
 }
 
 .idrow__sep {
@@ -824,6 +855,11 @@
     gap: var(--s-1) var(--s-2);
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
+    overflow-wrap: anywhere;
+}
+
+.idban__meta > * {
+    min-width: 0;
 }
 
 .idbans__gap {
@@ -959,10 +995,6 @@
 
     .idhero {
         align-items: flex-start;
-    }
-
-    .idcard__foot {
-        flex-wrap: wrap;
     }
 
     .idcard__seen {

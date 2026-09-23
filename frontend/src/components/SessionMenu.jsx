@@ -18,6 +18,9 @@ export default function SessionMenu({ user, roleLabel, signingOut, onSignOut }) 
     const [avatarFailed, setAvatarFailed] = useState(false);
 
     const name = user?.globalName || user?.username || 'Signed in';
+    // The name is cut to fit the bar, so the title has to hold all of it -
+    // plus the handle, where that is not what is shown.
+    const fullName = user?.username && user.username !== name ? `${name} (${user.username})` : name;
     const avatarUrl = typeof user?.avatarUrl === 'string' && user.avatarUrl.startsWith('https://')
         ? user.avatarUrl
         : null;
@@ -40,12 +43,16 @@ export default function SessionMenu({ user, roleLabel, signingOut, onSignOut }) 
                 </span>
             )}
 
-            <span className="session__name" title={user?.username || undefined}>{name}</span>
+            <span className="session__name" title={fullName}>{name}</span>
 
             {/* The role sits next to the name, not only where a button is
                 missing: anyone working under limits should know that up front
                 and not puzzle over a greyed-out control. */}
-            {roleLabel && <span className="pill session__role">{roleLabel}</span>}
+            {roleLabel && (
+                <span className="pill pill--fit session__role" title={roleLabel}>
+                    <span className="u-clip">{roleLabel}</span>
+                </span>
+            )}
 
             <button
                 type="button"

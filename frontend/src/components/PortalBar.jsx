@@ -29,6 +29,9 @@ export default function PortalBar({
     onSignOut,
 }) {
     const name = user?.globalName || user?.username || 'Signed in';
+    // Cut to fit the bar, so the title holds all of it - and the handle,
+    // where that is not what is shown.
+    const fullName = user?.username && user.username !== name ? `${name} (${user.username})` : name;
 
     return (
         <header className="idbar">
@@ -64,7 +67,7 @@ export default function PortalBar({
 
             <span className="idbar__who">
                 <PortalAvatar name={name} url={user?.avatarUrl} />
-                <span className="idbar__name" title={user?.username || undefined}>{name}</span>
+                <span className="idbar__name" title={fullName}>{name}</span>
             </span>
 
             <button

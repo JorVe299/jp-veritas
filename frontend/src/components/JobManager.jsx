@@ -156,7 +156,7 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
                                         disabled={saving || !canEdit}
                                     >
                                         <span className="ladder__level u-mono">{level}</span>
-                                        <span className="ladder__name">{grade.name}</span>
+                                        <span className="ladder__name" title={grade.name}>{grade.name}</span>
                                         {level === originalGrade && selectedJob === originalJob && (
                                             <span className="ladder__now u-caps">Now</span>
                                         )}

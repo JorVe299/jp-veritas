@@ -125,9 +125,12 @@ function FrameworkCard() {
                                     {adapterNames.map((name) => (
                                         <span
                                             key={name}
-                                            className={`pill${adapters[name] ? ' pill--live' : ' pill--off'}`}
+                                            className={`pill pill--fit${adapters[name] ? ' pill--live' : ' pill--off'}`}
+                                            title={`${name} — ${adapters[name] ? 'present' : 'absent'}`}
                                         >
-                                            {`${name} — ${adapters[name] ? 'present' : 'absent'}`}
+                                            <span className="u-clip">
+                                                {`${name} — ${adapters[name] ? 'present' : 'absent'}`}
+                                            </span>
                                         </span>
                                     ))}
                                 </div>

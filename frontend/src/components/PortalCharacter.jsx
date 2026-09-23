@@ -1,3 +1,4 @@
+import Amount from './Amount';
 import Icon from './Icon';
 import Plate from './Plate';
 import PortalInventory from './PortalInventory';
@@ -6,7 +7,7 @@ import PortalVehicles from './PortalVehicles';
 import { usePortalResource } from '../lib/usePortal';
 import { fetchMyCharacter } from '../api';
 import { characterName, gangLine, jobLine, numberOrNull, shown } from '../lib/portalText';
-import { formatCurrency, formatDateTime } from '../utils/format';
+import { formatDateTime } from '../utils/format';
 
 // The four licences the portal is told about, in the order they are worth
 // reading. A framework that keeps more of them is not guessed at here.
@@ -168,9 +169,15 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
                                         {balances.map((row) => (
                                             <li key={row.key} className="idsum idsum--block">
                                                 <span className="idsum__key u-caps">{row.key}</span>
-                                                <span className="idsum__value idsum__value--big u-mono">
-                                                    {formatCurrency(row.value)}
-                                                </span>
+                                                {/* Exact, shrunk to fit the card if it has
+                                                    to. Compact only past a quadrillion,
+                                                    where a double stops holding every
+                                                    digit anyway. */}
+                                                <Amount
+                                                    value={row.value}
+                                                    compactFrom={1e15}
+                                                    className="idsum__value idsum__value--big u-mono u-fit"
+                                                />
                                             </li>
                                         ))}
                                     </ul>
