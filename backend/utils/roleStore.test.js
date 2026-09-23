@@ -308,3 +308,73 @@ test('the frontend validates Discord ids by the same rule', () => {
         `the snowflake rule has drifted apart: the editor uses ${theirs[1]}`,
     );
 });
+
+// --- A write that cannot land ---------------------------------------------
+//
+// The panel runs on a machine somebody else set up, and the folder it keeps
+// its roles in is not always one it may write to. That case used to end
+// badly in a quiet way: the new state was taken into memory and only then
+// written, so a refused write left the process holding roles the file knew
+// nothing about. The panel showed the change, reported that it had failed,
+// and lost it again at the next restart - and the owner was told only
+// "The permissions could not be saved", with the reason in a log they were
+// not reading.
+
+/** A store whose file can never be written: a file sits where its folder goes. */
+function blockedStore() {
+    scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'veritas-roles-'));
+    fs.writeFileSync(path.join(scratchDir, 'wall'), 'not a folder');
+    return createStore({
+        capabilityIds: CAPS,
+        defaults: DEFAULTS,
+        file: path.join(scratchDir, 'wall', 'permissions.json'),
+    });
+}
+
+test('a refused write leaves the roles exactly as they were', () => {
+    const store = blockedStore();
+    const before = store.list().map(r => r.id);
+
+    assert.throws(() => store.create({ label: 'Vehicle Crew' }));
+
+    assert.deepEqual(
+        store.list().map(r => r.id), before,
+        'memory must not hold a role the file was never given',
+    );
+});
+
+test('a refused reorder leaves the ranking exactly as it was', () => {
+    const store = blockedStore();
+    const before = store.list().map(r => r.id);
+
+    assert.throws(() => store.reorder(['owner', 'supporter', 'administrator', 'citizen']));
+
+    assert.deepEqual(store.list().map(r => r.id), before);
+});
+
+test('a refused write says why, not just that', () => {
+    const store = blockedStore();
+
+    try {
+        store.create({ label: 'Vehicle Crew' });
+        assert.fail('the write should have been refused');
+    } catch (e) {
+        assert.equal(e.message, 'The permissions could not be saved');
+        assert.equal(e.status, 500, 'the route needs a status to answer with');
+        assert.ok(e.hint, 'without a reason the owner cannot act on this');
+        assert.ok(
+            /EEXIST|EACCES|EPERM|ENOTDIR|EROFS|ENOSPC/.test(e.hint),
+            `the hint should name the underlying cause, got: ${e.hint}`,
+        );
+    }
+});
+
+test('a write that lands leaves no temporary file behind', () => {
+    const store = freshStore();
+    store.create({ label: 'Vehicle Crew' });
+
+    assert.deepEqual(
+        fs.readdirSync(scratchDir), ['permissions.json'],
+        'the file is written beside and renamed into place; nothing else should remain',
+    );
+});

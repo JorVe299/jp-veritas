@@ -24,11 +24,15 @@ function guard(req, res) {
     return false;
 }
 
-// An error thrown by the role store carries the status it deserves.
+// An error thrown by the role store carries the status it deserves - and,
+// where it has one, the reason. A store that cannot write its file knows
+// whether that was a permission, a read-only mount or a full disk; keeping
+// that in the log and sending the panel a bare "could not be saved" leaves
+// the one person who can fix it guessing.
 function fail(res, e) {
     const status = Number(e?.status) || 500;
     if (status >= 500) console.error('[Perms] role change failed:', e.message);
-    res.status(status).json({ error: e.message });
+    res.status(status).json({ error: e.message, hint: e?.hint || undefined });
 }
 
 router.get('/api/permissions', (req, res) => {

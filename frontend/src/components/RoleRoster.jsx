@@ -35,16 +35,22 @@ export default function RoleRoster({
      * The failure text is the server's own sentence - it knows why it
      * refused, and repeating that in our words would at best be a
      * translation and at worst a different reason.
+     *
+     * Two titles, not one. The note used to be headed with the sentence for
+     * the case that went well whatever actually happened, so a refused
+     * write appeared as a red box reading "Role created" over the server's
+     * "The permissions could not be saved" - a heading claiming the exact
+     * opposite of the line under it. What failed says that it failed.
      */
-    const run = async (title, work) => {
-        setBusy(title);
+    const run = async ({ done, failed }, work) => {
+        setBusy(done);
         setFeedback(null);
         try {
             const answer = await work();
             const body = answer?.data || {};
             setFeedback({
                 tone: 'success',
-                title: body.message || title,
+                title: body.message || done,
                 detail: body.hint || undefined,
             });
 
@@ -56,14 +62,14 @@ export default function RoleRoster({
             } catch {
                 setFeedback({
                     tone: 'warn',
-                    title: body.message || title,
+                    title: body.message || done,
                     detail: 'It went through, but the list could not be read again. '
                         + 'Close the sheet and open it once more to see where things stand.',
                 });
             }
             return true;
         } catch (err) {
-            setFeedback(failureNote(title, err));
+            setFeedback(failureNote(failed, err));
             return false;
         } finally {
             setBusy(null);
@@ -79,7 +85,10 @@ export default function RoleRoster({
 
         const order = roles.map((role) => role.id);
         order.splice(to, 0, order.splice(from, 1)[0]);
-        run('Ranking saved', () => saveRoleOrder(order));
+        run(
+            { done: 'Ranking saved', failed: 'The ranking could not be saved' },
+            () => saveRoleOrder(order),
+        );
     };
 
     const total = roles.length;
@@ -122,8 +131,14 @@ export default function RoleRoster({
                         count={counts[role.id] ?? role.capabilityCount}
                         dirty={dirtyIds.has(role.id)}
                         onMove={move}
-                        onSave={(id, patch) => run('Role saved', () => updateRole(id, patch))}
-                        onDelete={(id) => run('Role removed', () => deleteRole(id))}
+                        onSave={(id, patch) => run(
+                            { done: 'Role saved', failed: 'The role could not be saved' },
+                            () => updateRole(id, patch),
+                        )}
+                        onDelete={(id) => run(
+                            { done: 'Role removed', failed: 'The role could not be removed' },
+                            () => deleteRole(id),
+                        )}
                     />
                 ))}
             </ol>
@@ -133,7 +148,10 @@ export default function RoleRoster({
                     roles={roles}
                     maxRoles={maxRoles}
                     busy={busy}
-                    onCreate={(body) => run('Role created', () => createRole(body))}
+                    onCreate={(body) => run(
+                        { done: 'Role created', failed: 'The role could not be created' },
+                        () => createRole(body),
+                    )}
                 />
             )}
         </section>

@@ -169,6 +169,32 @@ function sanitizeState(raw, capabilityIds, defaults) {
     return { version: 2, roles: [owner, ...roles].slice(0, MAX_ROLES) };
 }
 
+/**
+ * Why a write was refused, in a sentence the person running the server can
+ * act on. Node's own message names the syscall and the path but not what to
+ * do about either.
+ */
+function writeHint(e, file) {
+    const dir = path.dirname(file);
+
+    if (e.code === 'EACCES' || e.code === 'EPERM') {
+        return `The backend is not allowed to write ${file}. Give the user the panel runs as ownership of that folder - on a Linux install that is usually: sudo chown -R <the service user> ${dir}`;
+    }
+    if (e.code === 'EROFS') {
+        return `${dir} is mounted read-only, so nothing there can be saved.`;
+    }
+    if (e.code === 'ENOSPC') {
+        return 'The disk the panel writes to is full.';
+    }
+    if (e.code === 'EISDIR') {
+        return `${file} is a folder, not a file. Remove it and let the panel create the file itself.`;
+    }
+    // Node already puts the code at the front of most messages; saying it
+    // twice reads like two different faults.
+    const message = String(e.message || 'the write was refused');
+    return e.code && !message.startsWith(e.code) ? `${e.code}: ${message}` : message;
+}
+
 function createStore({ capabilityIds, defaults, file }) {
     // Overridable so the tests can run against a scratch file instead of
     // the one a live panel is keeping its roles in.
@@ -190,15 +216,43 @@ function createStore({ capabilityIds, defaults, file }) {
         return state;
     }
 
+    /**
+     * Write first, adopt second.
+     *
+     * The order matters. This used to take the new state into memory and
+     * then try to write it, so a write that failed left the process holding
+     * roles the file knew nothing about: the panel showed the change, said
+     * it had failed, and lost it again at the next restart. Now a refused
+     * write leaves everything exactly as it was, and what the panel shows
+     * is what is actually on disk.
+     *
+     * The write goes to a neighbouring file and is renamed into place.
+     * A half-written permission file is a panel nobody can sign in to, and
+     * rename is atomic on the same filesystem.
+     */
     function persist(next) {
-        state = sanitizeState(next, capabilityIds, defaults);
+        const candidate = sanitizeState(next, capabilityIds, defaults);
+        const tmp = `${STORE_FILE}.tmp`;
+
         try {
             fs.mkdirSync(path.dirname(STORE_FILE), { recursive: true });
-            fs.writeFileSync(STORE_FILE, JSON.stringify(state, null, 2), 'utf8');
+            fs.writeFileSync(tmp, JSON.stringify(candidate, null, 2), 'utf8');
+            fs.renameSync(tmp, STORE_FILE);
         } catch (e) {
-            console.error('[Perms] could not write the permission file:', e.message);
-            throw new Error('The permissions could not be saved');
+            try { fs.unlinkSync(tmp); } catch { /* it may never have been made */ }
+            console.error(`[Perms] could not write ${STORE_FILE}: ${e.code || ''} ${e.message}`);
+
+            // The reason travels with the error. Without it the panel can
+            // only say "could not be saved", and an owner staring at that
+            // has no way of knowing it is a file permission on their own
+            // server rather than something they typed.
+            const err = new Error('The permissions could not be saved');
+            err.status = 500;
+            err.hint = writeHint(e, STORE_FILE);
+            throw err;
         }
+
+        state = candidate;
         return state;
     }
 
