@@ -146,6 +146,26 @@ file and renames it into place, and only adopts the new state after the write
 succeeded. It used to do the reverse, which left the process holding roles
 the file knew nothing about.
 
+**Path checks are case-blind.** Express matches routes without regard to
+case, so `/API/players` reaches the players route. `requireAuth` and
+`enforce()` lower-case the path before deciding whether it is under `/api/`;
+an exact-case check there once let `/API/...` past the login entirely. The
+RULES stay exact-case, so an odd spelling matches no rule and is denied.
+
+**Cash is money, even as an item.** On ox_inventory cash *is* the `money`
+item. `POST /api/manage/inventory` therefore also needs `money.edit` for
+`money`, `black_money` and `markedbills` — otherwise `inventory.edit` is a way
+round `money.edit`.
+
+**The role in the cookie is re-checked against Discord.** The Discord tokens
+ride in the session cookie, sealed with AES-GCM under a key derived from
+`SESSION_SECRET`. Once a minute per user (`SYNC_SECONDS`), the next request
+asks Discord again and re-issues the cookie (`currentSession` in
+`utils/auth.js`). Discord unreachable → the role is kept and retried after a
+back-off; grant revoked, or no role and no character left → the session
+ends. A re-issue keeps the original `exp`, so the check never extends a
+session. The frontend polls `/api/auth/me` every minute while visible.
+
 **Manual refresh buttons wait a minute.** Every "refresh" / "try again"
 button in the frontend goes through `lib/useCooldown.js` and is disabled for
 60 s after a press. That is a courtesy, not a guard: routes where a request
@@ -191,7 +211,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 128 tests
+cd backend  && npm test         # node --test, currently 150 tests
 cd frontend && npx eslint . && npx vite build
 ```
 
@@ -254,10 +274,12 @@ Filtering "by citizen" means resolving that person to their identifiers and
 matching exactly — a near miss on an identifier is a different person, not a
 weaker match.
 
-**The portal flag is stamped into the cookie at sign-in.** Someone who signed
-in before a portal-affecting change carries a session that predates it. That
-is reported separately from a refusal, because telling them their account is
-barred when it is only an old cookie is a lie.
+**The portal flag lives in the cookie.** It is set at sign-in and refreshed
+by the minute-by-minute role check. A cookie from before the portal existed
+carries no flag at all; that is reported separately from a refusal, because
+telling someone their account is barred when it is only an old cookie is a
+lie. (Cookies from before the role check carry no Discord tokens and are
+ended once, with a sentence saying so.)
 
 **`information_schema` row counts are estimates.** `bans` reported 0 rows
 while holding a live ban. Count through the app's own routes.
@@ -270,6 +292,17 @@ fail loudly if it does not.
 ---
 
 ## 9. Open at the time of writing
+
+**The resource's data sync cannot reach the backend with login on.** On
+start, `veritas/server.lua` POSTs `/api/system/refresh` with no session, so
+with Discord login configured it gets a 401 and logs "Could not sync with
+the backend". The catalog files are still written to disk; they are only
+picked up on the next backend restart or a press of "Reload reference data".
+Fixing it means a shared secret the resource sends, not an exemption by path.
+
+**`groups.edit` is close to `job.edit`.** Adding a job membership lets the
+player switch to that job in game on a multi-job setup. The two are separate
+capabilities on purpose, but whoever grants `groups.edit` should know this.
 
 **Role saving fails on the live server** with "The permissions could not be
 saved". The cause is almost certainly that `/opt/veritas/backend/data/` is not

@@ -34,7 +34,9 @@ function panelRedirect(res, params, surface) {
 // --- Who am I -------------------------------------------------------------
 // The only route the frontend needs at startup. Always answers with 200 so
 // that "not signed in" is not an error case in the frontend.
-router.get('/api/auth/me', (req, res) => {
+// Also the place a waiting frontend picks up a role changed in Discord: it
+// runs the same live check as every other route (see currentSession).
+router.get('/api/auth/me', async (req, res) => {
     if (!auth.ENABLED) {
         return res.json({
             authenticated: true,
@@ -44,12 +46,15 @@ router.get('/api/auth/me', (req, res) => {
         });
     }
 
-    const session = auth.readSession(req);
+    const { session, ended } = await auth.currentSession(req, res);
     res.json({
         authenticated: Boolean(session),
         authDisabled: false,
         user: auth.publicUser(session),
-        loginUrl: '/api/auth/login'
+        loginUrl: '/api/auth/login',
+        // Why a session that existed a moment ago does not any more. Only
+        // set when the live check ended it, never for plain "not signed in".
+        ended: ended || undefined
     });
 });
 
@@ -105,9 +110,9 @@ router.get('/api/auth/callback', async (req, res) => {
     }
 
     try {
-        const accessToken = await auth.exchangeCode(code);
-        const user = await auth.fetchDiscordUser(accessToken);
-        const guild = await auth.fetchGuildRoles(accessToken);
+        const tokens = await auth.exchangeCode(code);
+        const user = await auth.fetchDiscordUser(tokens.accessToken);
+        const guild = await auth.fetchGuildRoles(tokens.accessToken);
         const verdict = auth.authorize(user, guild);
 
         // Two separate doors. A panel role opens the admin panel; being a
@@ -135,7 +140,7 @@ router.get('/api/auth/callback', async (req, res) => {
             return back({ auth: 'denied', reason });
         }
 
-        auth.issueSession(res, user, verdict.via || 'portal', verdict.role, portal);
+        auth.issueSession(res, user, verdict.via || 'portal', verdict.role, portal, tokens);
 
         // Where this account can actually get to work. Holding a role is
         // not the same as being able to use the panel: a role whose

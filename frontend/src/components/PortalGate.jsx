@@ -26,8 +26,19 @@ import { useCooldown } from '../lib/useCooldown';
 // The message after coming back from Discord. What happened during this
 // session outranks the feedback in the address bar: that one is older and
 // stops being true the moment somebody signs out.
-function noteFor(notice, feedback) {
-    if (notice === 'expired') {
+function noteFor(notice, reason, feedback) {
+    // The server ended the session itself and said why - most often because
+    // the account no longer has a character or a role here. Its sentence is
+    // the explanation; a generic one next to it would only blur it.
+    if (notice === 'ended' && reason) {
+        return {
+            tone: 'warn',
+            title: 'You were signed out',
+            detail: reason,
+        };
+    }
+
+    if (notice === 'expired' || notice === 'ended') {
         return {
             tone: 'warn',
             title: 'Your session expired',
@@ -78,8 +89,8 @@ function noteFor(notice, feedback) {
     }
 }
 
-export default function PortalGate({ mode, notice = null, error = null, onSignIn, onRetry }) {
-    const note = mode === 'signin' ? noteFor(notice, authFeedback) : null;
+export default function PortalGate({ mode, notice = null, noticeReason = null, error = null, onSignIn, onRetry }) {
+    const note = mode === 'signin' ? noteFor(notice, noticeReason, authFeedback) : null;
 
     // The recheck swaps this screen for the loading state and back, so the
     // cooldown has to outlive the button - which useCooldown does. The key

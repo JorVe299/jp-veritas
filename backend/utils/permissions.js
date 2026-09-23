@@ -217,8 +217,13 @@ function requiredFor(method, routePath) {
 // through: a new route without an entry should stand out, not quietly
 // stand open to everyone.
 function enforce(req, res, next) {
-    if (!req.path.startsWith('/api/')) return next();
-    if (req.path.startsWith('/api/auth/')) return next();
+    // Case-blind, like the router: '/API/players' is the players route, and
+    // an exact-case check here would let it past with no rule applied. The
+    // rules themselves stay exact, so an odd spelling matches none of them
+    // and is denied.
+    const lower = req.path.toLowerCase();
+    if (!lower.startsWith('/api/')) return next();
+    if (lower.startsWith('/api/auth/')) return next();
 
     // No session object at all means Discord login is switched off. Then
     // there are no roles to enforce and the startup banner already says the

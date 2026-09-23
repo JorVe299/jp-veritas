@@ -13,8 +13,16 @@ const { db, parseJSON, updatePlayerColumn } = require('../utils/dbHandler');
 const { getItems } = require('../utils/dataLoader');
 const { isPlayerOnline, callBridge } = require('../utils/bridge');
 const { applyMove } = require('../utils/slots');
+const perms = require('../utils/permissions');
 
 const router = express.Router();
+
+// Items that are money. On ox_inventory, cash IS the 'money' item - the
+// core keeps the two in step - so adding it here is the same thing as
+// raising the cash balance. Without this, inventory.edit would be a way
+// round money.edit. Moving them between slots changes no amount and needs
+// nothing extra.
+const CURRENCY_ITEMS = new Set(['money', 'black_money', 'markedbills']);
 
 const MAX_SLOTS = parseInt(process.env.INVENTORY_SLOTS) || 41;
 // ox_inventory counts in grams, the default is 30 kg.
@@ -234,6 +242,17 @@ router.post('/api/manage/inventory', async (req, res) => {
     }
 
     if (!item) return res.status(400).json({ error: 'item is required' });
+
+    // req.user is absent only with Discord login switched off, where no
+    // role is enforced anywhere.
+    if (CURRENCY_ITEMS.has(String(item).toLowerCase()) && req.user && !perms.can(req.user.role, 'money.edit')) {
+        return res.status(403).json({
+            error: `'${item}' is money, and changing it needs the permission to change cash and bank balance`,
+            required: 'money.edit',
+            role: req.user.role,
+            hint: 'An owner can grant this in the Permissions card.'
+        });
+    }
 
     const qty = Number(amount);
     if (!Number.isInteger(qty) || qty < 0) {

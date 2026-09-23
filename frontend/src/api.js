@@ -15,7 +15,9 @@ const api = axios.create({
 // Fallback in case the server does not send a loginUrl.
 export const DEFAULT_LOGIN_URL = '/api/auth/login';
 
-// Always answers with 200; "not signed in" is not an error case there.
+// Always answers with 200; "not signed in" is not an error case there. When
+// the server itself ended the session, the answer carries `ended`: a
+// sentence saying why.
 export const fetchSession = () => api.get('/auth/me');
 export const signOutRequest = () => api.post('/auth/logout');
 
@@ -109,7 +111,12 @@ api.interceptors.response.use(
         const url = error.config?.url;
 
         if (status === 401 && !isAuthRoute(url)) {
-            unauthorizedHandlers.forEach((handler) => handler());
+            // The body travels along: when the server ended the session on
+            // purpose (a Discord role taken away, the server left), its
+            // `error` says why, and that sentence belongs on the sign-in
+            // screen instead of a generic "expired".
+            const body = error.response?.data || {};
+            unauthorizedHandlers.forEach((handler) => handler(body));
         }
 
         if (status === 403 && !isAuthRoute(url) && !isPortalRoute(url) && !isPermissionWrite(error.config)) {

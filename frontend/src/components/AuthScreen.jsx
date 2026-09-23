@@ -21,8 +21,19 @@ import { useCooldown } from '../lib/useCooldown';
 // The message on the sign-in screen. What happened during this session takes
 // precedence over the feedback from the address bar: that one is older and
 // no longer true after a sign-out.
-function noteFor(notice, feedback) {
-    if (notice === 'expired') {
+function noteFor(notice, reason, feedback) {
+    // The server ended the session itself - a Discord role taken away, the
+    // server left - and said why. Its sentence is the explanation; a
+    // generic one next to it would only blur it.
+    if (notice === 'ended' && reason) {
+        return {
+            tone: 'warn',
+            title: 'Your session was ended, please sign in again',
+            detail: reason,
+        };
+    }
+
+    if (notice === 'expired' || notice === 'ended') {
         return {
             tone: 'warn',
             title: 'Your session expired, please sign in again',
@@ -73,8 +84,8 @@ function noteFor(notice, feedback) {
     }
 }
 
-export default function AuthScreen({ mode, notice = null, error, onSignIn, onRetry }) {
-    const note = mode === 'signin' ? noteFor(notice, authFeedback) : null;
+export default function AuthScreen({ mode, notice = null, noticeReason = null, error, onSignIn, onRetry }) {
+    const note = mode === 'signin' ? noteFor(notice, noticeReason, authFeedback) : null;
 
     // The recheck swaps this screen for the loading state and back, so the
     // cooldown has to outlive the button - which useCooldown does. The key

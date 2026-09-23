@@ -9,6 +9,11 @@
 // The session is a signed JWT in an httpOnly cookie. No session store is
 // needed, so a login survives a restart of the backend - and no extra table
 // appears in the Qbox database.
+//
+// The role in that cookie is not frozen at sign-in. The Discord tokens ride
+// along, encrypted, and the role is checked against Discord again once a
+// SYNC_SECONDS window has passed (see currentSession). Otherwise a role
+// taken away in Discord would keep working until the cookie expired.
 const crypto = require('crypto');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
@@ -25,6 +30,11 @@ const GUILD_ID = process.env.DISCORD_GUILD_ID || '';
 const SESSION_COOKIE = 'veritas_session';
 const STATE_COOKIE = 'veritas_oauth_state';
 const SESSION_HOURS = parseInt(process.env.SESSION_HOURS) || 12;
+
+// How stale a session's role may get before Discord is asked again. A
+// minute keeps a removed role from lasting, and stays far inside what
+// Discord allows per user token.
+const SYNC_SECONDS = 60;
 
 // Splits a comma separated list from the environment into clean entries.
 function splitList(raw) {
@@ -143,9 +153,11 @@ function configProblems() {
 function buildAuthorizeUrl() {
     const state = crypto.randomBytes(16).toString('hex');
 
-    // Only request the guild scope when we actually need it - otherwise
-    // the consent dialog looks like it asks for more access than it does.
-    const scope = (allGuildRoleIds().length > 0 && GUILD_ID)
+    // The guild scope is needed whenever a guild is configured: the role
+    // mapping reads the member's roles, and the portal and the live role
+    // check read whether they are a member at all. Without a guild there
+    // is nothing to ask, and the consent dialog should not claim otherwise.
+    const scope = GUILD_ID
         ? 'identify guilds.members.read'
         : 'identify';
 
@@ -160,20 +172,32 @@ function buildAuthorizeUrl() {
     return { url: `${DISCORD_API}/oauth2/authorize?${params.toString()}`, state };
 }
 
-async function exchangeCode(code) {
+// Both grants answer in the same shape. The refresh token is kept, because
+// the access token runs out after a week and the role sync needs a live one.
+async function requestTokens(grant) {
     const body = new URLSearchParams({
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: REDIRECT_URI
+        ...grant
     });
 
     const res = await axios.post(`${DISCORD_API}/oauth2/token`, body.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         timeout: 10000
     });
-    return res.data.access_token;
+    return {
+        accessToken: res.data.access_token,
+        refreshToken: res.data.refresh_token || null,
+        expiresAt: Math.floor(Date.now() / 1000) + (Number(res.data.expires_in) || 0)
+    };
+}
+
+function exchangeCode(code) {
+    return requestTokens({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI });
+}
+
+function refreshTokens(refreshToken) {
+    return requestTokens({ grant_type: 'refresh_token', refresh_token: refreshToken });
 }
 
 async function fetchDiscordUser(accessToken) {
@@ -240,24 +264,66 @@ function cookieOptions(maxAgeMs) {
     };
 }
 
-function issueSession(res, user, via, role, portal) {
-    const token = jwt.sign(
-        {
-            sub: user.id,
-            username: user.username,
-            globalName: user.global_name || null,
-            avatar: user.avatar || null,
-            via,
-            // A portal-only account has no role at all. 'citizen' would be
-            // a panel role and would hand it panel access it must not have.
-            role: role || null,
-            portal: portal === true
-        },
-        JWT_SECRET,
-        { expiresIn: `${SESSION_HOURS}h` }
-    );
+// --- Discord tokens in the cookie -----------------------------------------
+// The JWT is signed, not encrypted: anybody holding the cookie can read its
+// payload. The Discord tokens therefore go in sealed with AES-GCM under a
+// key derived from the session secret, so the cookie never hands out a
+// token that works against Discord.
+const TOKEN_KEY = crypto.createHash('sha256').update(`veritas-discord-tokens:${JWT_SECRET}`).digest();
 
-    res.cookie(SESSION_COOKIE, token, cookieOptions(SESSION_HOURS * 3600 * 1000));
+function sealTokens(tokens) {
+    if (!tokens?.accessToken) return null;
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', TOKEN_KEY, iv);
+    const plain = JSON.stringify({ a: tokens.accessToken, r: tokens.refreshToken || null, e: tokens.expiresAt || 0 });
+    const body = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+    return Buffer.concat([iv, cipher.getAuthTag(), body]).toString('base64url');
+}
+
+function unsealTokens(sealed) {
+    if (typeof sealed !== 'string' || !sealed) return null;
+    try {
+        const raw = Buffer.from(sealed, 'base64url');
+        const decipher = crypto.createDecipheriv('aes-256-gcm', TOKEN_KEY, raw.subarray(0, 12));
+        decipher.setAuthTag(raw.subarray(12, 28));
+        const plain = Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]).toString('utf8');
+        const t = JSON.parse(plain);
+        return { accessToken: t.a, refreshToken: t.r || null, expiresAt: Number(t.e) || 0 };
+    } catch {
+        return null; // tampered with, or sealed under another secret
+    }
+}
+
+/**
+ * The payload of a session. `exp` is carried over on a re-issue rather
+ * than restarted: checking the role again must not also extend the
+ * session, or an active tab would never have to sign in again.
+ */
+function sessionPayload({ user, via, role, portal, tokens, syncedAt, exp }) {
+    return {
+        sub: user.id,
+        username: user.username,
+        globalName: user.global_name || null,
+        avatar: user.avatar || null,
+        via,
+        // A portal-only account has no role at all. 'citizen' would be
+        // a panel role and would hand it panel access it must not have.
+        role: role || null,
+        portal: portal === true,
+        dt: sealTokens(tokens),
+        syncedAt: syncedAt || Math.floor(Date.now() / 1000),
+        exp: exp || Math.floor(Date.now() / 1000) + SESSION_HOURS * 3600
+    };
+}
+
+function writeSession(res, payload) {
+    const token = jwt.sign(payload, JWT_SECRET);
+    const left = Math.max(0, payload.exp * 1000 - Date.now());
+    res.cookie(SESSION_COOKIE, token, cookieOptions(left));
+}
+
+function issueSession(res, user, via, role, portal, tokens) {
+    writeSession(res, sessionPayload({ user, via, role, portal, tokens }));
 }
 
 function readSession(req) {
@@ -304,20 +370,206 @@ function publicUser(session) {
     };
 }
 
+// --- Keeping the role current ---------------------------------------------
+// A role granted or taken away in Discord has to reach a running session,
+// not only the next sign-in. Once SYNC_SECONDS have passed since the last
+// check, the next request asks Discord again and the cookie is re-issued
+// with whatever the answer now says.
+//
+// Three outcomes, and the difference between the last two matters:
+//
+//   updated  Discord answered. Role and portal are what it says now.
+//   ended    Discord answered, and nothing is left: no role, no portal. Or
+//            the grant behind the tokens is gone. The session ends.
+//   kept     Discord could not be asked (down, rate limited, timeout).
+//            The session keeps its role and is asked again after a
+//            back-off. Locking the whole staff out because Discord is
+//            having a bad minute would be the wrong failure.
+
+/** Who is waiting for Discord right now, so one user's tabs share one call. */
+const inflight = new Map();
+/** Discord id -> ms timestamp before which a failed check is not retried. */
+const backoff = new Map();
+
+const ENDED_REVOKED = 'Your Discord authorization for this panel has ended. Sign in again.';
+const ENDED_LEGACY = 'Your session predates the live role check. Sign in again once.';
+
+function userOf(session) {
+    return {
+        id: session.sub,
+        username: session.username,
+        global_name: session.globalName,
+        avatar: session.avatar
+    };
+}
+
+/** Did Discord refuse the token itself, as opposed to failing to answer? */
+function tokenRefused(e) {
+    const status = e?.response?.status;
+    return status === 401 || status === 403;
+}
+
+/**
+ * Asks Discord again and decides what the session is now. `deps` is there
+ * for the tests; in the running panel it is the real Discord and database.
+ */
+async function syncSession(session, deps = {}) {
+    const d = {
+        fetchGuildRoles,
+        refreshTokens,
+        hasCharacters: defaultHasCharacters,
+        now: () => Math.floor(Date.now() / 1000),
+        guildId: GUILD_ID,
+        ...deps
+    };
+    const now = d.now();
+    let tokens = unsealTokens(session.dt);
+    let guild = { member: false, roles: [] };
+
+    if (d.guildId) {
+        // A session from before this check carries no tokens, so there is
+        // nothing to ask Discord with. Letting it run on unchecked would
+        // be exactly the gap this closes, so it signs in again, once.
+        if (!tokens) return { kind: 'ended', reason: ENDED_LEGACY };
+
+        try {
+            if (tokens.expiresAt && tokens.expiresAt - 60 <= now && tokens.refreshToken) {
+                tokens = await d.refreshTokens(tokens.refreshToken);
+            }
+            try {
+                guild = await d.fetchGuildRoles(tokens.accessToken);
+            } catch (e) {
+                // An access token can be refused before its stated expiry.
+                // One refresh, one more try; a refusal after that is final.
+                if (!tokenRefused(e) || !tokens.refreshToken) throw e;
+                tokens = await d.refreshTokens(tokens.refreshToken);
+                guild = await d.fetchGuildRoles(tokens.accessToken);
+            }
+        } catch (e) {
+            const status = e?.response?.status;
+            // 400 from the token endpoint is invalid_grant: the user removed
+            // the app in Discord, or the refresh token is gone.
+            if (tokenRefused(e) || status === 400) return { kind: 'ended', reason: ENDED_REVOKED };
+            const retryAfter = Number(e?.response?.data?.retry_after) || 0;
+            return { kind: 'kept', retryAfterMs: Math.max(SYNC_SECONDS * 1000, retryAfter * 1000), error: e };
+        }
+    }
+
+    const user = userOf(session);
+    const verdict = authorize(user, guild);
+
+    // The portal hangs off being in the Discord and having a character.
+    // Left the Discord: gone. Still in it: ask the database, and if that
+    // cannot answer, keep what the session had - a database hiccup must not
+    // read as "no characters".
+    let portal = false;
+    if (guild.member) {
+        try {
+            portal = await d.hasCharacters(user.id);
+        } catch {
+            portal = session.portal === true;
+        }
+    }
+
+    if (!verdict.allowed && !portal) {
+        return {
+            kind: 'ended',
+            reason: d.guildId && !guild.member
+                ? 'You are no longer a member of the Discord server for this community.'
+                : 'This Discord account no longer has a panel role or a character on this server.'
+        };
+    }
+
+    return {
+        kind: 'updated',
+        payload: sessionPayload({
+            user,
+            via: verdict.via || 'portal',
+            role: verdict.role,
+            portal,
+            tokens,
+            syncedAt: now,
+            exp: session.exp
+        })
+    };
+}
+
+async function defaultHasCharacters(discordId) {
+    // Required here rather than at the top: it pulls in the database pool,
+    // and this module is loaded by tests that never touch a database.
+    const { charactersOf } = require('./identity');
+    const own = await charactersOf(discordId);
+    return Boolean(own && !own.unsupported && own.characters.length > 0);
+}
+
+/**
+ * The session behind this request, checked against Discord if it is due.
+ * Returns { session } or { ended: reason }; re-issues or clears the cookie
+ * on the way.
+ */
+async function currentSession(req, res) {
+    const session = readSession(req);
+    if (!session) return { session: null };
+
+    const now = Math.floor(Date.now() / 1000);
+    if (session.syncedAt && now - session.syncedAt < SYNC_SECONDS) return { session };
+    if ((backoff.get(session.sub) || 0) > Date.now()) return { session };
+
+    let job = inflight.get(session.sub);
+    if (!job) {
+        job = syncSession(session).finally(() => inflight.delete(session.sub));
+        inflight.set(session.sub, job);
+    }
+    const outcome = await job;
+
+    if (outcome.kind === 'kept') {
+        backoff.set(session.sub, Date.now() + outcome.retryAfterMs);
+        console.warn(`[Auth] role check for ${session.username} (${session.sub}) could not reach Discord`
+            + ` (${outcome.error?.response?.status || outcome.error?.message}) - keeping the current role for now`);
+        return { session };
+    }
+    backoff.delete(session.sub);
+
+    if (outcome.kind === 'ended') {
+        console.log(`[Auth] session ended: ${session.username} (${session.sub}) - ${outcome.reason}`);
+        clearSession(res);
+        return { session: null, ended: outcome.reason };
+    }
+
+    const next = outcome.payload;
+    if (next.role !== (session.role || null) || next.portal !== (session.portal === true)) {
+        console.log(`[Auth] role changed: ${session.username} (${session.sub})`
+            + ` role ${session.role || '-'} -> ${next.role || '-'}, portal ${session.portal === true} -> ${next.portal}`);
+    }
+    writeSession(res, next);
+    return { session: next };
+}
+
 // --- Middleware -----------------------------------------------------------
+
+// Whether a path is under /api, the way the router sees it. Express matches
+// routes without regard to case, so '/API/players' reaches the players
+// route - a check on the exact string '/api/' would wave it past the login.
+function isApiPath(p) {
+    return p.toLowerCase().startsWith('/api/');
+}
+
+function isAuthPath(p) {
+    return p.toLowerCase().startsWith('/api/auth/');
+}
 
 // Guards everything under /api except the auth routes themselves. Static
 // files stay open: without a session the served index.html only shows the
 // sign-in screen, and the data comes exclusively through /api.
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
     if (!ENABLED) return next();
-    if (!req.path.startsWith('/api/')) return next();
-    if (req.path.startsWith('/api/auth/')) return next();
+    if (!isApiPath(req.path)) return next();
+    if (isAuthPath(req.path)) return next();
 
-    const session = readSession(req);
+    const { session, ended } = await currentSession(req, res);
     if (!session) {
         return res.status(401).json({
-            error: 'Not signed in',
+            error: ended || 'Not signed in',
             authenticated: false,
             loginUrl: '/api/auth/login'
         });
@@ -332,7 +584,9 @@ module.exports = {
     ROLE_BY_USER, ROLE_BY_GUILD_ROLE,
     SESSION_COOKIE, STATE_COOKIE, SESSION_HOURS,
     roleOrder, mappingFor, mappingSummary, allGuildRoleIds,
+    SYNC_SECONDS,
     configProblems, buildAuthorizeUrl, exchangeCode, fetchDiscordUser,
     fetchGuildRoles, authorize, issueSession, readSession, clearSession,
-    publicUser, cookieOptions, requireAuth
+    publicUser, cookieOptions, requireAuth, currentSession, syncSession,
+    sealTokens, unsealTokens, isApiPath, isAuthPath
 };

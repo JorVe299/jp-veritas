@@ -111,7 +111,14 @@ function App() {
         }
 
         if (!auth.authenticated) {
-            return <PortalGate mode="signin" notice={auth.notice} onSignIn={handleSignIn} />;
+            return (
+                <PortalGate
+                    mode="signin"
+                    notice={auth.notice}
+                    noticeReason={auth.noticeReason}
+                    onSignIn={handleSignIn}
+                />
+            );
         }
 
         return (
@@ -138,7 +145,14 @@ function App() {
     }
 
     if (!auth.authenticated) {
-        return <AuthScreen mode="signin" notice={auth.notice} onSignIn={handleSignIn} />;
+        return (
+            <AuthScreen
+                mode="signin"
+                notice={auth.notice}
+                noticeReason={auth.noticeReason}
+                onSignIn={handleSignIn}
+            />
+        );
     }
 
     return (
