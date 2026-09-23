@@ -145,7 +145,7 @@ function buildAuthorizeUrl() {
 
     // Only request the guild scope when we actually need it - otherwise
     // the consent dialog looks like it asks for more access than it does.
-    const scope = (ALL_ROLE_IDS.length > 0 && GUILD_ID)
+    const scope = (allGuildRoleIds().length > 0 && GUILD_ID)
         ? 'identify guilds.members.read'
         : 'identify';
 
