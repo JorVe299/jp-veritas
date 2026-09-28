@@ -11,19 +11,18 @@ import OrganisationsPanel from './OrganisationsPanel';
  * change something about them. Several things do not fit that shape at all.
  * A police force has a balance and a headcount whether or not anyone is
  * looking at an officer. The ban list hangs off licenses and Discord IDs,
- * some of which no character in the database belongs to. The resources and
- * the schema belong to the installation. None of those is a further card in
- * the citizen wall, because a card there claims by its position that its
- * contents belong to the selected character.
+ * some of which no character in the database belongs to. What the
+ * installation is running (its framework, bridge and schema) belongs to the
+ * installation. None of those is a further card in the citizen wall,
+ * because a card there claims by its position that its contents belong to
+ * the selected character.
  *
  * The order of the sections follows how far each one reaches, from reading
- * about the world the players live in to reaching into the running game
- * server:
+ * about the world the players live in to what the installation itself is:
  *
  *   Organisations - the bodies players belong to
  *   Accounts      - the money those bodies and people hold
  *   Bans          - who is kept out, in both of the records that keep it
- *   Resources     - the code the game server runs, and calling into it
  *   Diagnostics   - what this installation is, when something is wrong
  *
  * The tab bar is the same component the citizen view uses. Two bars that

@@ -1956,13 +1956,6 @@
     gap: var(--s-3);
 }
 
-.invsum__row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--s-3);
-}
-
 .invsum__peek {
     display: flex;
     flex-wrap: wrap;
@@ -2720,9 +2713,9 @@
     color: var(--c-text-muted);
 }
 
-/* One column instead of the module grid. Used by the resource section, whose
-   three cards climb from harmless to dangerous - an order that only reads
-   when they sit one under the other rather than side by side. */
+/* One column instead of the module grid. Used by the Bans section: squeezed
+   into a grid column, its single wide list (rows carrying a source, a state
+   and the identifiers they hang off) wraps into something nobody can scan. */
 .modules--stack {
     grid-template-columns: minmax(0, 1fr);
 }
@@ -2870,47 +2863,6 @@
    row reads like a setting that is switched off. */
 .kv__value--none {
     color: var(--c-text-faint);
-}
-
-/* --- A file, and what an export gave back --------------------------------
-   Whatever comes back is shown as it arrived: never reflowed, never
-   prettified beyond indentation. It scrolls inside its own box rather than
-   stretching the card. */
-
-.code {
-    max-height: 22rem;
-    margin: 0;
-    padding: var(--s-3);
-    overflow: auto;
-    background: var(--c-bg);
-    border: 1px solid var(--c-border-strong);
-    border-radius: var(--r-control);
-    font-size: var(--fs-sm);
-    line-height: var(--lh-snug);
-    color: var(--c-text-muted);
-    white-space: pre;
-    tab-size: 4;
-}
-
-/* --- The card that reaches into the running game server ------------------
-   The only card in the panel that is marked before anything has gone wrong.
-   Listing resources and reading a file are recoverable; calling an export
-   runs somebody else's code with the authority of the game server, and the
-   panel cannot tell which export does what. The tone that everywhere else
-   means "this destroys something" is therefore carried here in advance,
-   standing rather than appearing only on the confirmation step. */
-
-.panel--armed {
-    border-color: var(--c-debit-line);
-}
-
-.panel--armed .panel__head {
-    background: var(--c-debit-soft);
-    border-bottom-color: var(--c-debit-line);
-}
-
-.panel--armed .panel__icon {
-    color: var(--c-debit);
 }
 
 /* --- A list that is usually in the way -----------------------------------

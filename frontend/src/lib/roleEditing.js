@@ -71,7 +71,9 @@ export function snowflakeProblem(value) {
     }
     if (id.length < 5) return `A Discord id is at least 5 digits; this one has ${id.length}.`;
     if (id.length > 25) return `A Discord id is at most 25 digits; this one has ${id.length}.`;
-    return null;
+    // The checks above are for their messages; this one applies SNOWFLAKE
+    // itself, the same rule the store applies, as the backend test checks.
+    return isSnowflake(id) ? null : 'That is not a Discord id.';
 }
 
 /** Two id lists, order disregarded. */
@@ -81,6 +83,3 @@ export function sameIds(a, b) {
     if (left.length !== right.length) return false;
     return left.every((id, i) => id === right[i]);
 }
-
-/** Only what the server would keep, so the field shows what it will get. */
-export const idList = (value) => (Array.isArray(value) ? value.filter(isSnowflake) : []);

@@ -133,7 +133,6 @@ api.interceptors.response.use(
 const seg = (value) => encodeURIComponent(String(value));
 
 // Helper functions
-export const fetchPlayers = (params) => api.get('/players', { params });
 export const fetchJobs = () => api.get('/meta/jobs');
 export const updatePlayerJob = (citizenid, jobData) => api.post('/manage/job', { citizenid, ...jobData });
 export const updatePlayerMoney = (citizenid, amount, type) => api.post('/manage/money', { citizenid, amount, type });
@@ -178,10 +177,11 @@ export const fetchPlayerGroups = (citizenid) => api.get(`/players/${seg(citizeni
 export const fetchGangs = () => api.get('/meta/gangs');
 export const setPlayerGroup = (citizenid, group) => api.post('/manage/group', { citizenid, ...group });
 // The route expects the body on DELETE as well; axios needs data for that.
-// The type travels with it so the caller states which half of player_groups
-// it is removing, the same way the write does.
+// The route requires the type, because a name is only unique within a type
+// (a server can have a 'vagos' job and a 'vagos' gang), so the caller states
+// which half of player_groups it is removing, the same way the write does.
 export const removePlayerGroup = (citizenid, group, type) => api.delete('/manage/group', {
-    data: type ? { citizenid, group, type } : { citizenid, group },
+    data: { citizenid, group, type },
 });
 
 // --- Bank accounts --------------------------------------------------------
@@ -237,7 +237,6 @@ export const fetchOrganisations = (params) => api.get('/jobs', { params });
 export const fetchOrganisationMembers = (name, params) =>
     api.get(`/jobs/${seg(name)}/members`, { params });
 
-// --- Resources on the game server -----------------------------------------
 // --- Diagnostics ----------------------------------------------------------
 // The framework probe answers 502 when the bridge is silent - that is an
 // answer, not a failure, and the panel says so.
@@ -268,6 +267,5 @@ export const fetchMyVehicles = (citizenid) => api.get(`/me/characters/${seg(citi
 // server, the surface only shows the requested slice.
 export const fetchMetaItems = (params) => api.get('/meta/items', { params });
 export const fetchMetaVehicles = (params) => api.get('/meta/vehicles', { params });
-export const fetchMetaSummary = () => api.get('/meta/summary');
 
 export default api;

@@ -139,9 +139,9 @@ export function useAuth() {
                 if (cancelled) return;
                 lastChecked.current = Date.now();
                 const session = readSession(res.data);
-                // A session the server ended since the last visit - after
-                // the deploy that introduced the check, that is everyone,
-                // once. The reason is worth showing then, too.
+                // A session the server ended since the last visit - a
+                // Discord role taken away, or the Discord server left. The
+                // reason is worth showing then, too.
                 const ended = !session.authenticated && session.ended
                     ? { notice: 'ended', reason: session.ended }
                     : { notice: null, reason: null };

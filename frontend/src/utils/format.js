@@ -118,12 +118,6 @@ export function formatDateTime(value) {
     return date ? dateTimeFormatter.format(date) : '—';
 }
 
-/** true when the timestamp lies in the past. */
-export function isPast(value) {
-    const date = toDate(value);
-    return date ? date.getTime() < Date.now() : false;
-}
-
 /** World coordinates to one decimal - nobody aims finer than that in game. */
 export function formatCoord(value) {
     const n = Number(value);

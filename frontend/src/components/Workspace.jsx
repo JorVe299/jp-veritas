@@ -203,9 +203,8 @@ export default function Workspace({
        request would come back 403 and the section would report a fault
        where there is none.
 
-       Diagnostics needs system.view, which now also covers the framework
-       probe - that check moved in with the rest of the diagnostics when
-       the resource browser was removed. */
+       Diagnostics needs system.view, which also covers the framework
+       probe. */
     const serverTabs = useMemo(() => {
         const list = [];
 

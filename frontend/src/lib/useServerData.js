@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 // Loading for the server area.
 //
-// The five sections there all read the same way: one GET, and an answer that
+// The sections there read the same way: one GET, and an answer that
 // can fail in four different ways that must not be confused with each other.
 // usePlayerResource already does this for a citizen's partial records; this
 // is the same idea without a citizen in front of it, plus the debounced
@@ -41,9 +41,9 @@ function describe(err) {
     return {
         status: code === 501 ? 'unavailable' : code === 502 ? 'unreachable' : 'error',
         data: null,
-        // Not every route words its failure the same way: the diagnostics
-        // routes put the reason in `message` and the resource routes add a
-        // `detail`. Reading only `error` would leave those cases showing
+        // Not every route words its failure the same way: the bridge
+        // diagnostic puts the reason in `message`, and the schema check adds
+        // a `detail`. Reading only `error` would leave those cases showing
         // "Request failed with status code 502", which tells nobody anything.
         error: body.error || body.message || err?.message || 'The server did not answer.',
         hint: body.hint || body.detail || null,

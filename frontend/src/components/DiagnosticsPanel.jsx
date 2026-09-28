@@ -15,22 +15,20 @@ import { failureNote, successNote } from '../lib/writeFeedback';
  * Almost every fault in this project has been a silent one: a bridge that
  * does not answer and a database belonging to some other game server look
  * exactly alike from the outside, and a wrong token shows up only as a 401
- * on an export, far away from its cause. This is the page that says which
- * of those it is.
+ * from the bridge, far away from its cause. This is the page that says
+ * which of those it is.
  *
- * Every card hangs off system.view, including the framework probe, which
- * moved here when the resource browser was removed. The gate stays in
- * place so a card is only mounted when its own route would answer -
- * mounting it anyway would mean reporting a fault where none exists.
+ * Every card hangs off system.view, including the framework probe, and each
+ * card is only mounted when its own route would answer - mounting it anyway
+ * would mean reporting a fault where none exists.
  */
 export default function DiagnosticsPanel() {
     const { can } = useCan();
     const canSeeSystem = can('system.view');
-    const canSeeFramework = canSeeSystem;
 
     return (
         <>
-            {canSeeFramework && <FrameworkCard />}
+            {canSeeSystem && <FrameworkCard />}
             {canSeeSystem && <BridgeCard />}
             {canSeeSystem && <SchemaCard />}
             {canSeeSystem && <ReferenceDataCard canEdit={can('system.edit')} />}
@@ -142,7 +140,7 @@ function FrameworkCard() {
                             <StatusNote
                                 tone="warn"
                                 title="Backend and bridge disagree about the token"
-                                detail="One end has a token configured and the other does not, so a call the bridge should accept will be rejected. This is the usual reason a resource export answers 401. Set BRIDGE_TOKEN in the backend and the same value as Config.Token in the veritas resource."
+                                detail="One end has a token configured and the other does not, so once the bridge requires the token, every call from the panel is rejected. This is the usual reason the bridge answers 401. Set BRIDGE_TOKEN in the backend and the same value as Config.Token in the veritas resource."
                             />
                         )}
                     </>
