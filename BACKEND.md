@@ -43,6 +43,13 @@ app's own routes is fine; ad-hoc scripts against the DB are not.
 catalog JSON files are runtime state. If a test creates them, delete them
 again and say what the state was before and after.
 
+**Document every change in the same commit.** Whatever a change adds,
+removes or renames — a route, a key, a file, a behaviour — every mention of it
+in this file, the READMEs, `backend/.env.example`, `veritas/config.lua.example`
+and the code comments is brought into line before committing. Documentation
+of deleted code is deleted with it. A handbook that describes code which no
+longer exists misleads the next person more than no handbook would.
+
 **Commits go to `main`, and get pushed.** The server deploys by pulling
 `main`, so a branch breaks the deploy path, and an unpushed fix never reaches
 it. The owner has said to commit and push every finished change without
