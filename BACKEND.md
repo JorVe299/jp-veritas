@@ -211,7 +211,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 150 tests
+cd backend  && npm test         # node --test, currently 156 tests
 cd frontend && npx eslint . && npx vite build
 ```
 
@@ -263,6 +263,16 @@ Until then dropdowns are empty and the panel is not broken.
 **The `bans` table has no created-at column.** Its rows genuinely carry no
 date. They are marked undated and sort after dated ones. Do not invent a date
 from the row id.
+
+**A permanent ban is the column's ceiling.** `bans.expire` is a signed
+`INT(11)` on the stock qb-core and qbx_core schema, and the game keeps a
+player out while `os.time()` is below it. So the panel writes `2147483647`
+for a permanent ban — the value qb-adminmenu writes too — and reads that value
+as permanent. Timed bans are capped there as well: from 2028 on, the longest
+one the form offers would otherwise overflow the column, and strict-mode MySQL
+refuses the insert. Writing and reading both live in `utils/banlist.js`
+(`expiryFor` beside `shapeBan`). The write path once referred to a constant
+that had moved there, and every permanent ban answered 500.
 
 **`player_vehicles.mods` is not mods.** It holds the ox_lib vehicle property
 table, which is what qbx_garages reads. Writing `'{}'` there produces

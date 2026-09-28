@@ -23,8 +23,15 @@ const { asIdentifier } = require('./identity');
 
 const TABLE = 'bans';
 
-// QBCore stores the expiry as unix seconds. A 0, or a value far in the
-// future, means "permanent" in practice.
+// QBCore stores the expiry as unix seconds, in a signed INT(11) column on
+// both the qb-core and the qbx_core schema, and the game keeps a player out
+// for as long as os.time() is below it. The column's ceiling is therefore
+// the furthest a ban can reach - it is what qb-adminmenu writes for a
+// permanent ban, and what this panel writes too.
+const PERMANENT_EXPIRE = 2147483647;
+
+// A 0, or a value far in the future on a schema with a wider column, is
+// read as permanent as well.
 const PERMANENT_AFTER_YEARS = 50;
 
 /**
@@ -36,7 +43,9 @@ const PERMANENT_AFTER_YEARS = 50;
  */
 function shapeBan(row) {
     const expire = Number(row.expire) || 0;
-    const permanent = expire === 0 || expire > Date.now() / 1000 + PERMANENT_AFTER_YEARS * 31536000;
+    const permanent = expire === 0
+        || expire >= PERMANENT_EXPIRE
+        || expire > Date.now() / 1000 + PERMANENT_AFTER_YEARS * 31536000;
     return {
         id: row.id,
         name: row.name,
@@ -50,6 +59,21 @@ function shapeBan(row) {
         permanent,
         active: permanent || expire > Date.now() / 1000
     };
+}
+
+/**
+ * The `expire` value to write for a ban of `days` days; 0 means permanent.
+ *
+ * Beside shapeBan() on purpose: what the panel writes has to read back as
+ * what the admin chose, so writing and reading are decided in one place.
+ *
+ * A timed ban is capped at the ceiling too. From 2028 on, the longest one
+ * the panel offers would run past it, and a value the column cannot hold is
+ * refused outright by MySQL in strict mode.
+ */
+function expiryFor(days, nowSeconds = Math.floor(Date.now() / 1000)) {
+    if (days === 0) return PERMANENT_EXPIRE;
+    return Math.min(Math.floor(nowSeconds + days * 86400), PERMANENT_EXPIRE);
 }
 
 /**
@@ -249,8 +273,8 @@ function belongsTo(row, identifierSet) {
 }
 
 module.exports = {
-    DATABASE, TXADMIN, TABLE,
-    shapeBan, databaseBansFor,
+    DATABASE, TXADMIN, TABLE, PERMANENT_EXPIRE,
+    shapeBan, expiryFor, databaseBansFor,
     fromDatabase, fromTxAdmin,
     compareBans, sortBans, matchesQuery, belongsTo,
     identifiersFromRow,

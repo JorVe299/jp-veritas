@@ -345,9 +345,7 @@ router.post('/api/manage/ban', async (req, res) => {
             });
         }
 
-        const expire = duration === 0
-            ? Math.floor(Date.now() / 1000) + PERMANENT_AFTER_YEARS * 31536000
-            : Math.floor(Date.now() / 1000 + duration * 86400);
+        const expire = banlist.expiryFor(duration);
 
         const payload = await pickExistingColumns(TABLE, {
             name: who.name,
