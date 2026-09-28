@@ -2,9 +2,8 @@
 
 For whoever picks this up next. It covers how the owner wants this project
 worked on, how the backend is put together, and the things that have already
-cost a day of someone's life. `PRODUCT.md` says what the panel is for;
-`DESIGN.md` covers the frontend's visual language. This file is the backend
-and the working agreement.
+cost a day of someone's life. `README.md` says what the panel is for and
+shows it. This file is the backend and the working agreement.
 
 ---
 
