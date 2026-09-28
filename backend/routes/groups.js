@@ -137,34 +137,20 @@ router.post('/api/manage/group', async (req, res) => {
 router.delete('/api/manage/group', async (req, res) => {
     const { citizenid, group, type } = req.body;
     if (!citizenid || !group) return res.status(400).json({ error: 'citizenid and group are required' });
-    if (type !== undefined && !TYPES.includes(type)) {
-        return res.status(400).json({ error: `type must be one of ${TYPES.join(', ')}` });
-    }
+    // Required, as on the write: a name is only unique within a type.
+    // Nothing stops a server from having a 'vagos' job and a 'vagos' gang,
+    // and removing the gang must not take the job with it.
+    if (!TYPES.includes(type)) return res.status(400).json({ error: `type must be one of ${TYPES.join(', ')}` });
 
     try {
         if (!await ensureTable(res)) return;
 
-        // A name is only unique within a type: nothing stops a server from
-        // having a 'vagos' job and a 'vagos' gang, and a caller removing the
-        // gang must not take the job with it. Callers that send no type keep
-        // the old behaviour of removing the name whatever it is, so this
-        // narrows the blast radius without breaking anything that predates
-        // the field.
-        const [result] = type
-            ? await db.execute(
-                `DELETE FROM ${TABLE} WHERE citizenid = ? AND ${GROUP_COL} = ? AND type = ?`,
-                [citizenid, group, type]
-            )
-            : await db.execute(
-                `DELETE FROM ${TABLE} WHERE citizenid = ? AND ${GROUP_COL} = ?`,
-                [citizenid, group]
-            );
+        const [result] = await db.execute(
+            `DELETE FROM ${TABLE} WHERE citizenid = ? AND ${GROUP_COL} = ? AND type = ?`,
+            [citizenid, group, type]
+        );
         if (result.affectedRows === 0) {
-            return res.status(404).json({
-                error: type
-                    ? `The player is not in that ${type}`
-                    : 'The player is not in that group'
-            });
+            return res.status(404).json({ error: `The player is not in that ${type}` });
         }
 
         res.json({ status: 'success', message: `Removed from ${group}` });

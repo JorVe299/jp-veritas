@@ -216,21 +216,19 @@ test('a role left out of a reorder keeps its place rather than vanishing', () =>
         new Set(['owner', 'administrator', 'supporter', 'citizen']));
 });
 
-// --- Upgrading an existing installation -----------------------------------
+// --- Reading what is on disk ----------------------------------------------
 
-test('the old file format is read without losing anything', () => {
-    // What a panel running since before roles were editable has on disk.
-    const store = freshStore({
-        owner: CAPS.slice(),
-        administrator: ['players.view', 'money.edit'],
-        supporter: ['players.view'],
-        citizen: [],
-    });
+test('a file without a role list starts from the shipped roles, and says so', (t) => {
+    // Anything that is not a role list - a hand-edited file, one written by
+    // a much older panel - is read as a fresh installation. The warning is
+    // what keeps that from passing unnoticed.
+    const warned = t.mock.method(console, 'warn', () => {});
+    const store = freshStore({ administrator: ['players.view'] });
 
     assert.deepEqual(store.list().map(r => r.id), ['owner', 'administrator', 'supporter', 'citizen']);
-    assert.deepEqual(store.get('administrator').capabilities, ['players.view', 'money.edit']);
-    assert.deepEqual(store.get('supporter').capabilities, ['players.view']);
-    assert.equal(store.get('administrator').label, 'Administrator');
+    assert.deepEqual(store.get('supporter').capabilities, DEFAULTS.supporter);
+    assert.equal(warned.mock.callCount(), 1);
+    assert.match(warned.mock.calls[0].arguments[0], /no role list/);
 });
 
 test('capabilities that no longer exist are dropped, not carried', () => {

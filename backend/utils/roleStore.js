@@ -107,26 +107,13 @@ function sanitizeRole(raw, capabilityIds) {
     };
 }
 
-/**
- * Whatever is on disk, turned into a state that holds the invariants.
- *
- * Accepts the old format too - a plain map of role id to capability list -
- * because an installation that has been running since before roles were
- * editable must not lose its settings on upgrade.
- */
+/** Whatever is on disk, turned into a state that holds the invariants. */
 function sanitizeState(raw, capabilityIds, defaults) {
     const roles = [];
     const seen = new Set();
+    const listed = Array.isArray(raw?.roles);
 
-    const source = Array.isArray(raw?.roles)
-        ? raw.roles
-        // The v1 file. Its key order is not meaningful, so the built-in
-        // ranking is used instead.
-        : BUILT_IN
-            .filter(id => Array.isArray(raw?.[id]))
-            .map(id => ({ id, label: BUILT_IN_LABELS[id], capabilities: raw[id] }));
-
-    for (const entry of source) {
+    for (const entry of listed ? raw.roles : []) {
         const role = sanitizeRole(entry, capabilityIds);
         if (!role || seen.has(role.id)) continue;
         seen.add(role.id);
@@ -146,9 +133,9 @@ function sanitizeState(raw, capabilityIds, defaults) {
         seen.add(OWNER_ROLE);
     }
 
-    // An empty file means a fresh installation, which gets the starting set
-    // rather than a panel with one role in it.
-    if (roles.length === 1 && !Array.isArray(raw?.roles) && !BUILT_IN.some(id => Array.isArray(raw?.[id]))) {
+    // No role list at all means a fresh installation, which gets the
+    // starting set rather than a panel with one role in it.
+    if (!listed) {
         for (const id of BUILT_IN) {
             if (seen.has(id)) continue;
             roles.push({
@@ -206,7 +193,15 @@ function createStore({ capabilityIds, defaults, file }) {
         try {
             if (fs.existsSync(STORE_FILE)) {
                 const raw = fs.readFileSync(STORE_FILE, 'utf8');
-                state = sanitizeState(raw.trim() ? JSON.parse(raw) : {}, capabilityIds, defaults);
+                const parsed = raw.trim() ? JSON.parse(raw) : {};
+                // A file with content but no role list is not a fresh
+                // installation, however much it gets treated as one below.
+                // Starting from the shipped roles is the only safe reading,
+                // but the owner has to hear that it happened.
+                if (raw.trim() && !Array.isArray(parsed?.roles)) {
+                    console.warn(`[Perms] ${STORE_FILE} holds no role list - starting from the shipped roles. Saving in the panel rewrites the file.`);
+                }
+                state = sanitizeState(parsed, capabilityIds, defaults);
                 return state;
             }
         } catch (e) {

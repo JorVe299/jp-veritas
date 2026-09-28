@@ -10,38 +10,28 @@ Config = {}
 --   'auto' | 'qbox' | 'qbcore' | 'esx' | 'custom'
 Config.Framework = 'auto'
 
--- Shared secret between backend and bridge.
+-- Shared secret between backend and bridge, checked on every route once
+-- Config.RequireTokenEverywhere below is true.
 --
 -- The bridge hangs off the FiveM HTTP port, and that port is open to the
--- internet on any public server. Everything below /export can run arbitrary
--- exports, so that route REFUSES to work until a token is set here and the
--- backend sends the same one in BRIDGE_TOKEN.
---
--- Set it for the other routes too as soon as you can - money and inventory
--- are worth protecting as well. Generate one with: openssl rand -hex 32
+-- internet on any public server. Without the token, anyone who can reach it
+-- can move money, change inventories and kick players through it. Put the
+-- same value in BRIDGE_TOKEN in the backend .env. Generate one with:
+--   openssl rand -hex 32
 Config.Token = ''
 
--- When true, every route requires the token, not just /export.
--- Leave it false only while you are still setting things up.
+-- When true, every route requires the token. While false the built-in routes
+-- do not check it at all, so leave it false only while you are still setting
+-- up.
 Config.RequireTokenEverywhere = false
 
--- Exports the panel is allowed to call through /export.
---
--- Empty on purpose: nothing is callable until you list it. Each entry is
--- 'resource:export', and '*' as the export name allows the whole resource.
--- Only add what you actually need - an export can do anything the resource
--- can do.
---
--- Examples:
---   'ox_inventory:GetInventory',
---   'ox_inventory:Search',
---   'qbx_core:GetPlayers',
 -- Extra data the panel should dump to JSON on resource start, on top of the
 -- framework defaults (jobs, gangs, items, vehicles). The value is a function
 -- that returns a table; the key becomes the file name.
 --
--- Whatever you put here ends up in the resource folder and is read by the
--- backend into its cache, so it can serve it to the panel.
+-- The file lands in the resource folder beside the four default dumps. The
+-- backend loads only those four, so anything added here is for your own
+-- tooling, not for the panel's pickers.
 Config.ExtraDumps = {
     -- ['weapons.json'] = function() return exports.ox_inventory:Items() end,
 }

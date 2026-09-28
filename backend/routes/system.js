@@ -7,9 +7,8 @@ const express = require('express');
 const axios = require('axios');
 const { getTableColumns, tableExists, clearSchemaCache, listTables } = require('../utils/dbHandler');
 const { loadGameData, getJobs, getItems, getVehicles } = require('../utils/dataLoader');
-const { FIVEM_API_URL, BRIDGE_TIMEOUT } = require('../utils/bridge');
+const { FIVEM_API_URL, BRIDGE_TIMEOUT, fetchStatus, HAS_TOKEN } = require('../utils/bridge');
 const txadmin = require('../utils/txadmin');
-const { fetchStatus, HAS_TOKEN } = require('../utils/bridge');
 const { identifiersOf, discordOf } = require('../utils/identity');
 const { checkDatabaseMatchesServer } = require('./players');
 const { oncePer } = require('../utils/rateLimit');
@@ -125,9 +124,9 @@ async function inspectTables(raw) {
 }
 
 // What the bridge reports about itself: which framework it found, which
-// inventory, and whether the two ends agree about the token. It used to
-// live with the resource browser, which is gone; it belongs here, with
-// everything else that answers "is this installation wired up right".
+// inventory, and whether the two ends agree about the token. It belongs
+// here, with everything else that answers "is this installation wired up
+// right".
 router.get('/api/system/framework', async (req, res) => {
     const status = await fetchStatus();
 

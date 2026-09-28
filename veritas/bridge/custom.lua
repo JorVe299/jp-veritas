@@ -12,12 +12,16 @@
 -- 1. Routes of your own
 -- ---------------------------------------------------------------------------
 --
--- Veritas.route(method, path, handler) registers an endpoint under the same
--- URL as the rest: http://<server>:30120/veritas/<path>
+-- Veritas.route(method, path, handler, opts) registers an endpoint under the
+-- same URL as the rest: http://<server>:30120/veritas/<path>
 --
 -- The handler gets (body, res). `body` is the decoded JSON of a POST, or an
 -- empty table for a GET. Answer with Veritas.ok(res, table) or
 -- Veritas.fail(res, 'message').
+--
+-- opts is optional. { needsToken = true } makes the route demand the
+-- X-Veritas-Token header even while Config.RequireTokenEverywhere is off -
+-- worth it for anything that changes state.
 --
 -- Anything registered here is reachable from the backend right away - no
 -- change to the panel needed if you only want to read something out.

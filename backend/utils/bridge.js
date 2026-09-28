@@ -5,10 +5,9 @@ const axios = require('axios');
 const FIVEM_API_URL = process.env.FIVEM_API_URL || 'http://127.0.0.1:30120/veritas';
 const BRIDGE_TIMEOUT = parseInt(process.env.BRIDGE_TIMEOUT) || 2500;
 
-// Shared secret with the bridge resource. Sent on every call; the bridge
-// only insists on it for the routes that can run arbitrary exports, but
-// sending it always means turning on RequireTokenEverywhere over there
-// needs no change here.
+// Shared secret with the bridge resource. Sent on every call: the bridge
+// only insists on it once Config.RequireTokenEverywhere is on over there,
+// and sending it always means switching that on needs no change here.
 const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN || '';
 
 function headers() {
@@ -74,13 +73,7 @@ async function fetchStatus() {
     }
 }
 
-// Generic GET against a bridge route - used by the resource browser.
-async function getBridge(route) {
-    const res = await axios.get(`${FIVEM_API_URL}${route}`, { timeout: BRIDGE_TIMEOUT, headers: headers() });
-    return res.data;
-}
-
 module.exports = {
     FIVEM_API_URL, BRIDGE_TIMEOUT, HAS_TOKEN: BRIDGE_TOKEN !== '',
-    isPlayerOnline, fetchOnlinePlayers, callBridge, fetchStatus, getBridge
+    isPlayerOnline, fetchOnlinePlayers, callBridge, fetchStatus
 };

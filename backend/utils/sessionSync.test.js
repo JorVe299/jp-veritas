@@ -170,7 +170,8 @@ test('an authorization removed in Discord ends the session', async () => {
     assert.equal(out.kind, 'ended');
 });
 
-test('a session from before the live check signs in again once', async () => {
+test('a session without Discord tokens cannot be checked, so it ends', async () => {
+    // Keeping it instead would let it run on unchecked for good.
     const out = await auth.syncSession(session({ dt: undefined }), deps());
     assert.equal(out.kind, 'ended');
 });

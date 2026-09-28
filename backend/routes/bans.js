@@ -50,7 +50,6 @@ async function identityFor(citizenid) {
     };
 }
 
-// --- Every ban ------------------------------------------------------------
 // --- Both records, one list -----------------------------------------------
 // The two ban records answer the same question and nobody asking it cares
 // which file the answer came out of. So they are merged - but every row
@@ -200,86 +199,6 @@ router.get('/api/bans/all', async (req, res) => {
     } catch (e) {
         console.error('[Bans] merged list failed:', e.message);
         res.status(500).json({ error: 'The ban list could not be assembled' });
-    }
-});
-
-// --- The other ban list ---------------------------------------------------
-// A server bans in two places that know nothing about each other: this
-// table, which the framework and this panel write, and txAdmin's own
-// record, which is a JSON file beside the server. A page called "Bans"
-// that shows only the first is not wrong so much as incomplete, and the
-// gap is invisible - an empty table reads as "nobody is banned" even
-// while txAdmin is turning people away at the door.
-//
-// Read-only, and it stays that way: txAdmin owns that file, and two
-// processes writing it is how a ban list gets truncated.
-router.get('/api/bans/txadmin', async (req, res) => {
-    try {
-        const result = await txadmin.allActions({
-            types: req.query.include === 'warnings' ? ['ban', 'warn'] : ['ban'],
-            query: req.query.q,
-            activeOnly: req.query.active === 'true',
-            limit: req.query.limit,
-        });
-
-        if (!result.available) {
-            // Not an error: plenty of servers do not run txAdmin. But it is
-            // not an empty list either, and the two must not look alike.
-            return res.json({
-                available: false,
-                reason: result.reason,
-                hint: result.hint,
-                bans: [],
-                count: 0,
-                activeCount: 0,
-            });
-        }
-
-        res.json({
-            available: true,
-            bans: result.actions,
-            count: result.count,
-            activeCount: result.activeCount,
-            truncated: result.truncated,
-            limit: result.limit,
-            source: result.path,
-            readOnly: true,
-        });
-    } catch (e) {
-        console.error('[Bans] txAdmin list failed:', e.message);
-        res.status(500).json({ error: 'The txAdmin ban record could not be read' });
-    }
-});
-
-router.get('/api/bans', async (req, res) => {
-    const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit) || 25, 1), 100);
-    const offset = (page - 1) * limit;
-    const search = String(req.query.search || '').trim();
-
-    try {
-        if (!await ensureTable(res)) return;
-
-        let rows;
-        if (search) {
-            const term = `%${search}%`;
-            [rows] = await db.execute(
-                `SELECT * FROM ${TABLE}
-                 WHERE name LIKE ? OR license LIKE ? OR discord LIKE ? OR reason LIKE ?
-                 ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`,
-                [term, term, term, term]
-            );
-        } else {
-            [rows] = await db.execute(
-                `SELECT * FROM ${TABLE} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`
-            );
-        }
-
-        const bans = rows.map(shapeBan);
-        res.json({ bans, count: bans.length, page });
-    } catch (e) {
-        console.error('[Bans] list failed:', e.message);
-        res.status(500).json({ error: 'Database error while loading the bans' });
     }
 });
 

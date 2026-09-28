@@ -54,23 +54,15 @@ function splitList(raw) {
 // Whoever matches several roles gets the highest. The ranking is the order
 // of the role list, not the order of the .env file.
 
-// Before roles existed there were only these two lists, and whoever was in
-// them could do everything. They are still read so that a server with an
-// old .env does not suddenly let nobody in after the update - but they now
-// mean exactly one thing: owner.
-const LEGACY_IDS = splitList(process.env.DISCORD_ADMIN_IDS);
-const LEGACY_ROLE_IDS = splitList(process.env.DISCORD_ADMIN_ROLE_IDS);
-const USES_LEGACY = LEGACY_IDS.length > 0 || LEGACY_ROLE_IDS.length > 0;
-
 const ROLE_BY_USER = {
-    owner: splitList(process.env.DISCORD_OWNER_IDS).concat(LEGACY_IDS),
+    owner: splitList(process.env.DISCORD_OWNER_IDS),
     administrator: splitList(process.env.DISCORD_ADMINISTRATOR_IDS),
     supporter: splitList(process.env.DISCORD_SUPPORTER_IDS),
     citizen: splitList(process.env.DISCORD_CITIZEN_IDS)
 };
 
 const ROLE_BY_GUILD_ROLE = {
-    owner: splitList(process.env.DISCORD_ROLE_OWNER).concat(LEGACY_ROLE_IDS),
+    owner: splitList(process.env.DISCORD_ROLE_OWNER),
     administrator: splitList(process.env.DISCORD_ROLE_ADMINISTRATOR),
     supporter: splitList(process.env.DISCORD_ROLE_SUPPORTER),
     citizen: splitList(process.env.DISCORD_ROLE_CITIZEN)
@@ -138,10 +130,6 @@ function configProblems() {
     }
     if (EPHEMERAL_SECRET) {
         problems.push('SESSION_SECRET missing - every restart signs everyone out.');
-    }
-    if (USES_LEGACY) {
-        problems.push('DISCORD_ADMIN_IDS / DISCORD_ADMIN_ROLE_IDS are deprecated and are being read as Owner.'
-            + ' Rename them to DISCORD_OWNER_IDS / DISCORD_ROLE_OWNER (or to the role you actually want).');
     }
     return problems;
 }
@@ -356,12 +344,6 @@ function publicUser(session) {
         // label" instead of crashing or inventing one.
         roleLabel: session.role ? perms.labelOf(session.role) : null,
         portal: session.portal === true,
-        // A session minted before Veritas ID existed carries no portal
-        // field at all. That is not the same as "not allowed": it is an
-        // answer nobody ever gave. Collapsing the two into false makes a
-        // stale cookie look exactly like a refusal, and the person is then
-        // told something untrue about their account.
-        portalKnown: session.portal !== undefined,
         // The role's current capability list, not the one from sign-in:
         // a change to the matrix therefore takes effect immediately,
         // without everyone having to sign in again.
@@ -392,7 +374,7 @@ const inflight = new Map();
 const backoff = new Map();
 
 const ENDED_REVOKED = 'Your Discord authorization for this panel has ended. Sign in again.';
-const ENDED_LEGACY = 'Your session predates the live role check. Sign in again once.';
+const ENDED_UNCHECKABLE = 'Your session could not be checked against Discord. Sign in again.';
 
 function userOf(session) {
     return {
@@ -427,10 +409,10 @@ async function syncSession(session, deps = {}) {
     let guild = { member: false, roles: [] };
 
     if (d.guildId) {
-        // A session from before this check carries no tokens, so there is
-        // nothing to ask Discord with. Letting it run on unchecked would
-        // be exactly the gap this closes, so it signs in again, once.
-        if (!tokens) return { kind: 'ended', reason: ENDED_LEGACY };
+        // Without tokens there is nothing to ask Discord with. Letting such
+        // a session run on unchecked would be exactly the gap this closes,
+        // so it ends rather than being kept.
+        if (!tokens) return { kind: 'ended', reason: ENDED_UNCHECKABLE };
 
         try {
             if (tokens.expiresAt && tokens.expiresAt - 60 <= now && tokens.refreshToken) {
@@ -580,7 +562,7 @@ async function requireAuth(req, res, next) {
 }
 
 module.exports = {
-    ENABLED, GUILD_ID, USES_LEGACY,
+    ENABLED, GUILD_ID,
     ROLE_BY_USER, ROLE_BY_GUILD_ROLE,
     SESSION_COOKIE, STATE_COOKIE, SESSION_HOURS,
     roleOrder, mappingFor, mappingSummary, allGuildRoleIds,

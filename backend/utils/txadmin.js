@@ -295,10 +295,12 @@ async function actionsFor(identifiers, options = {}) {
  * The panel already prints licence and Discord id in its own ban list, so
  * this reveals nothing that surface does not.
  *
+ * Searching and filtering happen once both records are merged - in
+ * routes/bans.js, with the helpers in utils/banlist.js - so this hands over
+ * everything of the wanted types.
+ *
  * @param {object}   [options]
  * @param {string[]} [options.types]   which action types to include
- * @param {string}   [options.query]   free text over name, reason, id and identifiers
- * @param {boolean}  [options.activeOnly]
  * @param {number}   [options.limit]   a busy server's store is long
  */
 async function allActions(options = {}) {
@@ -307,7 +309,6 @@ async function allActions(options = {}) {
 
     const wanted = new Set(Array.isArray(options.types) ? options.types : ['ban']);
     const limit = Math.min(Math.max(parseInt(options.limit, 10) || 200, 1), 1000);
-    const needle = String(options.query || '').trim().toLowerCase();
     const now = Math.floor(Date.now() / 1000);
 
     // The index holds each action once per identifier, so collect by
@@ -331,13 +332,6 @@ async function allActions(options = {}) {
         shaped.playerName = typeof action.playerName === 'string' ? action.playerName : null;
         shaped.author = typeof action.author === 'string' ? action.author : null;
         shaped.identifiers = Array.isArray(action.ids) ? action.ids.map(identifierKey) : [];
-
-        if (needle) {
-            const hay = [shaped.id, shaped.playerName, shaped.reason, shaped.author, ...shaped.identifiers]
-                .filter(Boolean).join(' ').toLowerCase();
-            if (!hay.includes(needle)) continue;
-        }
-        if (options.activeOnly && !shaped.active) continue;
 
         total += 1;
         if (shaped.active) activeCount += 1;

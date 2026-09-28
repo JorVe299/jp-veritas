@@ -16,7 +16,7 @@ test('the owner has every capability without exception', () => {
 });
 
 test('handing out permissions stays reserved for the owner', () => {
-    for (const role of perms.ROLES) {
+    for (const role of perms.roleIds()) {
         if (role === 'owner') continue;
         assert.equal(perms.can(role, perms.OWNER_ONLY), false,
             `${role} must not hand out permissions`);
@@ -118,7 +118,7 @@ test('sanitize drops unknown capabilities and tops the owner up', () => {
     // save() would write the file; here we only check the sanitising
     // itself, via the public matrix.
     const matrix = perms.getMatrix();
-    for (const role of perms.ROLES) {
+    for (const role of perms.roleIds()) {
         for (const cap of matrix[role]) {
             assert.ok(perms.CAPABILITY_IDS.includes(cap),
                 `${role} carries unknown capability ${cap}`);
@@ -166,7 +166,6 @@ test('a session without a role reaches nothing else', () => {
         ['POST', '/api/manage/money'],
         ['POST', '/api/manage/ban'],
         ['PUT', '/api/permissions'],
-        ['POST', '/api/resources/export'],
     ];
     for (const [method, path] of paths) {
         const r = run({ path, method, user: citizen });

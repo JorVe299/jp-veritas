@@ -199,8 +199,12 @@ Keys that have caused trouble:
 - `PANEL_ORIGIN` — where the sign-in returns to. Never taken from the
   request; the surface is picked from a fixed two-entry table, or it would
   be an open redirect.
-- `DISCORD_ADMIN_IDS` / `DISCORD_ADMIN_ROLE_IDS` — deprecated, still read as
-  Owner, and warned about at startup.
+- `BRIDGE_TOKEN` — only checked once `Config.RequireTokenEverywhere = true`
+  in the bridge's `config.lua`. While that is false a token protects nothing:
+  every built-in bridge route answers whoever can reach the FiveM HTTP port.
+- `DISCORD_ADMIN_IDS` / `DISCORD_ADMIN_ROLE_IDS` — no longer read. An old
+  `.env` that maps the owner only through them lets nobody in; rename them to
+  `DISCORD_OWNER_IDS` / `DISCORD_ROLE_OWNER`.
 
 `require('dotenv').config()` is given an explicit path. Without it dotenv
 resolves against the working directory, so a systemd unit with a different
@@ -291,11 +295,9 @@ matching exactly — a near miss on an identifier is a different person, not a
 weaker match.
 
 **The portal flag lives in the cookie.** It is set at sign-in and refreshed
-by the minute-by-minute role check. A cookie from before the portal existed
-carries no flag at all; that is reported separately from a refusal, because
-telling someone their account is barred when it is only an old cookie is a
-lie. (Cookies from before the role check carry no Discord tokens and are
-ended once, with a sentence saying so.)
+by the minute-by-minute role check, and only an explicit `true` opens
+Veritas ID. A session that carries no Discord tokens cannot be checked, so it
+is ended with a sentence saying so rather than kept.
 
 **`information_schema` row counts are estimates.** `bans` reported 0 rows
 while holding a live ban. Count through the app's own routes.
@@ -322,8 +324,8 @@ capabilities on purpose, but whoever grants `groups.edit` should know this.
 
 **Role saving fails on the live server** with "The permissions could not be
 saved". The cause is almost certainly that `/opt/veritas/backend/data/` is not
-writable by the user the service runs as. Both halves of this are addressed in
-the working tree but **not yet committed**:
+writable by the user the service runs as. Both halves of this are committed
+(8f4cef1):
 
 - `roleStore.js` now writes to a temp file, renames it into place, adopts the
   new state only on success, and returns a `hint` naming the actual cause

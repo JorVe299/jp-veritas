@@ -27,30 +27,6 @@ function parseJSON(data) {
     return data || {};
 }
 
-// Helper: loads player data safely
-async function getPlayerData(citizenid, columns = ['money', 'charinfo', 'inventory']) {
-    const safeColumns = columns.filter(c => ALLOWED_COLUMNS.includes(c));
-    if (safeColumns.length === 0) throw new Error('No valid columns requested');
-
-    const query = `SELECT ${safeColumns.join(',')} FROM players WHERE citizenid = ?`;
-    const [rows] = await db.execute(query, [citizenid]);
-
-    if (rows.length === 0) return null;
-
-    // Parse every JSON column automatically
-    const data = rows[0];
-    for (const key in data) {
-        if (typeof data[key] === 'string' && (data[key].startsWith('{') || data[key].startsWith('['))) {
-            try {
-                data[key] = JSON.parse(data[key]);
-            } catch (e) {
-                console.error(`JSON Parse Error bei ${key}:`, e.message);
-            }
-        }
-    }
-    return data;
-}
-
 // Writes a single JSON column of a player back
 async function updatePlayerColumn(citizenid, column, value) {
     if (!ALLOWED_COLUMNS.includes(column)) throw new Error(`Column ${column} is not allowed`);
@@ -117,6 +93,6 @@ function clearSchemaCache() {
 }
 
 module.exports = {
-    db, parseJSON, getPlayerData, updatePlayerColumn,
+    db, parseJSON, updatePlayerColumn,
     getTableColumns, tableExists, pickExistingColumns, clearSchemaCache, listTables
 };

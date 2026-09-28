@@ -245,7 +245,7 @@ AddEventHandler('onResourceStart', function(resource)
 
     print(('^2[Veritas] ^7Inventory: %s'):format(Items.detect()))
     if (Config.Token or '') == '' then
-        print('^3[Veritas] ^7Config.Token is empty - /export stays closed and the other routes are unauthenticated.')
+        print('^3[Veritas] ^7Config.Token is empty - the built-in routes are open to anyone who can reach this port.')
     end
 
     -- Write the shared tables out as JSON so the backend can read them.

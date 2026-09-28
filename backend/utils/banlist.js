@@ -142,8 +142,8 @@ function identifiersFromRow(row) {
 /**
  * A row of the `bans` table in the shared shape.
  *
- * shapeBan() in routes/bans.js has already worked out `active`, `permanent`
- * and the expiry, so this takes that result rather than the raw row.
+ * shapeBan() above has already worked out `active`, `permanent` and the
+ * expiry, so this takes that result rather than the raw row.
  */
 function fromDatabase(ban) {
     return {

@@ -166,8 +166,6 @@ const RULES = [
     ['GET', /^\/api\/players\/[^/]+\/position$/, 'players.view'],
     ['GET', /^\/api\/accounts$/, 'accounts.view'],
     ['GET', /^\/api\/bans\/all$/, 'bans.view'],
-    ['GET', /^\/api\/bans\/txadmin$/, 'bans.view'],
-    ['GET', /^\/api\/bans$/, 'bans.view'],
     ['GET', /^\/api\/items\/[^/]+\/image$/, 'inventory.view'],
     ['GET', /^\/api\/meta\//, 'players.view'],
     ['GET', /^\/api\/system\/framework$/, 'system.view'],
@@ -278,15 +276,3 @@ module.exports = {
     deleteRole: store.remove, reorderRoles: store.reorder,
     getMatrix, save, can, capabilitiesOf, requiredFor, enforce, STORE, SELF_PREFIX,
 };
-
-// Kept as getters so callers written against the old constants keep
-// working while roles were still four names in the source.
-Object.defineProperty(module.exports, 'ROLES', { get: roleIds, enumerable: true });
-Object.defineProperty(module.exports, 'ROLE_LABELS', {
-    enumerable: true,
-    get() {
-        const out = {};
-        for (const role of listRoles()) out[role.id] = role.label;
-        return out;
-    },
-});
