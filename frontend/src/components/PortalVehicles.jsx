@@ -4,29 +4,19 @@ import { usePortalResource } from '../lib/usePortal';
 import { fetchMyVehicles } from '../api';
 import { shown } from '../lib/portalText';
 
-// The same three states the panel names, so a player and an admin are
-// talking about the same thing. The server's own stateLabel takes
-// precedence over all of it; this is only the fallback and the colour.
+// Same labels as the panel; the server's stateLabel wins, this is only fallback and colour
 const STATES = {
     0: { label: 'Out', pill: 'pill--off' },
     1: { label: 'In garage', pill: 'pill--live' },
     2: { label: 'Impounded', pill: 'pill--debit' },
 };
 
-/**
- * The vehicles on a character.
- *
- * `available: false` is the case that must not be got wrong. It means this
- * server's database has no table of owned vehicles at all - so an empty
- * list would tell a player they own nothing, which is a different and
- * possibly false statement. It is named instead.
- */
+/** `available: false` (no vehicle table on this server) is named, never shown as owning none */
 export default function PortalVehicles({ citizenid }) {
     const state = usePortalResource(fetchMyVehicles, citizenid);
 
     const vehicles = Array.isArray(state.data?.vehicles) ? state.data.vehicles : [];
-    // Only an explicit false counts as "no such table". A missing field is
-    // not a denial, and reading it as one would hide a real garage.
+    // Only an explicit false counts as unavailable; a missing field is not a denial
     const unsupported = state.status === 'ready' && state.data?.available === false;
 
     return (
@@ -81,7 +71,7 @@ export default function PortalVehicles({ citizenid }) {
                                         </span>
                                     </span>
 
-                                    {/* The server's own word for the state, so it may run long. */}
+                                    {/* The server's own label may run long */}
                                     <span className={`pill pill--fit ${known?.pill ?? 'pill--unknown'}`} title={label}>
                                         <span className="u-clip">{label}</span>
                                     </span>

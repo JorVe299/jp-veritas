@@ -1,10 +1,5 @@
-// backend/utils/txadmin.test.js
-//
-// The shaping is where this can quietly go wrong: telling someone a ban is
-// over when it is not, or that it stands when it was lifted, is worse than
-// showing nothing. So every combination of permanent / expiring / revoked
-// is pinned down here, and the file is read end to end against a fixture
-// laid out the way txAdmin lays out its own.
+// Every permanent/expiring/revoked combination, and reading a fixture laid out like txData
+// Wrong shaping is worse than none: it calls a standing ban over, or a lifted one standing
 
 const test = require('node:test');
 const assert = require('node:assert');
@@ -12,9 +7,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-// A fixture in txAdmin's own shape: txData/<profile>/data/playersDB.json.
-// Built before the module is required, because the path is read once at
-// load time - exactly as it is in the running panel.
+// Fixture in txAdmin's layout: txData/<profile>/data/playersDB.json
+// Built before require: the module reads the path once at load, as in the panel
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'veritas-tx-'));
 const DATA_DIR = path.join(ROOT, 'txData', 'default', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -78,7 +72,7 @@ const { asIdentifier } = require('./identity');
 
 const MINE = ['discord:111111111111111111', 'license:aaa111'];
 
-// --- Shaping ---------------------------------------------------------------
+// --- Shaping --------------------------------------------------------------
 
 test('a permanent ban has no expiry and stands', () => {
     const s = tx.shapeAction(FIXTURE.actions[0], NOW);
@@ -112,8 +106,7 @@ test('a lifted ban does not stand, permanent or not', () => {
 });
 
 test('the issuing admin is not handed out by default', () => {
-    // The default has to hold here, since the module reads the switch once
-    // at load and this suite never sets it.
+    // Default holds: the switch is read once at load and this suite never sets it
     assert.equal(tx.SHOW_AUTHOR, false);
     for (const action of FIXTURE.actions) {
         assert.equal('author' in tx.shapeAction(action, NOW), false);
@@ -128,9 +121,7 @@ test('nothing about the account leaks through the shaping', () => {
 });
 
 test('a missing expiration counts as permanent, not as expired', () => {
-    // txAdmin writes `false`, but older rows and hand-edited files have
-    // been seen without the key at all. Reading that as "expired at 0"
-    // would tell someone a standing ban is over.
+    // Missing key (old or hand-edited rows) = permanent; "expired at 0" would end a standing ban
     for (const value of [undefined, null, false]) {
         const s = tx.shapeAction({ type: 'ban', timestamp: NOW, expiration: value }, NOW);
         assert.equal(s.permanent, true, `expiration ${String(value)}`);
@@ -138,7 +129,7 @@ test('a missing expiration counts as permanent, not as expired', () => {
     }
 });
 
-// --- Indexing --------------------------------------------------------------
+// --- Indexing -------------------------------------------------------------
 
 test('one action is found under each of its identifiers', () => {
     const index = tx.buildIndex(FIXTURE.actions);
@@ -156,7 +147,7 @@ test('malformed entries are skipped rather than thrown on', () => {
     assert.equal(index.size, 0);
 });
 
-// --- Reading the file ------------------------------------------------------
+// --- Reading the file -----------------------------------------------------
 
 test('the history is only what was issued against this account', async () => {
     const r = await tx.actionsFor(MINE);
@@ -199,13 +190,12 @@ test('an account with no record gets an empty history, not a failure', async () 
 });
 
 test('an unreadable store is reported as unavailable, never as a clean record', async () => {
-    // The distinction the portal rests on: "nothing on file" and "the file
-    // could not be read" must never arrive looking the same.
+    // "Nothing on file" and "could not be read" must never look the same
     const broken = fs.mkdtempSync(path.join(os.tmpdir(), 'veritas-tx-bad-'));
     fs.mkdirSync(path.join(broken, 'txData', 'default', 'data'), { recursive: true });
     fs.writeFileSync(path.join(broken, 'txData', 'default', 'data', 'playersDB.json'), '{ not json');
 
-    // A second instance, so the fixture module keeps its own path.
+    // A second instance, so the fixture module keeps its own path
     delete require.cache[require.resolve('./txadmin')];
     process.env.TXADMIN_DB_PATH = path.join(broken, 'txData');
     const other = require('./txadmin');
@@ -232,7 +222,7 @@ test('a path that leads nowhere says so and names what it tried', async () => {
     process.env.TXADMIN_DB_PATH = path.join(ROOT, 'txData');
 });
 
-// --- Identifier notation ---------------------------------------------------
+// --- Identifier notation --------------------------------------------------
 
 test('a bare column value gains the prefix txAdmin expects', () => {
     assert.equal(asIdentifier('license', 'ABC123'), 'license:abc123');
@@ -241,7 +231,7 @@ test('a bare column value gains the prefix txAdmin expects', () => {
 
 test('an already prefixed value is left as it is', () => {
     assert.equal(asIdentifier('discord', 'discord:111'), 'discord:111');
-    // Not re-prefixed into 'license:license:abc', which would match nothing.
+    // Not re-prefixed into 'license:license:abc', which would match nothing
     assert.equal(asIdentifier('license', 'license:abc'), 'license:abc');
 });
 

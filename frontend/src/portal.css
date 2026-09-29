@@ -1,26 +1,9 @@
-/* ==========================================================================
-   Veritas ID - the player-facing surface
-   Same tokens, same two typefaces, same dark ground as the admin panel, and
-   deliberately not the same room. Everything here is read-only, and the
-   layout is built to say that before a word is read:
+/* Player-facing and read-only: the layout differs from the panel's on purpose to say so
+   No tokens of its own: colours and type sizes come from index.css
+   Loaded last on purpose: overrides of shared classes (inventory grid) need no heavier selectors */
 
-     - one centred column instead of an edge-to-edge wall of tiles
-     - a header that sits in the page rather than fixed chrome over it
-     - a wordmark set in the normal width, where the panel's is condensed
-       caps, and a mark that is a card rather than a tile
-     - no search, no switch, no bridge state, no controls beyond a link,
-       a sign-out and the characters themselves
-
-   No colours and no sizes of its own: every value here comes out of
-   index.css. This file is loaded last on purpose, so where it does reach
-   into a shared class (the inventory grid) it wins without having to fight
-   the panel's stylesheet with heavier selectors.
-   ========================================================================== */
-
-/* --- The page ------------------------------------------------------------
-   The document scrolls, rather than a stage inside a fixed frame. That is
-   the panel's shape because the panel is a workspace; this is a page to
-   read, and it behaves like one. */
+/* --- The page ---------------------------------------------------------- */
+/* The document scrolls, not a stage in a fixed frame: a page to read, not a workspace */
 
 .id {
     display: flex;
@@ -42,11 +25,7 @@
     padding: var(--s-6) var(--gutter) var(--s-7);
 }
 
-/* --- The header ----------------------------------------------------------
-   Short by design. The panel's bar carries a search, an area switch and the
-   state of the game server; none of that belongs to a person looking at
-   their own papers, and leaving it out is the clearest way of saying which
-   surface this is. */
+/* --- The header -------------------------------------------------------- */
 
 .idbar {
     display: flex;
@@ -78,8 +57,7 @@
     background: var(--c-surface-2);
 }
 
-/* Already home: still pressable, because a control that vanishes under the
-   cursor is worse than one that does nothing - but it stops inviting. */
+/* Already home: still pressable, never vanishing under the cursor; it only stops inviting */
 .idbar__brand.is-here,
 .idbar__brand.is-here:hover {
     cursor: default;
@@ -95,9 +73,7 @@
     letter-spacing: -0.005em;
 }
 
-/* The panel's wordmark is condensed caps with wide tracking. This one is
-   set at normal width and carries the two letters as a tag, the way a card
-   carries its kind. Read side by side, the two are not confusable. */
+/* Normal width plus an ID tag: never confusable with the panel's condensed wordmark */
 .idbar__word-id {
     padding: 0.1em 0.4em;
     border: 1px solid var(--c-border-strong);
@@ -108,8 +84,6 @@
     color: var(--c-text-muted);
 }
 
-/* True of every screen here, so it stands where the surface names itself
-   rather than being repeated on each card. */
 .idbar__tag {
     flex: none;
     padding: 0.2rem var(--s-2);
@@ -138,9 +112,8 @@
     white-space: nowrap;
 }
 
-/* --- The picture ---------------------------------------------------------
-   A rounded square rather than the panel's circle: this surface is about
-   papers, and the photograph on a card is not round. */
+/* --- The picture ------------------------------------------------------- */
+/* Rounded square, not the panel's circle: a photo on papers is not round */
 
 .idavatar {
     flex: none;
@@ -167,7 +140,7 @@
     font-size: var(--fs-md);
 }
 
-/* --- The front door ------------------------------------------------------ */
+/* --- The front door ---------------------------------------------------- */
 
 .idhero {
     display: flex;
@@ -175,8 +148,7 @@
     gap: var(--s-4);
 }
 
-/* Holds the picture's place while the account is still loading, so the
-   greeting does not jump sideways when it arrives. */
+/* Holds the picture's place while loading: the greeting does not jump sideways */
 .idhero__ghost {
     flex: none;
     width: 3.5rem;
@@ -191,9 +163,7 @@
     gap: var(--s-1);
 }
 
-/* Not the panel's display voice. The billboard there sets a citizen's name
-   in condensed caps at display size, as a headline about somebody else;
-   here it is the reader's own name, and it is set like a name. */
+/* Not the display voice: the reader's own name, set like a name, not a headline */
 .idhero__name {
     font-size: var(--fs-xl);
     font-weight: 800;
@@ -223,9 +193,7 @@
     color: var(--c-text-faint);
 }
 
-/* An account with no characters yet. Written as a sentence in a quiet box,
-   expressly not as a notice with a tone and an icon: a Discord member who
-   has not played yet has done nothing wrong and nothing is broken. */
+/* No characters yet: a quiet box, not a toned notice; nothing is wrong or broken */
 .idblank {
     display: flex;
     flex-direction: column;
@@ -246,7 +214,7 @@
     max-width: 58ch;
 }
 
-/* --- The characters ------------------------------------------------------ */
+/* --- The characters ---------------------------------------------------- */
 
 .idlist {
     display: flex;
@@ -260,7 +228,7 @@
 
 .idlist__items {
     display: grid;
-    /* min(): never a column wider than the page has, at the 320px floor. */
+    /* min(): no column wider than the page at the 320px floor */
     grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
     gap: var(--s-4);
     margin: 0;
@@ -300,10 +268,7 @@
     transform: translateY(1px);
 }
 
-/* The same 2:3 poster the panel's wall is built from, at thumbnail size.
-   The portal used to carry no generated art at all, which left the one
-   surface a player sees as the only place in Veritas where a citizen has
-   no face - and the only place with no colour in it. */
+/* Same 2:3 poster as the panel's wall, at thumbnail size */
 .idcard__plate {
     position: relative;
     display: block;
@@ -332,11 +297,7 @@
     height: 100%;
 }
 
-/* Wraps: at three cards to a row the name and the On duty pill do not fit
-   side by side, and squeezed beside the pill the name broke mid-word
-   ("JORDA / N") even though it fit its own line. Now the pill drops under
-   the name instead, and a name only breaks inside a word when that one word
-   is wider than the whole card. */
+/* Wraps: the On duty pill drops under the name instead of breaking it mid-word */
 .idcard__head {
     display: flex;
     flex-wrap: wrap;
@@ -368,11 +329,7 @@
     gap: var(--s-2) var(--s-5);
 }
 
-/* The card's text column is only 9-10rem wide once the poster has its
-   share - narrower than id, "Last seen Mar 04, 2026, 21:40" and the chevron
-   in one row. On one line the date ran out of the card and squeezed the id
-   beside it down to nothing, at any width. The row wraps now: the id stays
-   whole, and the date moves under it where it does not fit beside it. */
+/* Wraps: the 9-10rem text column cannot hold id, last-seen date and chevron in one row */
 .idcard__foot {
     display: flex;
     flex-wrap: wrap;
@@ -407,10 +364,8 @@
     transform: translateX(2px);
 }
 
-/* --- Amounts -------------------------------------------------------------
-   A key above the figure rather than beside it: the two balances are read
-   against each other, and a column of pairs makes that comparison without
-   any rules or boxes. */
+/* --- Amounts ----------------------------------------------------------- */
+/* Key above the figure: the two balances compare without rules or boxes */
 
 .idsums {
     display: flex;
@@ -437,8 +392,6 @@
     font-weight: 600;
 }
 
-/* .u-fit keeps it at --fs-xl for any everyday balance and makes it smaller
-   once the full figure would no longer fit the card. */
 .idsum__value--big {
     font-size: var(--fs-xl);
     --fit-max: var(--fs-xl);
@@ -448,11 +401,9 @@
     line-height: var(--lh-tight);
 }
 
-/* --- One character ------------------------------------------------------- */
+/* --- One character ----------------------------------------------------- */
 
-/* The character's header carries their key art, the way the panel's
-   billboard carries it. Full-bleed inside the column, with the same long
-   scrim and the same grain, so bone text sits on it and reads. */
+/* Key art like the panel's billboard: the same long scrim and grain keep text legible */
 .idhead {
     position: relative;
     isolation: isolate;
@@ -552,10 +503,8 @@
     min-width: 0;
 }
 
-/* --- The cards a character is made of ------------------------------------
-   The panel's .panel has a bold title over a rule, because there a card is
-   a tool with a form in it. Here a card is a paragraph of a document, so
-   the heading is a quiet label and there is no rule under it. */
+/* --- The cards a character is made of ---------------------------------- */
+/* A paragraph of a document, not a tool like .panel: quiet label, no rule under it */
 
 .idpanels {
     display: grid;
@@ -564,8 +513,7 @@
     align-items: start;
 }
 
-/* The inventory and the vehicles want the whole column: five tiles across
-   do not fit in half of one. */
+/* Inventory and vehicles: five tiles across do not fit in half a column */
 .idpanels--wide {
     grid-template-columns: minmax(0, 1fr);
 }
@@ -610,8 +558,7 @@
     flex-direction: column;
     gap: var(--s-3);
     padding: var(--s-4);
-    /* The balances size themselves against this (.u-fit). Its width comes
-       from the grid column, never from its content. */
+    /* Container for .u-fit balances; width comes from the grid column, never the content */
     container-type: inline-size;
 }
 
@@ -619,18 +566,14 @@
     gap: var(--s-4);
 }
 
-/* Something that is absent, said in words. Never an empty box: a blank
-   space is read as a value that did not load. */
+/* Absence said in words, never an empty box: blank space reads as a failed load */
 .idnone {
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
     max-width: 62ch;
 }
 
-/* --- Licences ------------------------------------------------------------
-   Held or not held, and the two are equally ordinary. Only the tick carries
-   the signal colour; four green words in a row would turn a list of facts
-   into a scoreboard. */
+/* --- Licences ---------------------------------------------------------- */
 
 .idlics {
     display: flex;
@@ -666,16 +609,12 @@
     color: var(--c-text);
 }
 
-/* Deliberately not a signal colour. Green in this system means "on the
-   server now", and a held licence is neither that nor a write that went
-   live; lending it the lamp would blunt the one distinction the product
-   is built on. The tick and the full text tone carry it, and the words
-   next to them say it outright. */
+/* No signal colour: green means "on the server now"; tick, full text tone and words carry it */
 .idlic--held .idlic__icon {
     color: var(--c-text);
 }
 
-/* --- Rows of things ------------------------------------------------------ */
+/* --- Rows of things ---------------------------------------------------- */
 
 .idrows {
     display: flex;
@@ -733,11 +672,8 @@
     color: var(--c-text-faint);
 }
 
-/* --- The inventory grid --------------------------------------------------
-   The panel's tiles, without the panel's hands. .slot--filled is not used
-   here although these tiles are filled: it carries the grab cursor, and a
-   grab cursor on a surface that cannot move anything is a promise broken
-   the moment it is taken up. */
+/* --- The inventory grid ------------------------------------------------ */
+/* Filled tiles skip .slot--filled: its grab cursor promises a move that cannot happen here */
 
 .grid.idgrid {
     grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
@@ -751,26 +687,14 @@
     cursor: default;
 }
 
-/* Stands in for a tile while the inventory loads. Its own class rather than
-   .slot, whose background would win over the shimmer. */
+/* Loading placeholder; not .slot, whose background would win over the shimmer */
 .idtile {
     aspect-ratio: 1;
     border-radius: var(--r-tile);
 }
 
-/* --- The ban record ------------------------------------------------------
-   Two shapes, and which one appears is the whole message.
-
-   With nothing on record, and only then, there is no card at all: one
-   faint line at the foot of the page. A titled, bordered panel standing
-   empty on every visit would put the question to somebody nobody asked it
-   of. Every other state - a record, a request that failed, a store that
-   could not be read - gets the card, because all three are something the
-   reader has to be able to see they are being told.
-
-   In force against over is carried by grouping, weight and one edge, not
-   by a field of red. Only two things take the signal colour: the pill on
-   a standing ban and the rule down its left side. No new tokens. */
+/* --- The ban record ---------------------------------------------------- */
+/* Clean record: no card, one faint line; every other state gets the card (BACKEND.md §4) */
 
 .idbans__quiet {
     font-size: var(--fs-sm);
@@ -783,8 +707,7 @@
     max-width: 68ch;
 }
 
-/* The answer the reader came for, set apart by weight alone: they should
-   not have to count the rows to find out where they stand. */
+/* The answer the reader came for: set apart by weight alone */
 .idbans__verdict {
     color: var(--c-text);
     font-weight: 700;
@@ -819,12 +742,7 @@
     border-radius: var(--r-control);
 }
 
-/* Standing today: the whole edge and a soft debit ground, exactly the way
-   an error note is marked everywhere else in this system. It used to be a
-   thick coloured stripe down the left side - the most worn-out tell in
-   dark dashboards, and a rule the design system bans outright. The state
-   is still written out in words inside the box; the colour only confirms
-   what the badge already says. */
+/* Marked like every error note: whole edge, soft ground; never a side stripe (design rule) */
 .idban--standing {
     background: var(--c-debit-soft);
     border-color: var(--c-debit-line);
@@ -868,9 +786,7 @@
     max-width: 68ch;
 }
 
-/* The server's hint is addressed to whoever set the panel up - it names a
-   configuration key. Folded away rather than dropped: a player has no use
-   for it, and the operator should not need a console to find it. */
+/* Operator hint naming a config key: folded away, not dropped, so no console is needed */
 .idbans__hint {
     color: var(--c-text-faint);
     max-width: 68ch;
@@ -881,7 +797,7 @@
     align-self: flex-start;
 }
 
-/* --- A request that did not work out ------------------------------------- */
+/* --- A request that did not work out ----------------------------------- */
 
 .idfail {
     display: flex;
@@ -890,11 +806,8 @@
     gap: var(--s-3);
 }
 
-/* --- The front door before signing in ------------------------------------
-   The panel's gate centres a card on a radial ground. This one puts the
-   card at the top of the column and sets its heading in a reading voice:
-   whoever arrives here has usually followed a link out of Discord and has
-   never seen the panel. */
+/* --- The front door before signing in ---------------------------------- */
+/* Card at the top in a reading voice: visitors arrive from a Discord link, new to the panel */
 
 .idgate {
     display: flex;
@@ -959,7 +872,7 @@
     align-self: flex-start;
 }
 
-/* --- The last word ------------------------------------------------------- */
+/* --- The last word ----------------------------------------------------- */
 
 .idfoot {
     width: min(64rem, 100%);
@@ -975,16 +888,12 @@
 }
 
 @media (max-width: 560px) {
-    /* The bar keeps the mark, the tag and the controls. The name goes: the
-       picture next to it says the same thing in less room. What may never
-       go is the way out - the bar wraps rather than letting the sign-out
-       slide past the edge, where overflow-x: hidden would simply eat it. */
+    /* The picture stands in for the name; the bar wraps so sign-out is never clipped off */
     .idbar__name {
         display: none;
     }
 
-    /* The spacer would otherwise hold a whole empty row open once the bar
-       breaks onto two lines. */
+    /* Would hold an empty row open once the bar wraps */
     .idbar__spacer {
         display: none;
     }

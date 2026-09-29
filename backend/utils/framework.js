@@ -1,19 +1,5 @@
-// backend/utils/framework.js
-// Which framework's database are we looking at?
-//
-// The bridge reports which core is running on the game server, but the panel
-// also reads the database directly - and there the frameworks differ more
-// than in their Lua API:
-//
-//   QB family : table `players`, keyed on `citizenid`, character data in
-//               JSON columns (charinfo, job, money, metadata, inventory)
-//   ESX       : table `users`, keyed on `identifier`, flat columns for
-//               firstname/lastname/job/job_grade and an `accounts` JSON
-//
-// Rather than sprinkling if-branches through the routes, each profile says
-// how to build the query and how to shape a row. Detection looks at what is
-// actually in the database, not at what the bridge claims - a server can run
-// a core whose tables were never migrated.
+// Framework profile of the game DB: QB family (players, citizenid, JSON columns) or ESX (users)
+// Detected from the tables, not from the bridge: a core can run on unmigrated tables
 const { db, parseJSON, getTableColumns } = require('./dbHandler');
 
 const PROFILES = {
@@ -24,7 +10,7 @@ const PROFILES = {
         idColumn: 'citizenid',
         selectFields: 'citizenid, charinfo, job, money',
 
-        // The columns a search has to look through, already as SQL.
+        // Searched columns, as SQL
         searchSql: `citizenid LIKE ? OR
                     JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.firstname')) LIKE ? OR
                     JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.lastname')) LIKE ?`,
@@ -56,8 +42,7 @@ const PROFILES = {
         searchParams: 3,
 
         shape(row) {
-            // ESX keeps cash and bank in one accounts JSON under different
-            // names; the panel speaks cash/bank everywhere else.
+            // ESX accounts JSON (money, bank, black_money) -> the panel's cash/bank names
             const accounts = parseJSON(row.accounts);
             const name = `${row.firstname || '?'} ${row.lastname || ''}`.trim();
             return {
@@ -78,9 +63,7 @@ const PROFILES = {
 
 let detected = null;
 
-// Looks at the database itself. The bridge's opinion is recorded alongside,
-// because the two disagreeing is worth seeing: a QBCore server with ESX
-// tables means something got half-migrated.
+// Decides from the DB; the bridge's claim is kept: disagreement means a half-migrated server
 async function detect(bridgeFramework) {
     if (detected) return detected;
 
@@ -96,7 +79,7 @@ async function detect(bridgeFramework) {
 
     detected = {
         profile,
-        // What the bridge said, for comparison in the diagnostics.
+        // For the diagnostics comparison
         bridgeFramework: bridgeFramework || null,
         agrees: !profile || !bridgeFramework
             ? null
@@ -106,8 +89,7 @@ async function detect(bridgeFramework) {
     return detected;
 }
 
-// The profile, or the QB one as a fallback. Every route that reads player
-// data goes through this rather than hard-coding a table name.
+// Detected profile, QB as fallback; routes use this instead of hard-coded table names
 async function profile() {
     const d = await detect();
     return d.profile || PROFILES.qb;

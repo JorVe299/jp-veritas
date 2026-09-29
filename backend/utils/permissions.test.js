@@ -1,7 +1,4 @@
-// backend/utils/permissions.test.js
-// Permissions are the one part of the panel where a mistake does not show:
-// a rule that is too generous looks exactly like a correct one in daily use.
-// Hence mostly invariants here rather than examples.
+// Invariants over examples: a too-generous rule looks correct in daily use
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -24,8 +21,7 @@ test('handing out permissions stays reserved for the owner', () => {
 });
 
 test('permissions.edit is not in the grantable list', () => {
-    // If it were, it could be taken away through the UI - and after that
-    // nobody could change anything any more.
+    // Grantable = removable in the UI, which would lock everyone out of permissions
     assert.equal(perms.CAPABILITY_IDS.includes(perms.OWNER_ONLY), false);
 });
 
@@ -37,8 +33,7 @@ test('an unknown role may do nothing at all', () => {
 
 test('every default refers to a capability that exists', () => {
     const known = new Set([...perms.CAPABILITY_IDS, perms.OWNER_ONLY]);
-    // Over the defaults themselves, not over the live role list: roles
-    // are editable now, and one created at runtime has no default to check.
+    // Checks the defaults, not the live list: runtime-created roles have no default
     for (const cap of Object.values(perms.DEFAULTS).flat()) {
         assert.ok(known.has(cap), `default names an unknown capability: ${cap}`);
     }
@@ -56,9 +51,7 @@ test('a supporter may not touch money or accounts', () => {
     }
 });
 
-// The real guard: a newly added route without a rule should show up here
-// and not only in production - either as a silent hole or as a 403 that
-// nobody expected.
+// Route coverage guard: a new route without a rule fails here, not in production (BACKEND.md §4)
 test('every registered route has a permission rule', () => {
     const dir = path.join(__dirname, '../routes');
     const registered = [];
@@ -75,10 +68,9 @@ test('every registered route has a permission rule', () => {
     assert.ok(registered.length > 20, 'the routes were not found');
 
     const withoutRule = registered.filter(({ method, route }) => {
-        // The sign-in flow deliberately runs without a role.
+        // Sign-in runs without a role
         if (route.startsWith('/api/auth/')) return false;
-        // The citizen portal is guarded by ownership rather than by a role.
-        // The test below proves that exemption is real and narrow.
+        // Portal: ownership instead of a role; the exemption test below proves it narrow
         if (route === perms.SELF_PREFIX || route.startsWith(perms.SELF_PREFIX + '/')) return false;
         // Replace :param with a sample value so the regex can match
         const sample = route.replace(/:[^/]+/g, 'SAMPLE');
@@ -93,8 +85,7 @@ test('every registered route has a permission rule', () => {
 });
 
 test('conversely, the rules do match something', () => {
-    // Rules for deleted routes are no security problem, but they pretend a
-    // coverage that no longer exists when you read them.
+    // Stale rules for deleted routes fake coverage
     const dir = path.join(__dirname, '../routes');
     const samples = [];
     for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.js'))) {
@@ -115,8 +106,7 @@ test('conversely, the rules do match something', () => {
 });
 
 test('sanitize drops unknown capabilities and tops the owner up', () => {
-    // save() would write the file; here we only check the sanitising
-    // itself, via the public matrix.
+    // save() would write the file; this checks the sanitising via the public matrix
     const matrix = perms.getMatrix();
     for (const role of perms.roleIds()) {
         for (const cap of matrix[role]) {
@@ -132,10 +122,9 @@ test('capabilitiesOf gives the owner the special capability too', () => {
     assert.equal(perms.capabilitiesOf('administrator').includes(perms.OWNER_ONLY), false);
 });
 
-// --- The portal exemption --------------------------------------------------
-// enforce() skips /api/me because ownership decides there instead of a role.
-// An exemption that drifted wider, or a session without a role falling
-// through it, would hand a citizen the whole admin panel. Both are asserted.
+// --- The portal exemption -------------------------------------------------
+// /api/me skips role checks (ownership decides); a wider exemption or a role-less
+// session falling through would expose the whole admin panel
 
 function run(req) {
     const calls = { next: 0, status: null, body: null };
@@ -175,7 +164,7 @@ test('a session without a role reaches nothing else', () => {
 });
 
 test('the exemption does not leak to lookalike paths', () => {
-    // '/api/members' starts with '/api/me' as a string but is not the portal.
+    // '/api/members' starts with '/api/me' as a string but is not the portal
     for (const path of ['/api/members', '/api/mexico', '/api/me-too']) {
         const r = run({ path, method: 'GET', user: citizen });
         assert.equal(r.next, 0, `${path} must not be treated as the portal`);
@@ -185,7 +174,7 @@ test('the exemption does not leak to lookalike paths', () => {
 test('an admin role is still checked by the rules', () => {
     // administrator has accounts.view by default, so this passes...
     assert.equal(run({ path: '/api/accounts', method: 'GET', user: admin }).next, 1);
-    // ...while handing out permissions stays with the owner.
+    // ...while handing out permissions stays with the owner
     assert.equal(run({ path: '/api/permissions', method: 'PUT', user: admin }).status, 403);
 });
 

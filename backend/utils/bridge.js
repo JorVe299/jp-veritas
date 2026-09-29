@@ -1,22 +1,17 @@
-// backend/utils/bridge.js
-// Everything to do with the live connection to the FiveM server.
+// HTTP client for the FiveM bridge resource (veritas/)
 const axios = require('axios');
 
 const FIVEM_API_URL = process.env.FIVEM_API_URL || 'http://127.0.0.1:30120/veritas';
 const BRIDGE_TIMEOUT = parseInt(process.env.BRIDGE_TIMEOUT) || 2500;
 
-// Shared secret with the bridge resource. Sent on every call: the bridge
-// only insists on it once Config.RequireTokenEverywhere is on over there,
-// and sending it always means switching that on needs no change here.
+// Always sent; the bridge checks it only with Config.RequireTokenEverywhere (BACKEND.md §5)
 const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN || '';
 
 function headers() {
     return BRIDGE_TOKEN ? { 'X-Veritas-Token': BRIDGE_TOKEN } : {};
 }
 
-// Asks the bridge whether a player is currently online.
-// If the server cannot be reached we treat them as offline and fall back
-// to the SQL path automatically.
+// Unreachable bridge = offline: callers fall back to SQL
 async function isPlayerOnline(citizenid) {
     try {
         const res = await axios.post(`${FIVEM_API_URL}/check-online`, { citizenid }, { timeout: BRIDGE_TIMEOUT, headers: headers() });
@@ -27,16 +22,13 @@ async function isPlayerOnline(citizenid) {
     }
 }
 
-// Fetches the list of online citizen ids.
-// Always reports WHETHER the bridge answered as well - otherwise the
-// frontend cannot tell "player is offline" from "we do not know".
+// Reports reachability too: "offline" and "unknown" must stay distinguishable
 async function fetchOnlinePlayers() {
     try {
         const res = await axios.get(`${FIVEM_API_URL}/get-online-players`, { timeout: BRIDGE_TIMEOUT, headers: headers() });
         const data = res.data;
 
-        // Lua encodes an empty table as [] rather than {} - that is not an
-        // error, it simply means nobody is online
+        // Lua encodes an empty table as []: nobody online, not an error
         if (Array.isArray(data) || data === null || typeof data !== 'object') {
             return { online: {}, reachable: true };
         }
@@ -48,9 +40,7 @@ async function fetchOnlinePlayers() {
     }
 }
 
-// Generic POST to a bridge route.
-// Throws with a meaningful message when the resource reports
-// "success: false", so the routes do not each have to check for it.
+// Throws on success: false, so routes need no per-call check
 async function callBridge(route, payload) {
     const res = await axios.post(`${FIVEM_API_URL}${route}`, payload, { timeout: BRIDGE_TIMEOUT, headers: headers() });
     if (res.data && res.data.success === false) {
@@ -61,9 +51,7 @@ async function callBridge(route, payload) {
     return res.data;
 }
 
-// What the game server says about itself: which framework, which inventory,
-// whether a token is configured. Read once at startup and on demand, so the
-// panel can state the setup instead of assuming it.
+// Framework, inventory and token state as the game server reports them
 async function fetchStatus() {
     try {
         const res = await axios.get(`${FIVEM_API_URL}/status`, { timeout: BRIDGE_TIMEOUT, headers: headers() });

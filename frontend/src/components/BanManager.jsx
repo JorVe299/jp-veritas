@@ -15,26 +15,9 @@ const REASON_MIN = 3;
 const REASON_MAX = 255;
 
 /**
- * A citizen's bans: what is on record, and a new ban.
- *
- * Both in one card, because neither can be judged without the other -
- * whoever issues a ban should see whether one already stands. The record
- * above, the action below, separated by a line.
- *
- * A ban is hard to take back and hits the access, not the character. Hence
- * two steps instead of one click, and no confirm(): the button changes its
- * label and waits there.
- *
- * What this card is not is the whole record. It shows the rows of the
- * database table that match this character's own license and Discord ID.
- * A ban hangs off an identifier, not a character, and there is a second
- * record besides - txAdmin's - that this card never reads at all. So it
- * offers the way over to the server-wide list, filtered to this citizen,
- * rather than pretending to be it. onShowServerBans is left out where that
- * area cannot be entered, and then so is the control.
- *
- * Workspace gives the module a key={citizenid} - the state restarts by
- * itself when the citizen changes.
+ * A citizen's ban record (database rows on their license/Discord ID only) and a new-ban form
+ * Two presses to ban, no confirm(); txAdmin's record is only in the server-wide list
+ * Workspace keys this by citizenid: state resets on a citizen change
  */
 export default function BanManager({ selectedPlayer, onApplied, onShowServerBans }) {
     const { can } = useCan();
@@ -60,9 +43,7 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
     const reload = () => setVersion((v) => v + 1);
     const report = (mode, text) => onApplied?.({}, { mode, text });
 
-    // Without a license and without a Discord ID there is nothing a ban
-    // could hang off. The backend answers that with 409 - here it says so
-    // up front instead of letting the admin type the text first.
+    // No license and no Discord ID: nothing to ban (backend: 409); said before any typing
     const identified = Boolean(identity.license || identity.discord);
     const permanent = duration === 'permanent';
     const dayCount = Number.parseInt(days, 10);
@@ -70,10 +51,7 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
     const trimmedReason = reason.trim();
     const reasonValid = trimmedReason.length >= REASON_MIN && trimmedReason.length <= REASON_MAX;
 
-    // blocked means "not possible right now" and now covers three reasons:
-    // the table is missing, it was not readable, the character cannot be
-    // identified - or one's own role may not ban. The reason stands above
-    // it in each case, so the greyed-out area is not a riddle.
+    // Every cause of blocked has its own notice above: the grey-out is never unexplained
     const blocked = !canEdit || res.status === 'unavailable' || res.status === 'error'
         || (res.status === 'ready' && !identified);
     const canSubmit = reasonValid && daysValid && !saving && !blocked && Boolean(citizenid);
@@ -92,7 +70,6 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
         e.preventDefault();
         if (!canSubmit) return;
 
-        // The first press only asks the question. Only the second submits.
         if (!confirming) {
             setConfirming(true);
             setFeedback(null);
@@ -117,8 +94,6 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                     ? 'The citizen was on the server and has been removed from it.'
                     : 'The citizen was not connected, so nothing was interrupted.',
             ));
-            // The route the action took: live only when it actually pulled
-            // someone off the server as well.
             report(kicked ? 'live' : 'offline', span);
             setReason('');
             setConfirming(false);
@@ -181,10 +156,6 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                     </ul>
                 )}
 
-                {/* The way out to the whole picture. This card reads one
-                    table and matches on this character alone; the server
-                    list reads both records and finds the entries hanging
-                    off identifiers that no character here belongs to. */}
                 {onShowServerBans && citizenid && (
                     <>
                         <div className="acts">

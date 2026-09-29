@@ -9,18 +9,8 @@ import { usePlayerResource } from '../lib/usePlayerResource';
 import { formatMoney } from '../utils/format';
 
 /**
- * Bank accounts that concern this citizen: their own and every one they
- * have access to.
- *
- * The server-wide list deliberately does not live here. By its position, a
- * card in the citizen grid claims that its content belongs to this citizen -
- * but the police treasury does not. It used to open from here as an overlay
- * anyway, for want of anywhere better; it now sits in the server area with
- * the rest of the things that belong to nobody, and this card only points
- * the way. Two copies of the same list would be one too many.
- *
- * onShowAllAccounts is left out when that area is out of reach, and then so
- * is the button - a door onto nothing explains less than no door.
+ * Bank accounts this citizen owns or is authorized on
+ * No server-wide list here: a card in the citizen grid implies the citizen owns its content
  */
 export default function AccountManager({ selectedPlayer, onApplied, onShowAllAccounts }) {
     const { can } = useCan();

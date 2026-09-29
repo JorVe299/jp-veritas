@@ -3,19 +3,12 @@ import Icon from './Icon';
 import Plate from './Plate';
 import { jobTitle } from '../utils/format';
 
-// The billboard shows the exact balance - it is where an admin reads it
-// before changing it - and shrinks the type to fit instead. Only past a
-// quadrillion, where a double can no longer hold every digit exactly, does
-// the figure go compact.
+// Exact here: admins read it before changing it; compact only where a double loses digits
 const AMOUNT_COMPACT_FROM = 1e15;
 
 /**
- * The header area. With nothing selected it stays flat and only shows what
- * this surface is. With a selection it becomes the citizen's key image and
- * answers at a glance "who am I looking at and what is true right now".
- *
- * The online status expressly distinguishes between "not on the server" and
- * "unknown" for as long as the FiveM bridge is not answering.
+ * Page header: an intro while idle, the selected citizen's key facts otherwise
+ * Bridge down: online status is "unverified", never "not on the server"
  */
 export default function Billboard({ player, bridgeDown, writeLog, onClear }) {
     if (!player) {
@@ -63,9 +56,7 @@ export default function Billboard({ player, bridgeDown, writeLog, onClear }) {
                         {player.name}
                     </h1>
 
-                    {/* No separator dots: as soon as the line wraps, one
-                        would otherwise sit orphaned at the start of a line.
-                        Spacing alone carries the grouping more reliably. */}
+                    {/* No separator dots: on wrap one would start a line orphaned */}
                     <div className="billboard__meta">
                         <span className={`pill ${status.cls}`}>
                             <span className="pill__dot" aria-hidden="true" />
@@ -110,9 +101,7 @@ export default function Billboard({ player, bridgeDown, writeLog, onClear }) {
                 </div>
             </div>
 
-            {/* Completed writes stay on screen instead of vanishing as a
-                short-lived message: the record shows what has already been
-                changed on it during this session. */}
+            {/* Ledger, not a toast: this session's changes stay visible */}
             {writeLog.length > 0 && (
                 <div className="ledger">
                     <div className="ledger__head">

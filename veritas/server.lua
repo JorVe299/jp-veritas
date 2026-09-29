@@ -1,10 +1,5 @@
--- veritas/server.lua
--- The HTTP bridge. Hangs off FiveM's own HTTP server (default 30120) and is
--- reachable at http://<server>:30120/veritas/<route>
---
--- This file only routes and guards. What actually happens per framework
--- lives in bridge/, and anything you add yourself belongs in
--- bridge/custom.lua.
+-- HTTP bridge on FiveM's HTTP server: http://<server>:30120/veritas/<route>
+-- Routing and token guard only; framework logic in bridge/, own additions in bridge/custom.lua
 
 Veritas = { routes = {} }
 
@@ -23,7 +18,7 @@ function Veritas.fail(res, message, status)
     sendJson(res, { success = false, msg = message }, status)
 end
 
--- Registers a route. Used by everything below and by bridge/custom.lua.
+-- Route registry, also used by bridge/custom.lua; opts.needsToken demands the token
 function Veritas.route(method, path, handler, opts)
     Veritas.routes[method .. ' ' .. path] = {
         handler = handler,
@@ -31,9 +26,8 @@ function Veritas.route(method, path, handler, opts)
     }
 end
 
--- --- Token ------------------------------------------------------------------
--- The bridge sits on the public game port. Comparing in constant time costs
--- nothing here and keeps the check from leaking the token one byte at a time.
+-- --- Token ----------------------------------------------------------------
+-- SECURITY: public game port; constant-time compare, no byte-by-byte timing leak
 
 local function constantEquals(a, b)
     if type(a) ~= 'string' or type(b) ~= 'string' then return false end
@@ -52,8 +46,8 @@ local function tokenOk(req)
     return constantEquals(given, expected)
 end
 
--- --- Framework routes -------------------------------------------------------
--- Every one of them needs a player, so that lookup happens once here.
+-- --- Framework routes -----------------------------------------------------
+-- Every framework route needs a player: looked up once here
 
 local function withPlayer(body, res, fn)
     local adapter, err = Bridge.require()
@@ -87,8 +81,7 @@ Veritas.route('POST', '/update-money', function(body, res)
         local account = body.type or 'bank'
         local amount = tonumber(body.amount) or 0
 
-        -- Adding and subtracting are separate calls in every framework,
-        -- because none of them accept a negative amount.
+        -- No framework accepts negative amounts: add and remove are separate calls
         local ok
         if amount >= 0 then
             ok = adapter.addMoney(player, account, amount, 'veritas-panel')
@@ -113,8 +106,7 @@ end)
 
 Veritas.route('POST', '/update-metadata', function(body, res)
     withPlayer(body, res, function(adapter, player)
-        -- Two call shapes: a single key with a value (licences), or several
-        -- fields at once (condition values).
+        -- Two shapes: key + value (licences) or several fields (condition values)
         local done = false
         if body.key ~= nil then
             done = adapter.setMetadata(player, body.key, body.value)
@@ -188,9 +180,8 @@ Veritas.route('POST', '/notify-player', function(body, res)
     end)
 end)
 
--- --- What is this server? ---------------------------------------------------
--- The backend reads this at startup so the panel can state which framework
--- and which inventory it is looking at, instead of assuming.
+-- --- Status ---------------------------------------------------------------
+-- Read by the backend at startup: framework and inventory as detected, not assumed
 
 Veritas.route('GET', '/status', function(_, res)
     local adapter = Bridge.active
@@ -209,7 +200,7 @@ Veritas.route('GET', '/status', function(_, res)
     })
 end)
 
--- --- Dispatch ---------------------------------------------------------------
+-- --- Dispatch -------------------------------------------------------------
 
 SetHttpHandler(function(req, res)
     local route = Veritas.routes[req.method .. ' ' .. req.path]
@@ -235,7 +226,7 @@ SetHttpHandler(function(req, res)
     end)
 end)
 
--- --- Startup ----------------------------------------------------------------
+-- --- Startup --------------------------------------------------------------
 
 AddEventHandler('onResourceStart', function(resource)
     if GetCurrentResourceName() ~= resource then return end
@@ -248,7 +239,7 @@ AddEventHandler('onResourceStart', function(resource)
         print('^3[Veritas] ^7Config.Token is empty - the built-in routes are open to anyone who can reach this port.')
     end
 
-    -- Write the shared tables out as JSON so the backend can read them.
+    -- Shared tables as JSON for the backend
     local dumps = adapter.dumpShared()
     for name, fn in pairs(Config.ExtraDumps or {}) do
         local ok, extra = pcall(fn)
@@ -260,7 +251,7 @@ AddEventHandler('onResourceStart', function(resource)
         print(('^2[Veritas] ^7Exported %s'):format(filename))
     end
 
-    -- Let the backend know (fire and forget)
+    -- Fire and forget; fails with Discord login on (BACKEND.md §9)
     PerformHttpRequest('http://localhost:3001/api/system/refresh', function(err)
         if err == 200 then
             print('^2[Veritas] ^7Backend synced successfully.')

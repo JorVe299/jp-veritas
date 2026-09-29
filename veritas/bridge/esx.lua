@@ -1,16 +1,5 @@
--- veritas/bridge/esx.lua
--- ESX Legacy.
---
--- This is the adapter that differs most, and not only in wording:
---
---   * A character is keyed on `identifier` (license:...), not on a
---     citizenid. identityKey tells the backend which column to query.
---   * Money lives in accounts named 'money' and 'bank'; the panel speaks
---     'cash' and 'bank', so the names are mapped here.
---   * There are no gangs and no shared vehicle list. Those dumps stay empty
---     and the panel shows the modules as unavailable rather than guessing.
---   * Metadata exists only in newer builds (setMeta). Where it is missing we
---     return false, and the route says so instead of reporting success.
+-- ESX Legacy: characters keyed on `identifier`; panel cash/bank/black = money/bank/black_money
+-- No gangs, no shared vehicle list (empty dumps); metadata only on ESX 1.9+, else false
 
 local ESX
 
@@ -31,7 +20,7 @@ function adapter.detect()
 end
 
 function adapter.init()
-    -- Newer ESX exposes the object directly; older builds only fire an event.
+    -- Newer ESX exposes the object directly; older builds only fire an event
     local ok, obj = pcall(function()
         return exports['es_extended']:getSharedObject()
     end)
@@ -40,7 +29,7 @@ function adapter.init()
         return true
     end
 
-    -- Fallback for builds that predate the export.
+    -- Builds that predate the export
     TriggerEvent('esx:getSharedObject', function(o) ESX = o end)
     return type(ESX) == 'table'
 end
@@ -56,7 +45,7 @@ end
 
 function adapter.getOnline()
     local out = {}
-    -- GetExtendedPlayers hands back the objects; GetPlayers only sources.
+    -- GetExtendedPlayers returns objects; GetPlayers only sources
     if ESX.GetExtendedPlayers then
         for _, xPlayer in pairs(ESX.GetExtendedPlayers()) do
             out[xPlayer.identifier] = xPlayer.source
@@ -78,8 +67,7 @@ end
 function adapter.removeMoney(xPlayer, account, amount, reason)
     local name = ACCOUNTS[account] or account
     local acc = xPlayer.getAccount(name)
-    -- ESX happily goes negative; the panel should not be the thing that
-    -- lets an account underflow.
+    -- ESX allows negative balances; the panel refuses to underflow
     if not acc or acc.money < amount then return false end
     xPlayer.removeAccountMoney(name, amount, reason)
     return true
@@ -91,7 +79,7 @@ function adapter.setJob(xPlayer, name, grade)
 end
 
 function adapter.setMetadata(xPlayer, key, value)
-    -- Only ESX 1.9 and later have metadata at all.
+    -- Metadata: ESX 1.9+ only
     if type(xPlayer.setMeta) ~= 'function' then return false end
     xPlayer.setMeta(key, value)
     return true
@@ -108,7 +96,7 @@ function adapter.heal(xPlayer, src, withArmor)
     SetEntityHealth(ped, 200)
     if withArmor then SetPedArmour(ped, 100) end
 
-    -- The status values live in esx_status, not on the player object.
+    -- Status values live in esx_status, not on the player object
     if GetResourceState('esx_status') == 'started' then
         TriggerClientEvent('esx_status:set', src, 'hunger', 1000000)
         TriggerClientEvent('esx_status:set', src, 'thirst', 1000000)
@@ -127,8 +115,7 @@ function adapter.dumpShared()
 
     local jobs = {}
     if ESX.GetJobs then
-        -- ESX grades are an array with a `grade` field; the panel expects a
-        -- map keyed by grade level, the same shape QBCore uses.
+        -- ESX grades array -> map keyed by grade level (QBCore shape)
         for name, job in pairs(ESX.GetJobs()) do
             local grades = {}
             for _, g in pairs(job.grades or {}) do
@@ -143,8 +130,7 @@ function adapter.dumpShared()
         items[name] = { label = item.label, weight = item.weight, unique = item.rare }
     end
 
-    -- No gangs and no shared vehicle list in ESX. Empty files are written
-    -- so the backend can tell "nothing there" from "never ran".
+    -- Empty files, not missing ones: "nothing there" vs "never ran"
     return {
         ['jobs.json'] = jobs,
         ['items.json'] = items,

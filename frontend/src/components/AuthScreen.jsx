@@ -4,27 +4,9 @@ import StatusNote from './StatusNote';
 import { authFeedback } from '../lib/authFeedback';
 import { useCooldown } from '../lib/useCooldown';
 
-/**
- * The antechamber: everything that is visible as long as no confirmed
- * session exists. Three states, deliberately in one component, because they
- * share the same quiet surface and flow into one another.
- *
- *   'loading'  - the session is being checked. Expressly neither panel nor
- *                login here, otherwise the login flashes up on every reload.
- *   'signin'   - nobody signed in.
- *   'offline'  - /api/auth/me itself did not answer. A state of its own,
- *                because "backend dead" is not "you are not signed in".
- *
- * No player list, no empty cards in the background.
- */
-
-// The message on the sign-in screen. What happened during this session takes
-// precedence over the feedback from the address bar: that one is older and
-// no longer true after a sign-out.
+// Session notices outrank the address-bar feedback: that is older and stale after a sign-out
 function noteFor(notice, reason, feedback) {
-    // The server ended the session itself - a Discord role taken away, the
-    // server left - and said why. Its sentence is the explanation; a
-    // generic one next to it would only blur it.
+    // The server's own reason is the whole explanation; no generic sentence beside it
     if (notice === 'ended' && reason) {
         return {
             tone: 'warn',
@@ -72,8 +54,7 @@ function noteFor(notice, reason, feedback) {
                 detail: feedback.reason || 'Discord returned an unexpected error. Please try again.',
             };
         case 'ok':
-            // Discord confirmed, but /api/auth/me knows of no session:
-            // almost always blocked cookies. That is a statement of its own.
+            // Discord ok, yet no session in /api/auth/me: almost always blocked cookies
             return {
                 tone: 'warn',
                 title: 'Signed in, but no session was kept',
@@ -84,12 +65,16 @@ function noteFor(notice, reason, feedback) {
     }
 }
 
+/**
+ * Everything shown while no confirmed session exists: mode 'loading' | 'signin' | 'offline'
+ * loading: neither panel nor sign-in, or sign-in would flash on every reload
+ * offline: /api/auth/me did not answer; a dead backend is not a signed-out user
+ */
 export default function AuthScreen({ mode, notice = null, noticeReason = null, error, onSignIn, onRetry }) {
     const note = mode === 'signin' ? noteFor(notice, noticeReason, authFeedback) : null;
 
-    // The recheck swaps this screen for the loading state and back, so the
-    // cooldown has to outlive the button - which useCooldown does. The key
-    // is shared with the portal's gate: both ask the same session route.
+    // Cooldown outlives the unmount during the recheck's loading state;
+    // key shared with the portal's gate: same session route
     const retryCooldown = useCooldown('session-recheck');
     const retry = () => {
         retryCooldown.start();

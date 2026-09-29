@@ -1,20 +1,11 @@
-// backend/routes/permissions.js
-// Reading and setting the roles and what they may do.
-//
-// Anyone signed in may read the list: the frontend needs it to explain why
-// a button is missing. Only the owner may write, and the central middleware
-// in utils/permissions.js already enforces that - the check appears a
-// second time here because permission management is the wrong place to
-// trust exactly one line of code.
+// Roles and permissions: anyone signed in reads, only the owner writes
+// SECURITY: owner check repeated here (guard) on top of enforce(): no single line to trust
 const express = require('express');
 const perms = require('../utils/permissions');
 
 const router = express.Router();
 
-// Without an active Discord login there is no role, and enforce() then lets
-// everything through. In that case canEdit has to report true as well:
-// otherwise the UI disables a button the server would happily accept - and
-// the panel would be claiming something untrue about itself.
+// Login disabled: no roles, enforce() passes everything, so canEdit must say true as well
 const authDisabled = (req) => !req.user;
 const mayEdit = (req) => authDisabled(req) || req.user?.role === perms.OWNER_ROLE;
 
@@ -24,11 +15,7 @@ function guard(req, res) {
     return false;
 }
 
-// An error thrown by the role store carries the status it deserves - and,
-// where it has one, the reason. A store that cannot write its file knows
-// whether that was a permission, a read-only mount or a full disk; keeping
-// that in the log and sending the panel a bare "could not be saved" leaves
-// the one person who can fix it guessing.
+// Store errors carry their status and a hint (e.g. EACCES) for the one person who can fix it
 function fail(res, e) {
     const status = Number(e?.status) || 500;
     if (status >= 500) console.error('[Perms] role change failed:', e.message);
@@ -44,13 +31,10 @@ router.get('/api/permissions', (req, res) => {
             id: r.id,
             label: r.label,
             capabilityCount: r.capabilities.length,
-            // The owner is not editable - that has to be visible, so that
-            // nobody tries in vain to tick boxes there.
+            // Owner row is visibly locked
             locked: r.id === perms.OWNER_ROLE,
             builtIn: perms.BUILT_IN_ROLES.includes(r.id),
-            // Who is mapped to it is only shown to whoever may change it:
-            // a Discord id list is not something every signed-in supporter
-            // needs to read.
+            // SECURITY: Discord id lists only for those who may change them
             discordUserIds: canEdit ? r.discordUserIds : undefined,
             discordRoleIds: canEdit ? r.discordRoleIds : undefined,
         })),
@@ -67,13 +51,12 @@ router.get('/api/permissions', (req, res) => {
             canEdit,
             authDisabled: authDisabled(req),
         },
-        // The ranking is not decoration: whoever matches two roles in
-        // Discord gets the one nearer the top.
+        // Ranking decides between two matching roles
         hint: 'The order of this list is the ranking. Somebody who matches two roles gets the higher one.',
     });
 });
 
-// --- The capability matrix -------------------------------------------------
+// --- The capability matrix ------------------------------------------------
 router.put('/api/permissions', (req, res) => {
     if (!guard(req, res)) return;
 
@@ -82,9 +65,7 @@ router.put('/api/permissions', (req, res) => {
         return res.status(400).json({ error: 'matrix is required' });
     }
 
-    // Every role except owner has to arrive as a list. A missing key would
-    // otherwise silently fall back to what is stored and look as if saving
-    // had done something other than intended.
+    // Every non-owner role must arrive as a list: a missing key would silently keep the old set
     for (const role of perms.listRoles()) {
         if (role.id === perms.OWNER_ROLE) continue;
         if (!Array.isArray(next[role.id])) {
@@ -110,9 +91,8 @@ router.put('/api/permissions', (req, res) => {
     }
 });
 
-// --- Roles -----------------------------------------------------------------
-// A server with several teams needs more than the four shipped roles, and
-// creating one must not mean a redeploy.
+// --- Roles ----------------------------------------------------------------
+// Teams beyond the shipped four, created without a redeploy
 
 router.post('/api/permissions/roles', (req, res) => {
     if (!guard(req, res)) return;
@@ -131,8 +111,7 @@ router.post('/api/permissions/roles', (req, res) => {
             status: 'success',
             message: `Role '${role.label}' created`,
             role,
-            // Saying it plainly beats letting somebody wonder why their new
-            // team still cannot sign in.
+            // Unmapped roles grant nothing yet: say so
             hint: role.discordUserIds.length === 0 && role.discordRoleIds.length === 0
                 ? 'Nobody is mapped to it yet, so it grants nothing until you add Discord ids or a Discord role.'
                 : 'Whoever it names gets it the next time they sign in.',
@@ -180,10 +159,7 @@ router.delete('/api/permissions/roles/:id', (req, res) => {
         res.json({
             status: 'success',
             message: `Role '${label}' removed`,
-            // Anyone still signed in under it keeps a session naming a role
-            // that no longer exists. can() answers false for that, so they
-            // lose access at once rather than keeping it until it expires -
-            // but they should be told, not left to discover it.
+            // Open sessions lose access at once (can() is false for a deleted role); tell the owner
             hint: mapped > 0
                 ? `${mapped} Discord mapping(s) went with it. Anyone who had this role loses access immediately, including sessions already open.`
                 : 'Anyone who had this role loses access immediately, including sessions already open.',
@@ -193,7 +169,7 @@ router.delete('/api/permissions/roles/:id', (req, res) => {
     }
 });
 
-// The ranking, which decides who wins when somebody matches two roles.
+// Ranking: decides between two matching roles; owner stays first
 router.put('/api/permissions/roles/order', (req, res) => {
     if (!guard(req, res)) return;
 

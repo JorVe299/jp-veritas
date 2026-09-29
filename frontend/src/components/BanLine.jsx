@@ -5,24 +5,9 @@ import { failureNote, successNote } from '../lib/writeFeedback';
 import { formatDateTime } from '../utils/format';
 
 /**
- * One entry of the ban record - once inside a citizen's card, once in the
- * server-wide list. The same row in both places, the same way it is lifted,
- * because a ban is the same thing in both.
- *
- * Two distinctions the row has to carry:
- *   active vs. expired - an expired ban is history, not a block,
- *   permanent vs. until a date - "never expires" is not a date far away.
- *
- * Lifting deletes the record, so it takes two presses and no confirm()
- * dialog: the button changes its label and waits there.
- *
- * `canEdit` comes from outside and is not justified here. The card or panel
- * the row sits in says it once for all rows - twenty identically worded
- * notices would be the same sentence twenty times over.
- *
- * `onFeedback` is where the result goes; the caller decides whether that is
- * its own state or a shared line. `onReport` is optional: the citizen view
- * writes into the session log, the server-wide list has no such log.
+ * Entry of a citizen's ban record (database table)
+ * Expired is history, not a block; "never expires" is not a far-off date
+ * Lifting deletes the record: two presses, no confirm(); !canEdit is explained by the parent
  */
 export default function BanLine({ ban, canEdit, onFeedback, onChanged, onReport }) {
     const [confirming, setConfirming] = useState(false);

@@ -9,8 +9,7 @@ import { fetchMyCharacter } from '../api';
 import { characterName, gangLine, jobLine, numberOrNull, shown } from '../lib/portalText';
 import { formatDateTime } from '../utils/format';
 
-// The four licences the portal is told about, in the order they are worth
-// reading. A framework that keeps more of them is not guessed at here.
+// The four licences the API reports, most relevant first; no others are guessed at
 const LICENCES = [
     { key: 'driver', label: 'Driver' },
     { key: 'business', label: 'Business' },
@@ -24,9 +23,7 @@ const CONDITION = [
     { key: 'armor', label: 'Armor' },
 ];
 
-// Cash and bank lead; anything else the framework keeps money in (crypto,
-// for one) follows in the order it arrived, rather than being dropped for
-// not being on a list written here.
+// Cash and bank lead; other accounts (e.g. crypto) follow in arrival order, never dropped
 const MONEY_FIRST = ['cash', 'bank'];
 
 function moneyRows(money) {
@@ -43,23 +40,14 @@ function moneyRows(money) {
 }
 
 /**
- * One character, whole.
- *
- * Read-only is not a mode this view is in - it is all it can do. There is
- * no form, no input, no save, and nothing greyed out either: a disabled
- * field would suggest there is a version of this screen where it is not.
- * Everything here is a sentence about what the server has on record.
- *
- * Mounted with the citizenid as its key, so switching character remounts
- * rather than updates. That way the previous character's data can never
- * stand on screen under the new one's name while the request is in flight.
+ * One character, read-only by nature: no inputs, not even disabled ones
+ * Callers key it by citizenid: a switch remounts, so old data never shows under a new name
  */
 export default function PortalCharacter({ citizenid, summary = null, onBack }) {
     const state = usePortalResource(fetchMyCharacter, citizenid);
 
     const record = state.status === 'ready' ? state.data : null;
-    // While it loads, the name from the list is already known. Better than
-    // an empty heading, and it is the same character either way.
+    // The list's summary names the heading while the detail loads
     const heading = characterName(record || summary || { citizenid });
     const onDuty = record?.job?.onduty === true;
     const gang = gangLine(record?.gang);
@@ -68,10 +56,6 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
     return (
         <>
             <header className="idhead">
-                {/* The character's own sky, in the wide crop - the same
-                    picture the panel puts behind the same citizen, from the
-                    same id. Generated for this shape rather than cropped
-                    from the poster, which would leave a centre strip. */}
                 <div className="idhead__art" aria-hidden="true">
                     <Plate citizenid={citizenid} shape="wide" />
                     <span className="idhead__grain" />
@@ -128,10 +112,7 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
                                 <dl className="kv">
                                     <Row label="First name" value={record.charinfo?.firstname} />
                                     <Row label="Last name" value={record.charinfo?.lastname} />
-                                    {/* Shown exactly as the server keeps it.
-                                        Reformatting a date of birth means
-                                        guessing which way round the day and
-                                        the month are. */}
+                                    {/* As stored: reformatting would guess day/month order */}
                                     <Row label="Date of birth" value={record.charinfo?.birthdate} mono />
                                     <Row label="Nationality" value={record.charinfo?.nationality} />
                                     <Row label="Phone" value={record.charinfo?.phone} mono />
@@ -148,9 +129,7 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
                                 <dl className="kv">
                                     <Row label="Job" value={jobLine(record.job)} />
                                     <Row label="On duty" value={onDuty ? 'Yes' : 'No'} />
-                                    {/* Belonging to no gang is the ordinary
-                                        case, so it is written out rather
-                                        than left as an empty row. */}
+                                    {/* No gang is the ordinary case, not missing data */}
                                     <Row label="Gang" value={gang || 'None'} />
                                 </dl>
                             </div>
@@ -169,10 +148,7 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
                                         {balances.map((row) => (
                                             <li key={row.key} className="idsum idsum--block">
                                                 <span className="idsum__key u-caps">{row.key}</span>
-                                                {/* Exact, shrunk to fit the card if it has
-                                                    to. Compact only past a quadrillion,
-                                                    where a double stops holding every
-                                                    digit anyway. */}
+                                                {/* Past 1e15 a double loses digits anyway */}
                                                 <Amount
                                                     value={row.value}
                                                     compactFrom={1e15}
@@ -244,11 +220,7 @@ function Row({ label, value, mono = false }) {
     );
 }
 
-/**
- * Held or not held - and a third case that is neither. If the server sent
- * no value for a licence at all, saying "not held" would be an answer
- * nobody gave.
- */
+// No value is "Not recorded", never "Not held": a missing field is not a denial
 function Licence({ label, held }) {
     const known = held === true || held === false;
 
@@ -263,11 +235,7 @@ function Licence({ label, held }) {
     );
 }
 
-/**
- * A condition reading as a bar. The bar is scaled with a transform rather
- * than a width, the same way the panel's weight bar is: a width animates
- * through layout, a transform does not.
- */
+// scaleX, not width, as in the panel's weight bar: width animates through layout
 function Gauge({ label, value }) {
     const n = numberOrNull(value);
 
@@ -282,8 +250,7 @@ function Gauge({ label, value }) {
         );
     }
 
-    // The reading is shown as it came; only the drawing is clamped, because
-    // a bar cannot be longer than its track.
+    // Only the bar is clamped; the number is shown as sent
     const scale = Math.min(1, Math.max(0, n / 100));
 
     return (

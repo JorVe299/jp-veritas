@@ -1,6 +1,4 @@
-// backend/routes/manage.js
-// Money and job - the two hybrid routes: live through the bridge while the
-// player is online, straight into the database when they are not.
+// Money and job: live through the bridge while online, direct DB write while offline
 const express = require('express');
 const { db, parseJSON, updatePlayerColumn } = require('../utils/dbHandler');
 const { getJobs } = require('../utils/dataLoader');
@@ -20,13 +18,12 @@ router.post('/api/manage/money', async (req, res) => {
 
     try {
         if (await isPlayerOnline(citizenid)) {
-            // PATH A: live update through the bridge
+            // Online: through the bridge
             await callBridge('/update-money', { citizenid, amount: delta, type: moneyType });
             return res.json({ status: 'success', mode: 'live', message: 'Money updated via Live API' });
         }
 
-        // PATH B: SQL update
-        // Qbox stores money as JSON in 'players' -> 'money'
+        // Offline: players.money JSON
         const [rows] = await db.execute('SELECT money FROM players WHERE citizenid = ?', [citizenid]);
         if (rows.length === 0) return res.status(404).json({ error: 'Player not found' });
 
@@ -49,8 +46,7 @@ router.post('/api/manage/job', async (req, res) => {
 
     if (!citizenid || !jobName) return res.status(400).json({ error: 'citizenid and jobName are required' });
 
-    // Check job and grade against the loaded game data so that no
-    // made-up job ends up in the database
+    // Validate job and grade against the catalog: no made-up jobs in the DB
     const jobs = getJobs();
     const job = jobs[jobName];
     if (!job) return res.status(404).json({ error: `Job '${jobName}' does not exist` });
@@ -61,12 +57,12 @@ router.post('/api/manage/job', async (req, res) => {
 
     try {
         if (await isPlayerOnline(citizenid)) {
-            // PATH A: live update through the bridge (the core sets everything up correctly itself)
+            // Online: through the bridge; the core sets up the job itself
             await callBridge('/update-job', { citizenid, jobName, gradeLevel: Number(level) });
             return res.json({ status: 'success', mode: 'live', message: 'Job updated via Live API' });
         }
 
-        // PATH B: SQL update - we rebuild the job structure from the shared jobs
+        // Offline: rebuild the job structure from the catalog
         const jobData = {
             name: jobName,
             label: job.label,

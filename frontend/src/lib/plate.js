@@ -1,12 +1,7 @@
-// Deterministic key-image generation ("plate") per citizen.
-//
-// The reason: the surface is a wall of tiles, but characters have no image
-// material. Instead of empty rectangles or an avatar service, the motif is
-// derived from the CitizenID. Same ID -> same image, always, with no network
-// and no stored state. The image is thereby a recognizable trait of the
-// record, not decoration.
+// Deterministic key image ("plate") per CitizenID: characters have no pictures
+// Same ID -> same image, no network, no stored state: a recognisable trait, not decoration
 
-/** FNV-1a (32 bit). Small, fast, well spread for short strings. */
+// FNV-1a, 32 bit: well spread for short strings
 function hash32(input) {
     let h = 0x811c9dc5;
     const s = String(input ?? '');
@@ -17,7 +12,7 @@ function hash32(input) {
     return h >>> 0;
 }
 
-/** Mulberry32: a reproducible sequence of numbers in [0,1) from one seed. */
+// Mulberry32: reproducible [0,1) sequence from one seed
 function rng(seed) {
     let a = seed >>> 0;
     return function next() {
@@ -29,9 +24,7 @@ function rng(seed) {
     };
 }
 
-// Eight skies from the Los Santos day cycle. Each palette is a duotone:
-// zenith -> horizon, plus a light source and the silhouette color.
-// The color of the surface deliberately sits here and not in the chrome.
+// Duotone zenith -> horizon plus light and silhouette; the UI's color lives here, not in chrome
 const SKIES = [
     { id: 'dusk', zenith: '#2B1B4D', horizon: '#7B2D6B', light: '#FFB067', land: '#140B22', haze: '#FF8FA3' },
     { id: 'sodium', zenith: '#3A1F0C', horizon: '#B4551A', light: '#FFD08A', land: '#190D05', haze: '#FFA55C' },
@@ -43,18 +36,13 @@ const SKIES = [
     { id: 'storm', zenith: '#1A2030', horizon: '#4A5C78', light: '#D6DEE8', land: '#0C1018', haze: '#9FB3CC' },
 ];
 
-// Two crops: the portrait format of the tiles and a widescreen one for the
-// header. The widescreen one is built in its own right instead of cropping
-// the portrait - otherwise only a middle strip of the composition would remain.
+// wide is composed on its own: cropping the poster would keep only a middle strip
 const SHAPES = {
     poster: { w: 200, h: 300 },
     wide: { w: 400, h: 225 },
 };
 
-/**
- * Builds a contour line as an SVG path that is closed at the bottom.
- * peaks controls the jaggedness, baseY the height at the edge.
- */
+// SVG path closed at the bottom; peaks: jaggedness, baseY: height at the edge
 function ridgePath(next, peaks, baseY, amplitude, W, H) {
     const step = W / peaks;
     let d = `M0 ${H}L0 ${baseY}`;
@@ -63,9 +51,7 @@ function ridgePath(next, peaks, baseY, amplitude, W, H) {
 
     for (let i = 0; i < peaks; i += 1) {
         const nx = x + step;
-        // Target height of the next point, around baseY
         const ny = baseY - amplitude * next() + amplitude * 0.35;
-        // A control point in the middle produces the soft ridge back
         const cx = x + step / 2;
         const cy = (y + ny) / 2 - amplitude * 0.45 * next();
         d += `Q${cx.toFixed(1)} ${cy.toFixed(1)} ${nx.toFixed(1)} ${ny.toFixed(1)}`;
@@ -77,10 +63,7 @@ function ridgePath(next, peaks, baseY, amplitude, W, H) {
     return d;
 }
 
-/**
- * Produces the complete image description for a CitizenID.
- * Pure computation, no DOM, so it can be tested and memoized.
- */
+/** Plate geometry for a CitizenID; pure, no DOM: testable and memoizable */
 export function buildPlate(citizenid, shape = 'poster') {
     const { w: W, h: H } = SHAPES[shape] ?? SHAPES.poster;
     const seed = hash32(citizenid || 'unknown');
@@ -88,26 +71,20 @@ export function buildPlate(citizenid, shape = 'poster') {
 
     const sky = SKIES[seed % SKIES.length];
 
-    // A fifth of the skies are overcast and have no disc at all. Without it
-    // every image looks like the same sun over the same hills.
+    // Some skies have no disc: otherwise every image is the same sun over the same hills
     const overcast = next() < 0.22;
 
-    // Four build types instead of one. With only one, the wall read as a
-    // single image in eight color tones - which dropped exactly the
-    // distinguishability the images are generated for in the first place.
+    // Several archetypes: one alone reads as one image in eight tints, not distinct plates
     const ARCHETYPES = ['ridges', 'skyline', 'coast', 'overhead'];
     const archetype = ARCHETYPES[Math.floor(next() * ARCHETYPES.length)];
     const overhead = archetype === 'overhead';
 
-    // Overhead pushes the horizon up: the ground takes up almost the whole
-    // image, the disc sits small and high. That reads as noon instead of
-    // dusk and breaks up the run of sunsets.
+    // Overhead: high horizon, small high disc; reads as noon and breaks the run of sunsets
     const horizonY = overhead
         ? H * (0.26 + next() * 0.1)
         : H * (0.5 + next() * 0.16);
 
-    // Light source: never exactly centered, never right at the edge, and
-    // seldom close above the horizon instead of always high in the frame.
+    // Light kept off the edges; sometimes low above the horizon, not always high
     const lightLow = !overhead && next() < 0.34;
     const light = {
         x: W * (0.12 + next() * 0.76),
@@ -119,7 +96,6 @@ export function buildPlate(citizenid, shape = 'poster') {
     const ridgeBack = ridgePath(next, 3 + Math.floor(next() * 3), horizonY, H * 0.15, W, H);
     const ridgeFront = ridgePath(next, 2 + Math.floor(next() * 3), horizonY + H * 0.11, H * 0.115, W, H);
 
-    // Skyline: a built-up edge made of blocks on the front ridge.
     const towers = [];
     if (archetype === 'skyline') {
         const count = 6 + Math.floor(next() * 9);
@@ -132,7 +108,6 @@ export function buildPlate(citizenid, shape = 'poster') {
         }
     }
 
-    // Coast: a stretch of water below the horizon with a trail of light.
     const coast = archetype === 'coast'
         ? {
             y: horizonY + H * (0.06 + next() * 0.08),
@@ -144,8 +119,7 @@ export function buildPlate(citizenid, shape = 'poster') {
         }
         : null;
 
-    // Palms stand on the front ridge. Zero is a valid result: not every
-    // image needs them, and it raises the variance across the wall.
+    // Zero palms is valid: adds variance across the wall
     const palmCount = Math.floor(next() * 4);
     const palms = [];
     for (let i = 0; i < palmCount; i += 1) {
@@ -157,8 +131,7 @@ export function buildPlate(citizenid, shape = 'poster') {
         });
     }
 
-    // Haze bands above the horizon. Deliberately thin and pale: they should
-    // read as layering in the light, not as bars on the surface.
+    // Haze thin and pale: layered light, not bars
     const bands = [];
     const bandCount = 2 + Math.floor(next() * 4);
     for (let i = 0; i < bandCount; i += 1) {
@@ -191,8 +164,7 @@ export function buildPlate(citizenid, shape = 'poster') {
     };
 }
 
-// The wall re-renders the same citizens over and over while paging and typing.
-// A small cache keeps the geometry from being rolled anew every time.
+// The wall re-renders the same citizens while paging and typing: geometry is cached
 const cache = new Map();
 const CACHE_LIMIT = 300;
 

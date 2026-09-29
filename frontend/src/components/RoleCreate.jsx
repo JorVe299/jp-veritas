@@ -2,16 +2,8 @@ import { useState } from 'react';
 import { MAX_LABEL, cleanLabel, idFromLabel, roleIdProblem } from '../lib/roleEditing';
 
 /**
- * Making a role.
- *
- * Two fields and a choice, and only the first field is required. The id is
- * derived from the name unless one is typed, and the form shows which id
- * that will be - it ends up in sessions and in the JSON file and cannot be
- * changed afterwards, so it should not be a surprise.
- *
- * Copying sits in the middle because it is the common case: a second
- * support team is the first one plus or minus a little, and starting from
- * an empty grid means ticking twenty boxes and getting one of them wrong.
+ * New-role form: only the name is required; the id derives from it unless typed
+ * The final id is shown before saving: it lands in sessions and the JSON file, immutable
  */
 export default function RoleCreate({ roles, maxRoles, busy, onCreate }) {
     const [open, setOpen] = useState(false);
@@ -26,8 +18,7 @@ export default function RoleCreate({ roles, maxRoles, busy, onCreate }) {
     const derived = trimmed ? idFromLabel(trimmed) : '';
     const willBe = id.trim() || derived;
 
-    // The label clash is the server's to judge - it compares against every
-    // role, this only catches the one that is plainly visible.
+    // Hint only: the server judges label clashes against every role
     const taken = roles.some((role) => role.label.toLowerCase() === trimmed.toLowerCase());
     const idTaken = willBe ? roles.some((role) => role.id === willBe) : false;
 

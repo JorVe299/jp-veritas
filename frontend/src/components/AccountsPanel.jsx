@@ -10,18 +10,7 @@ import { formatMoney } from '../utils/format';
 
 const LIMIT = 40;
 
-/**
- * Every account on the server, personal and company.
- *
- * This used to be an overlay opened out of the citizen's account card, which
- * was the wrong shape twice over: it sat inside a view built around one
- * character while holding the company accounts that belong to no character,
- * and it could only be reached by first picking somebody at random. It now
- * lives in the server area, where the rest of the ownerless things are, and
- * the card in the citizen view points here instead of carrying a second copy.
- *
- * The search runs on the server and debounced, as in the large catalogs.
- */
+/** Every account on the server, personal and company; search is server-side and debounced */
 export default function AccountsPanel() {
     const { can } = useCan();
     const canEdit = can('accounts.edit');

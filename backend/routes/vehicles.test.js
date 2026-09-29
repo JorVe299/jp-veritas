@@ -1,24 +1,15 @@
-// backend/routes/vehicles.test.js
-//
-// The 'mods' column holds the ox_lib property table, and a garage does
-// arithmetic on its fields. An empty table there is not a cosmetic gap: it
-// is the difference between a car that can leave the garage and this,
-//
-//   attempt to perform arithmetic on a nil value (field 'engineHealth')
-//
-// so the fields that get divided are pinned down here by name. The second
-// half guards the repair: filling gaps must never overwrite the real
-// values of a car that has actually been driven.
+// 'mods' = ox_lib property table; garages do arithmetic on its fields (BACKEND.md §8)
+// New vehicles: the divided fields are pinned by name; repair: fills gaps, never overwrites
 
 const test = require('node:test');
 const assert = require('node:assert');
 
 const { freshProperties, withMissingProperties, getHashKey } = require('./vehicles');
 
-// The fields qbx_garages divides or displays. Each one nil is a crash.
+// Fields qbx_garages divides or displays; any nil one crashes it
 const ARITHMETIC_FIELDS = ['engineHealth', 'bodyHealth', 'fuelLevel', 'tankHealth'];
 
-// --- What a new vehicle is given ------------------------------------------
+// --- New vehicle properties -----------------------------------------------
 
 test('every field a garage does arithmetic on has a number', () => {
     const props = freshProperties({ model: 'adder', plate: 'ABC 1234' });
@@ -48,14 +39,12 @@ test('a new car is undamaged and fuelled', () => {
 test('the plate and the model hash are the ones the row carries', () => {
     const props = freshProperties({ model: 'police', plate: 'XYZ 9999' });
     assert.equal(props.plate, 'XYZ 9999');
-    // The same hash the 'hash' column gets, or the two disagree about what
-    // car this is.
+    // Same hash as the 'hash' column, or the two disagree about the model
     assert.equal(props.model, getHashKey('police'));
 });
 
 test('the table survives a round trip through JSON', () => {
-    // It is stored as text in the database, so anything JSON drops here is
-    // gone by the time a garage reads it.
+    // Stored as text: whatever JSON drops never reaches the garage
     const props = freshProperties({ model: 'adder', plate: 'ABC 1234' });
     const back = JSON.parse(JSON.stringify(props));
     assert.deepEqual(back, props);
@@ -68,7 +57,7 @@ test('condition passed in from the row is used instead of the defaults', () => {
     assert.equal(props.bodyHealth, 700);
 });
 
-// --- Repairing what is already in the database ----------------------------
+// --- Repair of existing rows ----------------------------------------------
 
 const ROW = { vehicle: 'adder', plate: 'ABC 1234', fuel: 100, engine: 1000, body: 1000 };
 
@@ -81,8 +70,7 @@ test('an empty table is filled and every addition is named', () => {
 });
 
 test('real values from a driven car are never flattened', () => {
-    // The whole point of a repair that only adds: a wrecked car with an
-    // empty tank must not come back from it in factory condition.
+    // Add-only repair: a wrecked car with an empty tank stays wrecked and empty
     const driven = { engineHealth: 312.5, bodyHealth: 88, fuelLevel: 7.5, dirtLevel: 14 };
     const { props, added } = withMissingProperties(driven, ROW);
 
@@ -91,13 +79,12 @@ test('real values from a driven car are never flattened', () => {
     assert.equal(props.fuelLevel, 7.5);
     assert.equal(props.dirtLevel, 14);
     assert.equal(added.includes('engineHealth'), false);
-    // Only what was genuinely absent is added.
+    // Only absent fields are added
     assert.ok(added.includes('tankHealth'));
 });
 
 test('a zero is a value, not a gap', () => {
-    // A car with an empty tank reads fuelLevel 0. Treating that as missing
-    // would silently refuel it.
+    // fuelLevel 0 is a value, not a gap: no silent refuel
     const { props, added } = withMissingProperties({ fuelLevel: 0, bodyHealth: 0 }, ROW);
     assert.equal(props.fuelLevel, 0);
     assert.equal(props.bodyHealth, 0);
@@ -127,16 +114,14 @@ test('a complete table is reported as needing nothing', () => {
 });
 
 test('the repair keeps fields it does not know about', () => {
-    // Real property tables carry dozens of mod fields. A repair that
-    // dropped them would strip a car of its modifications.
+    // Real tables carry dozens of mod fields; a repair must keep them all
     const { props } = withMissingProperties({ modEngine: 3, neonEnabled: [true, true, true, true] }, ROW);
     assert.equal(props.modEngine, 3);
     assert.deepEqual(props.neonEnabled, [true, true, true, true]);
 });
 
 test('the repair takes the plate from the row, not from the old table', () => {
-    // A plate change writes the column first; the repair must not put the
-    // stale one back.
+    // Plate change writes the column first; the repair must not restore the stale plate
     const { props } = withMissingProperties({}, { ...ROW, plate: 'NEW 0001' });
     assert.equal(props.plate, 'NEW 0001');
 });

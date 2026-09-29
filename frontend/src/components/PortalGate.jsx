@@ -4,32 +4,9 @@ import StatusNote from './StatusNote';
 import { authFeedback } from '../lib/authFeedback';
 import { useCooldown } from '../lib/useCooldown';
 
-/**
- * The front door of Veritas ID: everything that is visible while no
- * confirmed session exists.
- *
- * It does the same job as the panel's AuthScreen and deliberately does not
- * look like it. A player arriving here has usually followed a link from the
- * server's Discord and has never seen the admin panel; the first screen
- * should tell them what this is in their own terms, not greet them with a
- * tool for managing other people's characters.
- *
- *   'loading'     - the session is being checked. Neither door nor content,
- *                   or the sign-in would flash up on every reload.
- *   'signin'      - nobody is signed in.
- *   'offline'     - the backend did not answer at all. A state of its own:
- *                   "the server is down" is not "you are not signed in".
- *   'unavailable' - this installation has no Discord login configured, so
- *                   there is no account this could show characters for.
- */
-
-// The message after coming back from Discord. What happened during this
-// session outranks the feedback in the address bar: that one is older and
-// stops being true the moment somebody signs out.
+// Session notices outrank the address-bar feedback: that is older and stale after sign-out
 function noteFor(notice, reason, feedback) {
-    // The server ended the session itself and said why - most often because
-    // the account no longer has a character or a role here. Its sentence is
-    // the explanation; a generic one next to it would only blur it.
+    // The server's own reason stands alone; generic text beside it would blur it
     if (notice === 'ended' && reason) {
         return {
             tone: 'warn',
@@ -77,8 +54,7 @@ function noteFor(notice, reason, feedback) {
                 detail: feedback.reason || 'Discord returned an unexpected error. Please try again.',
             };
         case 'ok':
-            // Discord said yes and the session still is not there: almost
-            // always blocked cookies. That is a statement of its own.
+            // Discord said yes but no session exists: almost always blocked cookies
             return {
                 tone: 'warn',
                 title: 'Signed in, but no session was kept',
@@ -89,13 +65,15 @@ function noteFor(notice, reason, feedback) {
     }
 }
 
+/**
+ * Veritas ID without a confirmed session; unlike the panel's AuthScreen, written for players
+ * `loading` shows no door, or sign-in would flash on every reload
+ * `offline` (no answer) stays distinct from `signin`: "server down" is not "signed out"
+ */
 export default function PortalGate({ mode, notice = null, noticeReason = null, error = null, onSignIn, onRetry }) {
     const note = mode === 'signin' ? noteFor(notice, noticeReason, authFeedback) : null;
 
-    // The recheck swaps this screen for the loading state and back, so the
-    // cooldown has to outlive the button - which useCooldown does. The key
-    // is shared with the panel's sign-in screen: both ask the same session
-    // route.
+    // Survives the recheck's unmount; key shared with the panel's sign-in (same session route)
     const retryCooldown = useCooldown('session-recheck');
     const retry = () => {
         retryCooldown.start();

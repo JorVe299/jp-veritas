@@ -1,15 +1,8 @@
--- veritas/bridge/items.lua
--- Inventory access, kept apart from the framework adapters.
---
--- The reason: which inventory resource runs matters more here than which
--- core does. A Qbox server and an ESX server both commonly run
--- ox_inventory, and then the item calls are identical while everything else
--- differs. Splitting it this way means one implementation instead of three.
+-- Inventory access, apart from the adapters: ox_inventory calls are the same on every core
 
 Items = {}
 
--- Detected once at startup and reported in /status, so the panel can say
--- which inventory it is actually talking to.
+-- Reported in /status: which inventory the panel is talking to
 function Items.detect()
     if GetResourceState('ox_inventory') == 'started' then return 'ox_inventory' end
     if GetResourceState('qb-inventory') == 'started' then return 'qb-inventory' end
@@ -67,9 +60,7 @@ function Items.count(player, src, name)
     return 0
 end
 
--- No core offers "set to exactly N", so the difference is worked out here.
--- Doing it in one place keeps the three adapters from each getting it
--- slightly wrong in their own way.
+-- No core offers "set to N": computed once here from count, add and remove
 function Items.set(player, src, name, target, slot)
     local current = Items.count(player, src, name)
     local diff = target - current

@@ -1,17 +1,9 @@
-// Feedback from the sign-in attempt.
-//
-// After the Discord dialog the backend redirects back to "/" and appends the
-// result as query parameters: ?auth=ok, ?auth=cancelled,
-// ?auth=denied&reason=..., ?auth=error&reason=...
-//
-// Read once when the module loads and taken out of the address bar right
-// away: if the parameter stayed, every reload would repeat the same
-// message - long after it stopped being true.
+// Sign-in result from the OAuth redirect: ?auth=ok|cancelled|denied|error[&reason=...]
+// Read once at module load and stripped from the URL: a reload must not repeat it
 
 const KINDS = new Set(['ok', 'denied', 'cancelled', 'error']);
 
-// The reason text comes from the server and gets displayed. Cap the length
-// so a runaway error message cannot blow up the layout.
+// Server text shown in the UI: capped so a runaway message cannot break the layout
 const MAX_REASON = 300;
 
 function takeAuthFeedback() {
@@ -29,8 +21,7 @@ function takeAuthFeedback() {
 
     const rawReason = params.get('reason');
 
-    // Remove only our own two parameters; everything else in the URL
-    // belongs to someone else and stays.
+    // Only these two: other query parameters stay
     params.delete('auth');
     params.delete('reason');
 
@@ -42,15 +33,13 @@ function takeAuthFeedback() {
             `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
         );
     } catch {
-        // replaceState can fail in edge cases (e.g. file://).
-        // The URL then stays as it is - the message still holds.
+        // replaceState can throw (e.g. file://): the URL stays, the message still shows
     }
 
     const reason = typeof rawReason === 'string' ? rawReason.trim().slice(0, MAX_REASON) : '';
 
     return {
-        // Do not pass unknown values through; treat them as a technical
-        // error - nobody made them up.
+        // Unknown values become 'error', never passed through
         kind: KINDS.has(kind) ? kind : 'error',
         reason: reason || null,
     };

@@ -1,9 +1,5 @@
-// backend/utils/auth.test.js
-//
-// The portal flag travels in the cookie: it is decided at sign-in and kept
-// current by the live role check. What reaches the frontend has to read it
-// strictly - only an explicit true opens Veritas ID, and holding no panel
-// role must never fall through into holding panel permissions.
+// publicUser(): only an explicit portal: true opens Veritas ID
+// No panel role must never fall through to panel permissions
 
 const test = require('node:test');
 const assert = require('node:assert');
@@ -23,15 +19,13 @@ test('a session with the portal says so', () => {
 });
 
 test('a session without a portal flag gets no portal', () => {
-    // Anything but an explicit true is no. A missing field must not read
-    // as access nobody granted.
+    // Only explicit true; a missing field is not access
     const user = publicUser({ ...BASE, role: 'owner' });
     assert.equal(user.portal, false);
 });
 
 test('the panel offers the way in for exactly the right sessions', () => {
-    // The condition App.jsx uses. Written out here because getting it wrong
-    // does not break anything visibly - it just removes the only door.
+    // Same condition as App.jsx; a mistake here silently removes the only door
     const offersLink = (u) => u.portal === true;
 
     assert.equal(offersLink(publicUser({ ...BASE, role: null, portal: true })), true, 'a portal user');
@@ -45,8 +39,7 @@ test('no session at all is still nothing', () => {
 });
 
 test('a roleless session gets no capabilities and no role label', () => {
-    // The other half of the same idea: holding no panel role must never
-    // fall through into holding every panel permission.
+    // No panel role must never mean every panel permission
     const user = publicUser({ ...BASE, role: null, portal: true });
     assert.equal(user.role, null);
     assert.equal(user.roleLabel, null);

@@ -1,14 +1,5 @@
-// backend/routes/me.js
-// Veritas ID - the citizen portal.
-//
-// Everything here answers one question: what belongs to the person who is
-// signed in? No route accepts an identity from the client. A citizenid in a
-// URL is only ever used to pick one item out of a set that ownership has
-// already established, and requireOwnership below is the only way in.
-//
-// Read-only on purpose. A player looking at their own bank balance is a
-// different risk from a player changing it, and the second one is not what
-// was asked for.
+// Veritas ID (citizen portal): read-only, scoped to the signed-in Discord account
+// SECURITY: no identity from the client; a URL citizenid only passes requireOwnership
 const express = require('express');
 const { db, parseJSON, tableExists } = require('../utils/dbHandler');
 const { charactersOf, owns, identifiersOf } = require('../utils/identity');
@@ -17,9 +8,7 @@ const banlist = require('../utils/banlist');
 
 const router = express.Router();
 
-// Every portal route needs a signed-in Discord account. When the panel runs
-// without Discord login there is no identity at all, and the portal simply
-// cannot work - saying that beats showing an empty page.
+// Portal needs a Discord identity; with login disabled it cannot work, and says so
 function requireIdentity(req, res, next) {
     if (!req.user?.id) {
         return res.status(401).json({
@@ -27,15 +16,8 @@ function requireIdentity(req, res, next) {
             hint: 'Veritas ID needs a Discord sign-in - it has no other way to know whose characters to show.',
         });
     }
-    // Whether the account may use the portal travels in the session: it is
-    // decided at sign-in and kept current by the live role check (see
-    // currentSession in utils/auth.js). Asking Discord here as well would
-    // mean a call on every request.
-    //
-    // '!== true' rather than '=== false': publicUser() happens to normalise
-    // this to a boolean today, so both read the same - but a guard that only
-    // holds because of what some other module does is one refactor away from
-    // letting people through. Say what is required instead.
+    // Portal flag from the session (set at sign-in, kept current by the live role check)
+    // SECURITY: '!== true', so the guard does not rely on publicUser() normalising the flag
     if (req.user.portal !== true) {
         return res.status(403).json({
             error: 'This account cannot use Veritas ID',
@@ -45,15 +27,12 @@ function requireIdentity(req, res, next) {
     next();
 }
 
-// Pulls the citizenid out of the URL and proves it belongs to the caller
-// before any handler sees it.
+// SECURITY: proves ownership of :citizenid before any handler runs
 async function requireOwnership(req, res, next) {
     const { citizenid } = req.params;
     try {
         if (!await owns(req.user.id, citizenid)) {
-            // Deliberately the same answer as for a character that does not
-            // exist. Telling someone "that one exists but is not yours"
-            // would turn the portal into a lookup service for citizenids.
+            // SECURITY: same 404 as for a missing character; no lookup oracle for citizenids
             return res.status(404).json({ error: 'No such character on your account' });
         }
         next();
@@ -65,7 +44,7 @@ async function requireOwnership(req, res, next) {
 
 router.use('/api/me', requireIdentity);
 
-// --- Who am I and what do I have -----------------------------------------
+// --- Account and characters -----------------------------------------------
 router.get('/api/me', async (req, res) => {
     try {
         const result = await charactersOf(req.user.id);
@@ -87,8 +66,7 @@ router.get('/api/me', async (req, res) => {
             gameAccount: result.username,
             characters: result.characters,
             count: result.characters.length,
-            // Someone in the Discord who has never played lands here. That
-            // is not an error, it just has nothing to show yet.
+            // In the Discord but never played: nothing to show yet, not an error
             hint: result.characters.length === 0
                 ? 'No character is linked to this Discord account yet. Join the server once and it will appear here.'
                 : null,
@@ -99,11 +77,8 @@ router.get('/api/me', async (req, res) => {
     }
 });
 
-// --- What txAdmin has on record ------------------------------------------
-// Account level rather than character level, because that is how a txAdmin
-// ban works: it is issued against identifiers and therefore follows the
-// person across every character they have. Hanging it off one character
-// would suggest the others are unaffected.
+// --- Ban record -----------------------------------------------------------
+// Account level: bans target identifiers and follow the person across characters
 router.get('/api/me/bans', async (req, res) => {
     try {
         const identifiers = await identifiersOf(req.user.id);
@@ -111,9 +86,7 @@ router.get('/api/me/bans', async (req, res) => {
             return res.status(400).json({ error: 'The Discord id on this session is malformed' });
         }
 
-        // Both records, the same as the panel - a citizen banned through
-        // this panel's own ban tool must not be told there is nothing on
-        // file just because txAdmin has never heard of them.
+        // Both records, like the panel: txAdmin knowing nothing is not "nothing on file"
         const own = new Set(identifiers);
 
         const database = { available: false };
@@ -146,9 +119,7 @@ router.get('/api/me/bans', async (req, res) => {
             .filter(row => row.source !== banlist.DATABASE || banlist.belongsTo(row, own))
             .map(citizenView);
 
-        // 'available' stays true only when every record could be read. An
-        // older page reads this field alone, and a partial list shown as a
-        // complete one is the one answer this route must never give.
+        // available: true only if every record was read; partial must never read as complete
         const complete = database.available && tx.available;
         const failed = !database.available ? database : tx;
 
@@ -161,8 +132,7 @@ router.get('/api/me/bans', async (req, res) => {
             count: merged.length,
             activeCount: merged.filter(b => b.active).length,
 
-            // Per record, so a page can show what it has and still say what
-            // is missing instead of choosing between the two.
+            // Per record: the page shows what it has and names what is missing
             sources: { database, txadmin: tx },
             showsAuthor: txadmin.SHOW_AUTHOR,
         });
@@ -172,14 +142,8 @@ router.get('/api/me/bans', async (req, res) => {
     }
 });
 
-// What a player is shown about a ban against them.
-//
-// Deliberately narrower than the staff view. Absent no matter what:
-//   - identifiers, which on a database row include the IP the ban was
-//     issued against
-//   - the name the ban was filed under, and any other character on the
-//     account
-//   - the admin who issued it, unless the server owner turned that on
+// SECURITY: player view; never identifiers (database rows hold the IP), the filed name,
+// other characters, or the issuing admin (unless TXADMIN_SHOW_BAN_AUTHOR)
 function citizenView(row) {
     const out = {
         id: row.nativeId,
@@ -193,16 +157,14 @@ function citizenView(row) {
         revokedAt: row.revokedAt,
         expired: row.expired,
         active: row.active,
-        // Which record holds it. Not plumbing to the person affected: it
-        // is the difference between something this community's staff wrote
-        // and something the server software did.
+        // Staff-written vs server software: meaningful to the person affected
         source: row.source,
     };
     if (txadmin.SHOW_AUTHOR) out.issuedBy = row.issuedBy || null;
     return out;
 }
 
-// --- One character in full ------------------------------------------------
+// --- Character detail -----------------------------------------------------
 router.get('/api/me/characters/:citizenid', requireOwnership, async (req, res) => {
     try {
         const [rows] = await db.execute(
@@ -218,8 +180,7 @@ router.get('/api/me/characters/:citizenid', requireOwnership, async (req, res) =
         const money = parseJSON(row.money);
         const meta = parseJSON(row.metadata);
 
-        // Only the parts of metadata a player has any business seeing about
-        // themselves. The raw column also holds moderation notes.
+        // SECURITY: licences only; raw metadata also holds moderation notes
         const licences = meta.licences || meta.licenses || {};
 
         res.json({
@@ -263,7 +224,7 @@ router.get('/api/me/characters/:citizenid', requireOwnership, async (req, res) =
     }
 });
 
-// --- What that character is carrying -------------------------------------
+// --- Character inventory --------------------------------------------------
 router.get('/api/me/characters/:citizenid/inventory', requireOwnership, async (req, res) => {
     try {
         const [rows] = await db.execute(
@@ -290,7 +251,7 @@ router.get('/api/me/characters/:citizenid/inventory', requireOwnership, async (r
     }
 });
 
-// --- And what it drives ---------------------------------------------------
+// --- Character vehicles ---------------------------------------------------
 router.get('/api/me/characters/:citizenid/vehicles', requireOwnership, async (req, res) => {
     try {
         if (!await tableExists('player_vehicles')) {

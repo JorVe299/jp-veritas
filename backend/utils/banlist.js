@@ -1,45 +1,22 @@
-// backend/utils/banlist.js
-// One list out of two ban records.
-//
-// A server bans in two places: the framework's `bans` table, which this
-// panel writes and can lift, and txAdmin's own file, which it can only
-// read. Showing them as separate lists made the gap visible; showing them
-// as one list makes them usable - as long as it never becomes unclear
-// which entry came from where, because only one of the two can be lifted
-// here.
-//
-// Neither record stores a citizenid. Both store identifiers, so a question
-// about a person is answered by resolving that person to their identifiers
-// and matching on those. That resolution happens in identity.js; this file
-// only ever compares already-normalised strings.
-//
-// One honest gap runs through everything below: the `bans` table has no
-// created-at column. Its rows carry no date at all, and inventing one from
-// the row id would be a number dressed up as a fact. They sort by id among
-// themselves and are marked as undated.
+// Merges both ban records (`bans` table: writable; txAdmin file: read-only) into one shape
+// Matching is by normalised identifiers only; neither record stores a citizenid
+// `bans` rows carry no date: shown undated, never a date guessed from the id (BACKEND.md §8)
 
 const { db, tableExists } = require('./dbHandler');
 const { asIdentifier } = require('./identity');
 
 const TABLE = 'bans';
 
-// QBCore stores the expiry as unix seconds, in a signed INT(11) column on
-// both the qb-core and the qbx_core schema, and the game keeps a player out
-// for as long as os.time() is below it. The column's ceiling is therefore
-// the furthest a ban can reach - it is what qb-adminmenu writes for a
-// permanent ban, and what this panel writes too.
+// Signed INT(11) ceiling on qb-core/qbx_core; the game bans while os.time() < expire
+// Written for permanent bans, as qb-adminmenu does (BACKEND.md §8)
 const PERMANENT_EXPIRE = 2147483647;
 
-// A 0, or a value far in the future on a schema with a wider column, is
-// read as permanent as well.
+// 0, or a far-future value on a wider column, also reads as permanent
 const PERMANENT_AFTER_YEARS = 50;
 
 /**
- * A raw `bans` row in the shape the rest of the panel expects.
- *
- * It lives here rather than in a route because both the staff list and the
- * citizen portal build on it, and two copies of "what counts as permanent"
- * would drift apart exactly once and never be noticed.
+ * Raw `bans` row -> panel shape
+ * Shared by the staff list and the portal: one definition of "permanent"
  */
 function shapeBan(row) {
     const expire = Number(row.expire) || 0;
@@ -62,35 +39,22 @@ function shapeBan(row) {
 }
 
 /**
- * The `expire` value to write for a ban of `days` days; 0 means permanent.
- *
- * Beside shapeBan() on purpose: what the panel writes has to read back as
- * what the admin chose, so writing and reading are decided in one place.
- *
- * A timed ban is capped at the ceiling too. From 2028 on, the longest one
- * the panel offers would run past it, and a value the column cannot hold is
- * refused outright by MySQL in strict mode.
+ * `expire` to write for a ban of `days` days (0 = permanent); pairs with shapeBan()
+ * Timed bans capped at the ceiling too: strict-mode MySQL refuses overflow (from 2028 on)
  */
 function expiryFor(days, nowSeconds = Math.floor(Date.now() / 1000)) {
     if (days === 0) return PERMANENT_EXPIRE;
     return Math.min(Math.floor(nowSeconds + days * 86400), PERMANENT_EXPIRE);
 }
 
-/**
- * The database bans issued against any of these identifiers.
- *
- * The table keys bans by licence, Discord id and IP, so the lookup asks
- * for the ones it can hold and compares them normalised - the same exact
- * comparison the merged list uses, for the same reason.
- */
+/** Database bans against any of these identifiers (license, discord, ip; exact match) */
 async function databaseBansFor(identifiers) {
     if (!identifiers || identifiers.length === 0) return { available: true, rows: [] };
     if (!await tableExists(TABLE)) {
         return { available: false, reason: `Table '${TABLE}' does not exist in this database`, rows: [] };
     }
 
-    // Schemas differ on whether the prefix is stored, so both forms go into
-    // the query and the decision is made on the normalised value afterwards.
+    // Schemas differ on storing the prefix: query both forms, decide on the normalised value
     const values = [];
     for (const id of identifiers) {
         values.push(id);
@@ -108,8 +72,7 @@ async function databaseBansFor(identifiers) {
         params
     );
 
-    // The SQL narrows; this decides. LOWER() in the query is a filter, not
-    // a guarantee about how the column was written.
+    // SQL narrows, belongsTo() decides: LOWER() says nothing about how the column was written
     const wanted = new Set(identifiers);
     const rows = raw
         .map(shapeBan)
@@ -122,8 +85,7 @@ async function databaseBansFor(identifiers) {
 const DATABASE = 'database';
 const TXADMIN = 'txadmin';
 
-// The identifier kinds a ban can be keyed by, mapped from the column names
-// the bans table happens to use.
+// Identifier kind per `bans` column
 const DATABASE_IDENTIFIER_COLUMNS = {
     license: 'license',
     discord: 'discord',
@@ -139,12 +101,7 @@ function identifiersFromRow(row) {
     return out;
 }
 
-/**
- * A row of the `bans` table in the shared shape.
- *
- * shapeBan() above has already worked out `active`, `permanent` and the
- * expiry, so this takes that result rather than the raw row.
- */
+/** `bans` row (already through shapeBan) -> merged shape */
 function fromDatabase(ban) {
     return {
         key: `${DATABASE}:${ban.id}`,
@@ -155,15 +112,13 @@ function fromDatabase(ban) {
         reason: ban.reason || null,
         issuedBy: ban.bannedBy || null,
 
-        // The table records no date. Saying null is the truth; the list
-        // says so out loud rather than letting a blank read as "just now".
+        // No date column: null and flagged, never a blank that reads as "just now"
         issuedAt: null,
         issuedAtKnown: false,
 
         expiresAt: ban.expiresAt || null,
         permanent: ban.permanent === true,
-        // The table has no revocation concept: lifting a ban deletes the
-        // row. So a row that exists was never lifted.
+        // Lifting deletes the row: an existing row was never revoked
         revoked: false,
         revokedAt: null,
         expired: !ban.permanent && ban.active === false,
@@ -172,12 +127,12 @@ function fromDatabase(ban) {
         identifiers: identifiersFromRow(ban),
         citizenid: null,
 
-        // The whole reason the source has to stay visible.
+        // Why the source stays visible: only these can be lifted here
         canLift: true,
     };
 }
 
-/** A txAdmin action, as utils/txadmin.js already shapes it. */
+/** txAdmin action (as shaped by utils/txadmin.js) -> merged shape */
 function fromTxAdmin(action) {
     return {
         key: `${TXADMIN}:${action.id ?? 'unknown'}`,
@@ -201,23 +156,14 @@ function fromTxAdmin(action) {
         identifiers: Array.isArray(action.identifiers) ? action.identifiers : [],
         citizenid: null,
 
-        // txAdmin owns that file. Nothing here writes to it.
+        // Read-only: txAdmin owns the file
         canLift: false,
     };
 }
 
 /**
- * The order the list is always in: what applies now, newest first.
- *
- * Two keys, in this order, because that is the order the questions get
- * asked - "who is kept out right now" comes before "and when".
- *
- *   1. in force before over
- *   2. newest first
- *
- * Rows the `bans` table could not date come after the dated ones inside
- * their group rather than being scattered through them by a guess, and
- * fall back to id order among themselves.
+ * List order: in force before over, then newest first
+ * Undated `bans` rows follow the dated ones within their group, by id
  */
 function compareBans(a, b) {
     if (a.active !== b.active) return a.active ? -1 : 1;
@@ -230,7 +176,7 @@ function compareBans(a, b) {
         return a.issuedAt < b.issuedAt ? 1 : -1;
     }
 
-    // Undated rows: the higher id was added later.
+    // Undated rows: higher id = added later
     const an = Number(a.nativeId);
     const bn = Number(b.nativeId);
     if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return bn - an;
@@ -243,12 +189,8 @@ function sortBans(rows) {
 }
 
 /**
- * Free text over everything a person would reasonably type.
- *
- * citizenid is in the haystack for rows that already carry one, but the
- * caller must not rely on that alone: the reverse lookup runs on the page
- * being sent, so rows are usually still unresolved here. The route
- * resolves a citizenid-shaped term to identifiers separately.
+ * Free-text match over the visible fields
+ * citizenid is usually still unresolved here; the route resolves citizenid terms separately
  */
 function matchesQuery(row, needle) {
     if (!needle) return true;
@@ -260,13 +202,7 @@ function matchesQuery(row, needle) {
     return hay.includes(needle);
 }
 
-/**
- * Does this entry belong to someone with these identifiers?
- *
- * Both sides are already normalised - lowercased and prefixed - so this is
- * a plain set intersection. It has to be: a near-match on an identifier is
- * not a weaker answer, it is the wrong person.
- */
+/** Exact set intersection on normalised identifiers: a near match is the wrong person */
 function belongsTo(row, identifierSet) {
     if (!identifierSet || identifierSet.size === 0) return false;
     return (row.identifiers || []).some(id => identifierSet.has(id));

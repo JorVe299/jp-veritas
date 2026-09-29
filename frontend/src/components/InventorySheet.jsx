@@ -7,8 +7,7 @@ import CatalogPicker from './CatalogPicker';
 import { fetchPlayerInventory, updatePlayerInventory } from '../api';
 import { parseAmount } from '../utils/format';
 
-// Up to 9,999 a count fits the corner of a slot as it is; past that it is
-// shortened ("12.3K") rather than running into the slot number.
+// Past 9,999 a count runs into the slot number (~3rem per slot on phones)
 const SLOT_COMPACT_FROM = 10000;
 
 const errorText = (err) => err.response?.data?.error || err.message;
@@ -17,21 +16,14 @@ const modeDetail = (mode) => (mode === 'live'
     ? 'Applied live on the server.'
     : 'The citizen is not connected, so the change went to the database.');
 
-// Raw grams are unreadable; ox_inventory itself shows kilograms.
 function kg(grams) {
     const n = Number(grams) || 0;
     return `${(n / 1000).toFixed(2)} kg`;
 }
 
 /**
- * The inventory as a grid, modelled on the one in the game.
- *
- * The tiles are real controls: dragging moves, swaps or merges, dropping on
- * the bin books out, the catalog on the right puts new items in. What counts
- * in the end is always decided by the backend - the answer to every mutation
- * carries the new layout, and that is exactly what is displayed. Nothing is
- * anticipated optimistically, otherwise after a rejected move the grid would
- * show a state that does not exist.
+ * Inventory grid as in the game: drag to move/swap/merge, drop on the bin to remove
+ * No optimistic update: a rejected move would leave a layout that does not exist
  */
 export default function InventorySheet({ citizenid, playerName, canEdit = false, onClose, onApplied }) {
     const [state, setState] = useState({ status: 'loading', data: null, error: null });
@@ -42,8 +34,6 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
     const [selected, setSelected] = useState(null); // slot number
     const closeRef = useRef(null);
 
-    // First load. The cancelled flag keeps a late answer from writing into
-    // a sheet that has already been closed.
     useEffect(() => {
         let cancelled = false;
         fetchPlayerInventory(citizenid)
@@ -56,8 +46,7 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
         return () => { cancelled = true; };
     }, [citizenid]);
 
-    // Escape closes. On opening, focus lands on the close button so that
-    // keyboard operation does not carry on behind the sheet.
+    // Focus moves into the sheet on open: keyboard users must not stay behind it
     useEffect(() => {
         const onKey = (e) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', onKey);
@@ -68,10 +57,7 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
     const data = state.data || {};
     const items = Array.isArray(data.items) ? data.items : [];
     const maxSlots = Number(data.maxSlots) || 41;
-    // Two reasons why nothing can be moved, and they must not be confused:
-    // the server is holding the inventory itself right now (serverLocked),
-    // or one's own role may not (canEdit). Both lock the same tiles, but
-    // each of them needs its own sentence.
+    // serverLocked and !canEdit lock the same tiles but each gets its own notice
     const serverLocked = data.canReorder === false;
     const canReorder = canEdit && !serverLocked;
 
@@ -80,13 +66,9 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
     const max = Number(data.maxWeight) || 0;
     const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
 
-    // Every mutation runs through here: either the answer carries the new
-    // layout (offline route), or we fetch it afterwards (live route, where
-    // only the server knows the result).
+    // Offline answers carry the layout; after a live one only the server knows it: refetch
     const mutate = useCallback(async (change, logText) => {
-        // Last barrier in the frontend. The backend rejects it anyway; this
-        // one is here so a drag that slipped through does not even look
-        // like an operation.
+        // Backend rejects it anyway; a stray drag must not even look like an operation
         if (!canEdit) return false;
 
         setBusy(true);
@@ -125,13 +107,13 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
         }
     }, [canEdit, citizenid, onApplied]);
 
-    // --- Drag and drop -----------------------------------------------------
+    // --- Drag and drop ----------------------------------------------------
 
     const startSlotDrag = (e, item) => {
         if (!canReorder || busy) { e.preventDefault(); return; }
         setDragging({ kind: 'slot', slot: item.slot, name: item.name, label: item.label, amount: item.amount });
         e.dataTransfer.effectAllowed = 'move';
-        // Without data set, Firefox does not start a drag at all.
+        // Firefox starts no drag without data set
         e.dataTransfer.setData('text/plain', String(item.slot));
     };
 
@@ -257,8 +239,7 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                             </div>
                         </div>
 
-                        {/* Once per sheet, right at the top of the column:
-                            the reason why nothing works below. */}
+                        {/* Once, at the top: the reason nothing below works */}
                         {!canEdit && <PermissionLine what="add, remove or move items" />}
 
                         {canEdit && serverLocked && (
@@ -297,10 +278,7 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                             />
                         )}
 
-                        {/* The bin stays even without the permission: it is
-                            part of explaining the grid. Without the
-                            permission no tile can be picked up at all, so
-                            nothing ever reaches it. */}
+                        {/* Shown read-only too, as part of the grid; no tile can reach it */}
                         <div
                             className={`trash${dropTarget === 'trash' ? ' trash--armed' : ''}`}
                             onDragOver={(e) => allowDrop(e, 'trash')}
@@ -325,7 +303,7 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
     );
 }
 
-/* ------------------------------------------------------------------------- */
+// --- Slot, detail, catalog ------------------------------------------------
 
 function Slot({
     number, item, draggable, isSource, isDrop, isSelected,
@@ -353,10 +331,7 @@ function Slot({
             aria-label={item ? `Slot ${number}: ${item.amount}x ${item.label}` : `Slot ${number}, empty`}
         >
             <span className="slot__num">{number}</span>
-            {/* The count shares the slot's top edge with the slot number,
-                and a five-slot row leaves a phone about 3rem per slot: from
-                ten thousand on it goes compact. The exact count is in the
-                slot's aria-label and in the title of its name below. */}
+            {/* Exact count stays in the aria-label and the label's title */}
             {item && (
                 <Amount
                     value={item.amount}
@@ -433,13 +408,7 @@ function SlotDetail({ item, busy, canEdit, onSet, onRemove }) {
     );
 }
 
-// Two ways in, on purpose.
-//
-// The button is the plain one: it hands the item to the backend without a
-// slot, and the backend drops it on the first free one. Dragging is for
-// when the slot matters. Everything else in this sheet has a button, and
-// adding being drag-only made it look broken to anyone who did not think
-// to drag a tile.
+// Button as well as drag: drag-only adding reads as broken; drag is for a chosen slot
 function CatalogAdd({ disabled, onAdd, onDragItem, onDragEnd }) {
     const [picked, setPicked] = useState(null);
     const [amount, setAmount] = useState('1');

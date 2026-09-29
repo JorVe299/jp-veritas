@@ -1,10 +1,5 @@
-// backend/routes/accounts.js
-// Bank accounts from bank_accounts_new (id, amount, transactions, auth,
-// isFrozen, creator).
-//
-// The id is not a counter but the account's identifier: for personal
-// accounts the citizenid, for company accounts the job name. 'auth' is a
-// JSON list of the citizenids allowed to use it.
+// Bank accounts (bank_accounts_new): id = citizenid (personal) or job name (company)
+// auth = JSON list of citizenids allowed to use the account
 const express = require('express');
 const { db, parseJSON, tableExists } = require('../utils/dbHandler');
 const { getJobs } = require('../utils/dataLoader');
@@ -21,10 +16,7 @@ async function ensureTable(res) {
     return false;
 }
 
-// Personal accounts carry a citizenid as their id, company accounts a job
-// name. The job catalog alone is not enough to tell them apart: if it were
-// not loaded yet, every company account would look like a private one - and
-// emptying a company account by accident is a different matter entirely.
+// Shape check as well: an unloaded job catalog must not make company accounts look personal
 const CITIZENID = /^[A-Z0-9]{6,12}$/;
 
 function accountKind(id, job) {
@@ -81,16 +73,14 @@ router.get('/api/accounts', async (req, res) => {
 });
 
 // --- A player's accounts --------------------------------------------------
-// Their own account plus every account they are authorised on.
+// Own account plus every account the player is authorised on
 router.get('/api/players/:citizenid/accounts', async (req, res) => {
     const citizenid = req.params.citizenid;
 
     try {
         if (!await ensureTable(res)) return;
 
-        // A LIKE on the JSON column finds candidates; the real check is the
-        // filter below, otherwise a citizenid that is a substring of another
-        // one would match by mistake.
+        // LIKE finds candidates; the exact filter below rules out substring citizenids
         const [rows] = await db.execute(
             `SELECT * FROM ${TABLE} WHERE id = ? OR auth LIKE ?`,
             [citizenid, `%${citizenid}%`]

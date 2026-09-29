@@ -8,9 +8,7 @@ import { useCan } from '../lib/useCan';
 import { usePlayerResource } from '../lib/usePlayerResource';
 import { formatMoney } from '../utils/format';
 
-// 0/1/2 come out of the database that way. The backend supplies a
-// stateLabel with every vehicle; this table carries the controls and only
-// steps in when the label is missing.
+// Values are the DB's codes; labels only stand in for a missing backend stateLabel
 const STATES = [
     { value: 1, label: 'In garage', pill: 'pill--live' },
     { value: 0, label: 'Out', pill: 'pill--off' },
@@ -26,13 +24,8 @@ const modeDetail = (mode) => (mode === 'live'
 const errorText = (err) => err.response?.data?.error || err.message;
 
 /**
- * A citizen's vehicles. Deliberately two cards instead of one:
- * the record is read and corrected row by row, while adding is an operation
- * of its own with its own model search - in a single card the two would get
- * in each other's way.
- *
- * App.jsx gives the module a key={citizenid}, so the state restarts by
- * itself when the citizen changes.
+ * A citizen's vehicle record; adding (rare, own model search) opens in a sheet
+ * Keyed per citizen by the parent: state resets when the citizen changes
  */
 export default function VehicleManager({ selectedPlayer, onApplied }) {
     const { can } = useCan();
@@ -48,8 +41,7 @@ export default function VehicleManager({ selectedPlayer, onApplied }) {
 
     const reload = () => setVersion((v) => v + 1);
 
-    // A completed write belongs in the log in the header area, even when it
-    // changes nothing on the citizen record itself.
+    // Every write goes to the header log, even with no change to the citizen record ({})
     const report = (mode, text) => onApplied?.({}, { mode, text });
 
     return (
@@ -112,10 +104,6 @@ export default function VehicleManager({ selectedPlayer, onApplied }) {
                     )}
                 </div>
 
-                {/* Adding has its own model search and used to sit beside
-                    the record as a second card - a whole column for an
-                    operation that is rarely needed. Behind the button it no
-                    longer blocks the record, just as with the inventory. */}
                 {res.status !== 'unavailable' && (
                     <footer className="panel__foot">
                         <span className="panel__footinfo">
@@ -161,9 +149,7 @@ export default function VehicleManager({ selectedPlayer, onApplied }) {
                             </button>
                         </header>
 
-                        {/* The sheet stays open after adding: whoever enters
-                            one vehicle often enters the second right after,
-                            and the record behind it is already up to date. */}
+                        {/* Stays open after adding: a second vehicle often follows */}
                         <div className="sheet__body sheet__body--single">
                             <VehicleAdd
                                 citizenid={citizenid}
@@ -187,17 +173,14 @@ function listHint(res, count) {
     return count === 1 ? '1 vehicle registered' : `${count} vehicles registered`;
 }
 
-/* -------------------------------------------------------------------------
-   One row of the record: read, edit, delete.
-   ------------------------------------------------------------------------- */
+// --- Vehicle row ----------------------------------------------------------
 
 function VehicleRow({ vehicle, canEdit, onFeedback, onChanged, onReport }) {
     const [editing, setEditing] = useState(false);
     const [plate, setPlate] = useState(vehicle.plate ?? '');
     const [garage, setGarage] = useState(vehicle.garage ?? '');
     const [state, setState] = useState(String(vehicle.state ?? 1));
-    // Two steps instead of confirm(): the button changes its label and
-    // stays there until confirmed or dismissed.
+    // Inline two-step delete instead of a blocking confirm()
     const [confirming, setConfirming] = useState(false);
     const [busy, setBusy] = useState(false);
 
@@ -279,7 +262,7 @@ function VehicleRow({ vehicle, canEdit, onFeedback, onChanged, onReport }) {
         <li className="line">
             <div className="line__top">
                 <span className="line__name">{name || 'Unknown model'}</span>
-                {/* The label can be the server's own word for a state. */}
+                {/* stateLabel can be any server word: clipped, in full in the title */}
                 <span className={`pill pill--fit ${badge?.pill ?? 'pill--unknown'} line__badge`} title={stateLabel}>
                     <span className="u-clip">{stateLabel}</span>
                 </span>
@@ -407,9 +390,7 @@ function VehicleRow({ vehicle, canEdit, onFeedback, onChanged, onReport }) {
     );
 }
 
-/* -------------------------------------------------------------------------
-   Second card: add a vehicle.
-   ------------------------------------------------------------------------- */
+// --- Add vehicle ----------------------------------------------------------
 
 function VehicleAdd({ citizenid, canEdit, disabled, onAdded, onReport }) {
     const [model, setModel] = useState(null); // { key, name, brand, price }

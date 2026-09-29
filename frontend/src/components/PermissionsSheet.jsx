@@ -14,10 +14,7 @@ const INITIAL = {
     hint: null,
 };
 
-// The permissions come with a group field. Grouping follows the order in
-// which the backend sends them - that is where the domain ordering lives
-// (Players, Inventory, Vehicles, ...), and the panel should not quietly
-// re-sort it.
+// Backend order kept: it carries the domain ordering (Players, Inventory, Vehicles, ...)
 function groupCapabilities(capabilities) {
     const order = [];
     const byGroup = new Map();
@@ -34,9 +31,6 @@ function groupCapabilities(capabilities) {
     return order.map((name) => ({ name, items: byGroup.get(name) }));
 }
 
-// Comparison of two permission lists regardless of order: whether a tick
-// is set does not depend on the position it happens to have in the
-// file.
 const sameList = (a, b) => {
     if (a.length !== b.length) return false;
     const left = [...a].sort();
@@ -44,51 +38,31 @@ const sameList = (a, b) => {
     return left.every((id, i) => id === right[i]);
 };
 
-// Only the editable roles. The owner drops out: he always has everything,
-// may be absent from the body and is ignored by the backend anyway.
+// Locked owner left out: holds everything, and the backend ignores it in the body
 const editableRoles = (roles) => roles.filter((role) => !role.locked);
 
 /**
- * Roles and permissions.
- *
- * A sheet of its own instead of a card in the module wall, for two reasons:
- * twenty permissions times however many roles a server has fit into no card
- * next to a citizen's job, and above all this is not about a citizen at
- * all. A card there claims by its position that its content belongs to the
- * selected character - this belongs to the whole server.
- *
- * Two halves, and they are saved differently on purpose:
- *
- *   - the roster above. Roles are records the owner keeps now, not four
- *     names compiled into the source. Each operation there is its own act
- *     and goes to the server when it is pressed.
- *   - the grid below. Changes are collected in a draft and written once. A
- *     PUT per tick would not only be noisy but dangerous: while working
- *     down the rows, every intermediate state would be live for a second.
+ * Roles and permissions as a sheet: server-wide and too large for a citizen-wall card
+ * Roster actions save at once; grid ticks are drafted and saved in one PUT
+ * A PUT per tick would make every intermediate state live
  */
 export default function PermissionsSheet({ onClose, onSaved }) {
     const { can } = useCan();
     const [state, setState] = useState(INITIAL);
-    // { base, draft }: the matrix as the server last gave it, and the one
-    // being edited. Keeping both means "what is unsaved" is an answer this
-    // component can work out rather than remember.
+    // { base, draft }: last saved matrix and the edited one; "unsaved" is derived, not tracked
     const [edit, setEdit] = useState(null);
     const [saving, setSaving] = useState(false);
     const [feedback, setFeedback] = useState(null);
     const closeRef = useRef(null);
     const alive = useRef(true);
 
-    // A reload finishing after the sheet has gone must not write into it.
-    // Set on the way in as well, because in development every effect is run
-    // twice and the flag would otherwise stay false after the first tear-down.
+    // Blocks late reload() writes; set on mount too: StrictMode re-runs effects after a cleanup
     useEffect(() => {
         alive.current = true;
         return () => { alive.current = false; };
     }, []);
 
     useEffect(() => {
-        // A late answer must no longer write into a sheet that has already
-        // been closed.
         let cancelled = false;
 
         fetchPermissions()
@@ -112,7 +86,6 @@ export default function PermissionsSheet({ onClose, onSaved }) {
         return () => { cancelled = true; };
     }, []);
 
-    // Escape closes; the focus starts on the close button.
     useEffect(() => {
         const onKey = (e) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', onKey);
@@ -128,31 +101,17 @@ export default function PermissionsSheet({ onClose, onSaved }) {
     );
     const groups = useMemo(() => groupCapabilities(capabilities), [capabilities]);
 
-    /* The backend says whether this user may save. If the answer is no, the
-       table stays readable and all ticks are locked - disappearing cannot
-       explain itself.
-
-       The second condition is not a loophole but covers a case in which
-       the first one is untrue: without a Discord login there is no
-       signed-in user, the route assumes 'citizen' for that and reports
-       canEdit false - yet it would accept the PUT anyway, because with
-       no role nobody gets checked. A locked button would then be the
-       false statement. */
+    // can() covers no-Discord mode: the route reports canEdit false there yet accepts the PUT
     const canEdit = data?.you?.canEdit === true || can('permissions.edit');
 
-    // After a role was created, renamed, reordered or deleted the whole
-    // answer is read again rather than patched in place: the ranking, the
-    // counts and the matrix all move together, and guessing the new shape
-    // here would be a second implementation of the store.
+    // Refetch rather than patch: patching would re-implement the store's logic here
     const reload = async () => {
         const answer = await fetchPermissions();
         if (!alive.current) return;
         const next = answer.data || {};
         setState({ status: 'ready', data: next, error: null, hint: null });
 
-        // Ticks that have not been saved yet survive the reload. Creating a
-        // role halfway through re-permissioning another one is an ordinary
-        // thing to do, and losing the work would be the panel's fault.
+        // Unsaved ticks survive the reload: creating a role mid-edit must not lose work
         setEdit((prev) => {
             const fresh = startDraft(next);
             if (prev) {
@@ -165,12 +124,11 @@ export default function PermissionsSheet({ onClose, onSaved }) {
             return { base: next.matrix || {}, draft: fresh };
         });
 
-        // A deleted or re-permissioned role may be one's own.
+        // A deleted or re-permissioned role may be one's own
         onSaved?.();
     };
 
-    // Memoised so that the empty object before the first answer is not a
-    // new one on every render - the counts below depend on it.
+    // Memoised: a fresh {} per render would recompute the counts below
     const draft = useMemo(() => edit?.draft || {}, [edit]);
 
     const dirtyIds = useMemo(() => {
@@ -182,8 +140,6 @@ export default function PermissionsSheet({ onClose, onSaved }) {
         return out;
     }, [edit, roles]);
 
-    // What the roster puts in each row: the count being edited, not the one
-    // the server last saw.
     const counts = useMemo(() => {
         const out = {};
         roles.forEach((role) => {
@@ -209,11 +165,7 @@ export default function PermissionsSheet({ onClose, onSaved }) {
         });
     };
 
-    /* The default comes from the answer, not from a second list in the
-       frontend - otherwise the panel would have an opinion of its own about
-       what "default" means. It only knows the roles shipped with the panel,
-       so a role this server made keeps what it has: resetting must not
-       quietly empty the vehicle crew. */
+    // Server defaults only, no frontend list; roles made here have none and keep their ticks
     const resetToDefaults = () => {
         if (!data?.defaults) return;
         setFeedback(null);
@@ -255,9 +207,7 @@ export default function PermissionsSheet({ onClose, onSaved }) {
                 detail: answer.data?.hint || 'Changes apply immediately, nobody has to sign in again.',
             });
 
-            // One's own permission list may have just changed. Without this
-            // step the panel would keep working with the earlier state until
-            // the next load.
+            // One's own permissions may have changed
             onSaved?.();
         } catch (err) {
             setFeedback(failureNote('The permissions could not be saved', err));
@@ -343,9 +293,7 @@ export default function PermissionsSheet({ onClose, onSaved }) {
                                 />
                             </section>
 
-                            {/* Belongs here visibly, otherwise you look for
-                                it in the table: the right to grant rights is
-                                not in it and cannot be passed on. */}
+                            {/* Stated here: the table leaves this right out */}
                             {data?.ownerOnly && (
                                 <p className="field__hint">
                                     {`Granting permissions itself (${data.ownerOnly}) is not in this table. `}
@@ -405,8 +353,7 @@ export default function PermissionsSheet({ onClose, onSaved }) {
     );
 }
 
-// The draft is a copy, not a reference: otherwise "Cancel" would no longer
-// be possible, because the original state would already be overwritten.
+// Copies, not references: discard needs the untouched base
 function startDraft(data) {
     const draft = {};
     editableRoles(Array.isArray(data?.roles) ? data.roles : []).forEach((role) => {

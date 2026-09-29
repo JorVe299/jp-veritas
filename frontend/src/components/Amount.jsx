@@ -1,20 +1,9 @@
 import { formatCompact, formatCurrency, formatCurrencyCompact, formatMoney } from '../utils/format';
 
 /**
- * A measured figure that has to fit a box it does not control - a balance
- * card, a tile, a slot. Two things happen here, and neither ever cuts a
- * digit off: a clipped number reads as a different, wrong number.
- *
- * - From `compactFrom` upwards the figure is shortened ("$1.23B"). The exact
- *   one stays in the title and is what a screen reader hears. Leave
- *   `compactFrom` out and the figure is always exact.
- * - The character count goes out as --fit-chars, so a box using .u-fit can
- *   shrink the type until the whole figure fits. Mono digits all share one
- *   advance, which makes the count as good as a measurement.
- *
- * `currency={false}` is for plain counts; below the threshold those keep
- * exactly the form they had before (no separators), so an ordinary count
- * looks as it always did.
+ * Figure that must fit a box it does not control; never clipped: a cut number reads as another
+ * Shortened from compactFrom up ("$1.23B"); exact value in the title and for screen readers
+ * --fit-chars lets a .u-fit box shrink the type; mono digits make the char count a width
  */
 export default function Amount({ value, currency = true, compactFrom = Infinity, className }) {
     const n = Number(value);

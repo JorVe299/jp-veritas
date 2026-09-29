@@ -55,6 +55,54 @@ longer exists misleads the next person more than no handbook would.
 it. The owner has said to commit and push every finished change without
 asking.
 
+### Comment policy
+
+No prose in code. A comment is a short technical note; rationale that needs
+paragraphs belongs in this handbook, history in the commit message.
+`backend/commentPolicy.test.js` enforces the limits for every source file in
+the repo (JS, JSX, CSS, Lua, shell, HTML, `.gitignore`, config templates).
+
+- **Why, not what.** A comment states a constraint, an invariant, an external
+  quirk or a non-obvious consequence. Names and structure say what the code
+  does; if that needs explaining, rename or extract instead.
+- **Short.** At most 3 lines per comment block, at most 100 columns per line.
+  Doc-comment tag lines (`@param`, `@returns`, Lua `---@…`) and section markers
+  do not count.
+- **Fragments.** Sentence case, no trailing period, clauses joined with `;`
+  or `:`. No first person, no narrative, no rhetoric, no filler ("simply",
+  "of course", "note that").
+- **No history.** Nothing like "used to", "no longer", "since the fix".
+  Incidents worth keeping go into §8.
+- **No echo.** No file-path headers; nothing that restates the code, a name,
+  or a string right next to the comment.
+- **Reference, don't retell.** Point to the handbook for long rationale:
+  `(BACKEND.md §4)`.
+- **Doc comments** (`/** … */`; LuaLS `---@` annotations in Lua) only on
+  exports whose contract the name does not carry: one summary line; `@param` /
+  `@returns` only for units, null semantics or error cases.
+- **Tags.** `SECURITY:` marks code that enforces an access or data-exposure
+  rule; change it only together with a test. `TODO:` only with a concrete
+  next step. No other tags.
+- **No commented-out code.** Git keeps it.
+- **Section markers.** One line, padded with `-` to column 77:
+  `// --- Name ---` (JS), `-- --- Name ---` (Lua), `/* --- Name --- */` (CSS;
+  `/* === N. Name === */` for a numbered top-level section).
+- **JSX.** `{/* … */}` on one line, only where the reason for the markup is
+  not visible from it.
+- **Config templates** (`.env.example`, `config.lua.example`): one line per
+  key (meaning, format, default); details go into §5.
+
+```js
+// Before
+// How stale a session's role may get before Discord is asked again. A
+// minute keeps a removed role from lasting, and stays far inside what
+// Discord allows per user token.
+
+// After
+// Max role age before Discord is re-asked; well under its per-token rate limit
+const SYNC_SECONDS = 60;
+```
+
 ---
 
 ## 2. The three pieces
@@ -75,16 +123,59 @@ needs the resource restarted in-game, not just the backend.
   characters. Everything under `/api/me` is scoped by the signed-in Discord
   identity, never by anything the browser sends.
 
+### Extending the bridge
+
+`veritas/bridge/custom.lua` ships as an empty template for local additions.
+Commit what you put there: `deploy/update.sh` resets uncommitted edits on the
+server.
+
+**Own routes.** `Veritas.route(method, path, handler, opts)` registers
+`http://<server>:30120/veritas/<path>`. The handler receives `(body, res)`:
+`body` is the decoded JSON of a POST, an empty table for a GET. Answer with
+`Veritas.ok(res, table)` or `Veritas.fail(res, 'message')`. `{ needsToken = true }`
+demands the `X-Veritas-Token` header even while `Config.RequireTokenEverywhere`
+is off; use it for anything that changes state. The backend can call a new
+route right away.
+
+```lua
+-- How many people are in a given job right now
+Veritas.route('POST', '/job-headcount', function(body, res)
+    local adapter = Bridge.require()
+    if not adapter then return Veritas.fail(res, 'No framework active') end
+
+    local count = 0
+    for id in pairs(adapter.getOnline()) do
+        local player = adapter.getPlayer(id)
+        if player and player.PlayerData and player.PlayerData.job.name == body.job then
+            count = count + 1
+        end
+    end
+    Veritas.ok(res, { job = body.job, online = count })
+end)
+
+-- A value from another resource's state bag
+Veritas.route('GET', '/weather', function(_, res)
+    Veritas.ok(res, { weather = GlobalState.weather })
+end)
+```
+
+**Own framework.** Fill in the adapter in `custom.lua` and set
+`Config.Framework = 'custom'`. The contract is the `VeritasAdapter` annotation
+in `bridge/adapter.lua`. An operation the framework cannot do returns `false`;
+the panel then reports it as unsupported instead of showing a success that
+never happened.
+
 ---
 
 ## 3. Backend layout
 
 ```
-server.js            Wiring only: middleware order, static files, startup banner.
-routes/              One file per area. Each exports { router }.
-utils/               The parts with logic worth testing.
-data/                Runtime state. Gitignored. Written by the panel and by
-                     the Lua resource; never commit anything from here.
+server.js              Wiring only: middleware order, static files, startup banner.
+routes/                One file per area. Each exports { router }.
+utils/                 The parts with logic worth testing.
+data/                  Runtime state. Gitignored. Written by the panel and by
+                       the Lua resource; never commit anything from here.
+commentPolicy.test.js  Repo-wide guard for the comment policy (§1).
 ```
 
 `utils/` worth knowing before you touch anything:
@@ -221,7 +312,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 156 tests
+cd backend  && npm test         # node --test, currently 160 tests
 cd frontend && npx eslint . && npx vite build
 ```
 

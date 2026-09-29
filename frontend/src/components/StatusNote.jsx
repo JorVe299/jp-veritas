@@ -1,9 +1,5 @@
 import Icon from './Icon';
 
-// Discreet inline feedback instead of alert(). role="status" has screen
-// readers announce it too, and it stays until the next operation replaces
-// it - unlike a dialog that gets clicked away.
-
 const ICONS = {
     success: 'check',
     error: 'cross',
@@ -11,6 +7,7 @@ const ICONS = {
     info: 'info',
 };
 
+/** Inline feedback instead of alert(); role="status" gets it announced; stays until replaced */
 export default function StatusNote({ tone = 'info', title, detail, className = '' }) {
     return (
         <div className={`note note--${tone} ${className}`.trim()} role="status">

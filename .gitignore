@@ -139,30 +139,25 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Roles and permissions: written by the panel, does not belong in the repo
+# Roles: written by the panel at runtime
 backend/data/permissions.json
 
-# Bridge config: edited on the server (Config.Token), like the .env.
-# The template is veritas/config.lua.example.
+# Bridge config (holds Config.Token); template: veritas/config.lua.example
 veritas/config.lua
 
-# JSON dumps the bridge writes into its own folder at runtime.
+# JSON dumps the bridge writes at runtime
 veritas/jobs.json
 veritas/gangs.json
 veritas/items.json
 veritas/vehicles.json
 
-# The backend's data cache: copied from FIVEM_JSON_PATH at startup. The four
-# files used to sit in the repo empty, so every `git reset --hard` on deploy
-# overwrote the server's cache with them.
+# Backend data cache, copied from FIVEM_JSON_PATH; tracked copies would be reset on deploy
 backend/data/jobs.json
 backend/data/items.json
 backend/data/vehicles.json
 backend/data/gangs.json
 
-# AI tooling. Assistant settings, skill state and skill output stay on the
-# machine they were made on and are never published.
-#
+# AI tooling: assistant settings, skill state and output stay local
 # Claude Code: settings, memory and project instructions
 .claude/
 CLAUDE.md

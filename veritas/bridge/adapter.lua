@@ -1,49 +1,37 @@
--- veritas/bridge/adapter.lua
--- The contract every framework adapter fulfils, plus the registry that picks
--- one at startup.
---
--- Why an adapter at all: the panel asks the same handful of questions of
--- every framework - who is online, give them money, set their job. Only the
--- wording differs. Keeping that wording in one file per framework means a
--- new core is a new file, not a new set of if-branches through the routes.
+-- Adapter contract and registry: one file per framework instead of branches in the routes
 
 Bridge = {
     adapters = {},   -- id -> adapter
-    active = nil,    -- the one that was picked
+    active = nil,    -- selected at startup
 }
 
--- Every adapter provides these. Anything it cannot do returns nil, and the
--- route above turns that into an honest "not supported by this framework"
--- rather than pretending it worked.
---
---   id            string, e.g. 'qbox'
---   label         human readable, appears in the panel diagnostics
---   identityKey   'citizenid' for the QB family, 'identifier' for ESX -
---                 the backend needs to know which column it is keyed on
---   detect()      -> boolean   is this framework running?
---   init()        -> boolean   grab the core object; false if that failed
---   getPlayer(id) -> player | nil
---   getSource(p)  -> number
---   getOnline()   -> { [id] = source }
---   addMoney(p, account, amount, reason)    -> boolean
---   removeMoney(p, account, amount, reason) -> boolean
---   setJob(p, name, grade)                  -> boolean
---   setMetadata(p, key, value)              -> boolean
---   revive(p, src)                          -> boolean
---   heal(p, src, withArmor)                 -> boolean
---   notify(src, message, kind)              -> boolean
---   dumpShared() -> { ['jobs.json'] = table, ... }
---
--- Items are handled centrally in items.lua, because which inventory resource
--- runs matters more there than which core does.
+-- Unsupported operations return false/nil: the route reports "not supported", never success
+-- Items live in bridge/items.lua: the inventory resource matters more there than the core
 
+---@class VeritasAdapter
+---@field id string e.g. 'qbox'
+---@field label string shown in the panel diagnostics
+---@field identityKey 'citizenid'|'identifier' column the backend keys characters on
+---@field detect fun(): boolean
+---@field init fun(): boolean grabs the core object; false if unreachable
+---@field getPlayer fun(id: string): table|nil
+---@field getSource fun(player: table): number
+---@field getOnline fun(): table<string, number> id -> source
+---@field addMoney fun(player: table, account: string, amount: number, reason: string): boolean
+---@field removeMoney fun(player: table, account: string, amount: number, reason: string): boolean
+---@field setJob fun(player: table, name: string, grade: number): boolean
+---@field setMetadata fun(player: table, key: string, value: any): boolean
+---@field revive fun(player: table, src: number): boolean
+---@field heal fun(player: table, src: number, withArmor: boolean): boolean
+---@field notify fun(src: number, message: string, kind: string): boolean
+---@field dumpShared fun(): table<string, table> file name -> data, e.g. ['jobs.json']
+
+---@param adapter VeritasAdapter
 function Bridge.register(adapter)
     Bridge.adapters[adapter.id] = adapter
 end
 
--- Picks the adapter. An explicit Config.Framework wins; otherwise the first
--- one whose detect() says yes, in a fixed order so the result does not
--- depend on table iteration order.
+-- Config.Framework wins; else the first detect() hit in fixed ORDER (not table order)
 local ORDER = { 'qbox', 'qbcore', 'esx', 'custom' }
 
 function Bridge.select()
@@ -80,8 +68,7 @@ function Bridge.select()
     return nil
 end
 
--- Small helper for the routes: the active adapter, or nil with a message
--- the caller can pass straight back to the panel.
+-- Active adapter, or nil plus a message for the panel
 function Bridge.require()
     if Bridge.active then return Bridge.active end
     return nil, 'No framework adapter is active on the FiveM server'

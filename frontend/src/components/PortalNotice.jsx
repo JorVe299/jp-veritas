@@ -2,18 +2,8 @@ import CooldownLabel from './CooldownLabel';
 import StatusNote from './StatusNote';
 import { useCooldown } from '../lib/useCooldown';
 
-/**
- * A failed request, turned into one sentence a player can act on.
- *
- * Every status the portal can get back means something different, and only
- * two of them mean anything is broken. Lumping them into "could not be
- * loaded" would tell a player who is simply not in the Discord to go and
- * report a bug.
- *
- * Where the server sends words of its own they are used: `error` as the
- * sentence and `hint` as the detail. What stands here is the fallback for
- * when it does not - never a guess about what the server meant.
- */
+// One wording per status: lumped together, a 403 would read as a bug to report
+// The server's `error`/`hint` win; these are fallbacks, never a guess at its meaning
 function wordsFor(code, error, hint) {
     switch (code) {
         case 401:
@@ -31,9 +21,7 @@ function wordsFor(code, error, hint) {
                     || 'Your Discord account is signed in, but it is not cleared for Veritas ID.',
             };
 
-        // Deliberately the same answer whether the character does not exist
-        // or belongs to somebody else. The wording must not lean towards
-        // either, or it would leak the difference the server withholds.
+        // Same wording for missing and not-yours: must not leak what the server withholds
         case 404:
             return {
                 tone: 'warn',
@@ -41,8 +29,7 @@ function wordsFor(code, error, hint) {
                 detail: 'Nothing on your account matches this link. Go back to your characters and pick one from the list.',
             };
 
-        // The portal does not speak this server's framework. Plainly, in the
-        // server's own words: nobody here can work out more than it said.
+        // Unsupported framework: the server's words only, nothing added
         case 501:
             return {
                 tone: 'warn',
@@ -50,8 +37,7 @@ function wordsFor(code, error, hint) {
                 detail: hint,
             };
 
-        // No response at all. That is the network or a stopped backend, and
-        // it is expressly not "you have nothing here".
+        // No response (network or backend down): never "you have nothing here"
         case null:
         case undefined:
             return {
@@ -72,9 +58,8 @@ function wordsFor(code, error, hint) {
 }
 
 /**
- * `cooldownKey` lets a caller share the retry's cooldown with its own retry
- * buttons for the same request. Left out, every notice on the portal shares
- * one: the point is how often the backend is asked, not which card asks.
+ * `cooldownKey` shares the retry cooldown with the caller's own retry buttons
+ * Default: one cooldown portal-wide; what counts is how often the backend is asked
  */
 export default function PortalNotice({
     code = null,
@@ -86,9 +71,7 @@ export default function PortalNotice({
     const note = wordsFor(code, error, hint);
     const cooldown = useCooldown(cooldownKey);
 
-    // Trying again only helps where the answer could turn out differently.
-    // A 403 will be a 403 again, and a button that changes nothing is worse
-    // than none at all.
+    // Retry only where the answer can change; a 403 stays a 403
     const retryable = Boolean(onRetry) && (code === null || code === undefined || code >= 500);
 
     const retry = () => {

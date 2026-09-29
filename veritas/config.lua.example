@@ -1,37 +1,19 @@
--- veritas/config.lua.example
--- Settings of the bridge resource. Copy this to config.lua on your server
--- and fill it in. The config.lua itself is gitignored, so a `git pull` never
--- overwrites your token - same idea as backend/.env.
+-- Bridge settings; copy to config.lua (gitignored like backend/.env, so deploys keep the token)
 
 Config = {}
 
--- Which framework to use. 'auto' detects it from the resources that are
--- running; set it explicitly if you run more than one core at the same time.
---   'auto' | 'qbox' | 'qbcore' | 'esx' | 'custom'
+-- 'auto' | 'qbox' | 'qbcore' | 'esx' | 'custom'; set explicitly when several cores run
 Config.Framework = 'auto'
 
--- Shared secret between backend and bridge, checked on every route once
--- Config.RequireTokenEverywhere below is true.
---
--- The bridge hangs off the FiveM HTTP port, and that port is open to the
--- internet on any public server. Without the token, anyone who can reach it
--- can move money, change inventories and kick players through it. Put the
--- same value in BRIDGE_TOKEN in the backend .env. Generate one with:
---   openssl rand -hex 32
+-- SECURITY: shared secret, same value as BRIDGE_TOKEN in backend/.env; the HTTP port is public
+-- Generate: openssl rand -hex 32
 Config.Token = ''
 
--- When true, every route requires the token. While false the built-in routes
--- do not check it at all, so leave it false only while you are still setting
--- up.
+-- true: every route needs the token; false leaves the built-in routes open (setup only)
 Config.RequireTokenEverywhere = false
 
--- Extra data the panel should dump to JSON on resource start, on top of the
--- framework defaults (jobs, gangs, items, vehicles). The value is a function
--- that returns a table; the key becomes the file name.
---
--- The file lands in the resource folder beside the four default dumps. The
--- backend loads only those four, so anything added here is for your own
--- tooling, not for the panel's pickers.
+-- Extra JSON dumps on resource start (file name -> function returning a table)
+-- For your own tooling; the backend reads only jobs, gangs, items and vehicles
 Config.ExtraDumps = {
     -- ['weapons.json'] = function() return exports.ox_inventory:Items() end,
 }

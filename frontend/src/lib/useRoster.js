@@ -5,9 +5,7 @@ import { jobGroup } from '../utils/format';
 export const PAGE_SIZE = 24;
 const DEBOUNCE_MS = 400;
 
-// A single result object instead of many separate states: that way data,
-// loading state and the query they belong to cannot drift apart. "Someone is
-// typing right now" is derived from that instead of being stored.
+// One object: data, status and their query cannot drift apart; staleness is derived
 const INITIAL = {
     status: 'loading', // 'loading' | 'ready' | 'error'
     players: [],
@@ -16,20 +14,14 @@ const INITIAL = {
     query: { search: '', page: 1 },
 };
 
-/**
- * `enabled` is the players.view permission. Without it /api/players answers
- * with 403, and the wall would report an error that is none - so it is not
- * loaded in the first place and says instead that the role is not
- * allowed to see it.
- */
+/** enabled: the players.view permission; /api/players would answer 403 without it */
 export function useRoster(search, page, refreshToken, enabled = true) {
     const [result, setResult] = useState(INITIAL);
 
     useEffect(() => {
         if (!enabled) return undefined;
 
-        // cancelled guards against race conditions: while typing fast, a
-        // slower older answer must not overwrite the newer one.
+        // A slower, older answer must not overwrite a newer one
         let cancelled = false;
 
         const timer = setTimeout(async () => {
@@ -64,23 +56,15 @@ export function useRoster(search, page, refreshToken, enabled = true) {
         };
     }, [search, page, refreshToken, enabled]);
 
-    // Derived, not state: is the wall still showing an old result?
     const isStale = result.query.search !== search || result.query.page !== page;
 
-    // Without the permission nothing is loaded - and then no loading state
-    // is true either. 'forbidden' is a case of its own, not an error, not "empty".
+    // 'forbidden' is its own case: not loading, not an error, not empty
     if (!enabled) return { ...INITIAL, status: 'forbidden', isStale: false };
 
     return { ...result, isStale };
 }
 
-/**
- * Splits the returned page into the rails of the wall.
- *
- * Important for how the surface is worded: what gets grouped is exactly what
- * this page delivered - not the database. The headings must therefore never
- * sound as though they were complete.
- */
+/** Groups this page only, not the database: rail headings must never sound complete */
 export function buildRails(players, bridgeDown) {
     if (!players || players.length === 0) return [];
 
@@ -97,8 +81,7 @@ export function buildRails(players, bridgeDown) {
         rest.push(...players);
     }
 
-    // Group by employer. Order: largest group first, alphabetical on a tie,
-    // so that paging does not jump around.
+    // Largest first, then alphabetical: a stable order while paging
     const byJob = new Map();
     rest.forEach((p) => {
         const key = jobGroup(p);
@@ -111,9 +94,7 @@ export function buildRails(players, bridgeDown) {
         return a[0].localeCompare(b[0]);
     });
 
-    // Without this threshold a page falls apart into a dozen rails with one
-    // entry each - which reads worse than no grouping at all.
-    // Everything that stands alone moves to the end together.
+    // Singletons share one final rail: a dozen one-entry rails read worse than none
     const MIN_RAIL = 2;
     const singles = [];
 
@@ -128,7 +109,7 @@ export function buildRails(players, bridgeDown) {
     if (singles.length > 0) {
         rails.push({
             id: 'other',
-            // Only one entry left: then its own heading is the honest one.
+            // A lone entry keeps its own heading
             title: singles.length === 1 ? jobGroup(singles[0]) : 'Other roles',
             tone: 'plain',
             players: singles,

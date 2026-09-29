@@ -7,11 +7,8 @@ import { jobTitle } from '../utils/format';
 import { PAGE_SIZE, useRails } from '../lib/useRoster';
 
 /**
- * The wall: rails of tiles running horizontally.
- *
- * The rails expressly describe only the page that was loaded, not the
- * database - the API returns no grand total. The headings are therefore
- * worded so that they claim nothing that has not been verified.
+ * Citizen wall: horizontal rails of tiles
+ * Rails describe the loaded page only: the API returns no grand total
  */
 export default function CitizenWall({
     players,
@@ -119,21 +116,14 @@ export default function CitizenWall({
     );
 }
 
-/* -------------------------------------------------------------------------
-   One rail
-   ------------------------------------------------------------------------- */
+// --- Rail -----------------------------------------------------------------
 
-/**
- * One rail. Exported because the landing page shows the same thing - the
- * citizens on the server right now - and a second rail that merely looked
- * like this one would drift from it at the first change.
- */
+/** Exported for the landing page's online rail: one component, no drifting copy */
 export function Rail({ rail, bridgeDown, selectedId, onSelect }) {
     const trackRef = useRef(null);
     const [edges, setEdges] = useState({ start: false, end: false });
 
-    // The arrows only appear when there is anything at all to see in that
-    // direction. Otherwise short rails would carry dead buttons.
+    // Arrows only where there is more to see: no dead buttons on short rails
     const measure = useCallback(() => {
         const el = trackRef.current;
         if (!el) return;
@@ -207,14 +197,9 @@ export function Rail({ rail, bridgeDown, selectedId, onSelect }) {
     );
 }
 
-/* -------------------------------------------------------------------------
-   One tile
-   ------------------------------------------------------------------------- */
+// --- Tile -----------------------------------------------------------------
 
-// A tile is the narrowest box a balance is ever put in - about 70px beside
-// its key at the mid breakpoint. Up to ten million the figure stays exact
-// (and shrinks a little if it has to); from there it goes compact, with the
-// exact figure in the title. The billboard shows it in full.
+// Narrowest balance box (~70px at mid breakpoint); the billboard shows the exact figure
 const TILE_COMPACT_FROM = 1e7;
 
 function Tile({ player, statusUnknown, isSelected, onSelect }) {
@@ -252,14 +237,10 @@ function Tile({ player, statusUnknown, isSelected, onSelect }) {
                 <span className="tile__job">{jobTitle(player)}</span>
             </span>
 
-            {/* Only visible on focus: the details you would otherwise have
-                to open the record for. */}
+            {/* Shown on focus only: details without opening the record */}
             <span className="tile__reveal" aria-hidden="true">
                 <span className="tile__revealinner">
-                    {/* One line: the reveal rides up by a fixed distance,
-                        so a second line would slide under the caption. The
-                        id is spoken in full below and stands on the
-                        billboard once the tile is opened. */}
+                    {/* One line, clipped: a second would slide under the caption */}
                     <span className="tile__cid u-mono u-clip" title={player.citizenid}>
                         {player.citizenid}
                     </span>
@@ -291,9 +272,7 @@ function Tile({ player, statusUnknown, isSelected, onSelect }) {
     );
 }
 
-/* -------------------------------------------------------------------------
-   States
-   ------------------------------------------------------------------------- */
+// --- States ---------------------------------------------------------------
 
 function SkeletonRail() {
     return (

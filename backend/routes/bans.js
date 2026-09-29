@@ -1,9 +1,5 @@
-// backend/routes/bans.js
-// Ban management on the bans table of Qbox/QBCore.
-//
-// A ban does not hit the character but the identifiers behind it: license,
-// discord and ip. That is why we read them from users/players instead of
-// having them typed in - a mistyped license id bans nobody.
+// Ban routes: merged list (both records), per-player bans, issue and lift (`bans` table only)
+// Identifiers come from users/players, never typed in: a mistyped license bans nobody
 const express = require('express');
 const { db, tableExists, pickExistingColumns } = require('../utils/dbHandler');
 const { isPlayerOnline, callBridge } = require('../utils/bridge');
@@ -14,9 +10,7 @@ const { identifiersForCitizen, citizensByIdentifier } = require('../utils/identi
 const router = express.Router();
 const TABLE = 'bans';
 
-// Shaping a bans row lives in utils/banlist.js: the citizen portal builds
-// on the same rows, and two copies of "what counts as permanent" would
-// drift apart exactly once.
+// Shared with the portal (utils/banlist.js): one definition of "permanent"
 const { shapeBan } = banlist;
 
 async function ensureTable(res) {
@@ -28,8 +22,7 @@ async function ensureTable(res) {
     return false;
 }
 
-// Collect a player's identifiers. players.userId points at users, which is
-// where license and discord live.
+// players.userId -> users, where license and discord live
 async function identityFor(citizenid) {
     const [rows] = await db.execute(
         `SELECT p.citizenid, p.name, p.license AS playerLicense,
@@ -51,16 +44,8 @@ async function identityFor(citizenid) {
 }
 
 // --- Both records, one list -----------------------------------------------
-// The two ban records answer the same question and nobody asking it cares
-// which file the answer came out of. So they are merged - but every row
-// keeps its source, because only the database rows can be lifted from
-// this panel, and an admin who mixes the two goes looking for a button
-// that is not there.
-//
-// Neither record stores a citizenid. Filtering "by citizen" therefore
-// resolves that person to their identifiers first and matches on those;
-// a near miss on an identifier is not a weaker match, it is a different
-// person, so the comparison is exact.
+// Rows keep their source: only database bans can be lifted here
+// Citizen filter = exact identifier match (no record stores a citizenid)
 const MERGE_CEILING = 2000;
 
 router.get('/api/bans/all', async (req, res) => {
@@ -74,7 +59,7 @@ router.get('/api/bans/all', async (req, res) => {
     const onlySource = ['database', 'txadmin'].includes(req.query.source) ? req.query.source : null;
 
     try {
-        // --- Who, if the question is about one person -------------------
+        // Citizen filter: resolve to identifiers
         let identifierSet = null;
         let identity = null;
         if (citizenid) {
@@ -83,7 +68,7 @@ router.get('/api/bans/all', async (req, res) => {
             identity = { citizenid, identifiers: owned.length };
         }
 
-        // --- The database half ------------------------------------------
+        // Database record
         const database = { available: false, count: 0 };
         let rows = [];
         if (onlySource !== 'txadmin' && await tableExists(TABLE)) {
@@ -97,10 +82,7 @@ router.get('/api/bans/all', async (req, res) => {
             database.reason = `Table '${TABLE}' does not exist in this database`;
         }
 
-        // --- The txAdmin half -------------------------------------------
-        // Its availability is reported separately and never folded into
-        // the list. A merged list that quietly drops half its sources is
-        // the exact failure this whole feature exists to undo.
+        // txAdmin record; availability reported separately, never silently dropped from the list
         const txState = { available: false, count: 0 };
         let txRows = [];
         if (onlySource !== 'database') {
@@ -119,24 +101,20 @@ router.get('/api/bans/all', async (req, res) => {
             }
         }
 
-        // --- One list ----------------------------------------------------
+        // Merge and filter
         let merged = [...rows, ...txRows];
         if (identifierSet) merged = merged.filter(r => banlist.belongsTo(r, identifierSet));
         if (activeOnly) merged = merged.filter(r => r.active);
 
-        // A citizenid typed into the search box has to find that person's
-        // bans. Neither record stores one, and the reverse lookup that puts
-        // citizenids on rows runs later, on the page being sent - so at this
-        // point every row's citizenid is still null and matching on it would
-        // silently find nothing. Resolve the term the same way the explicit
-        // citizen filter does and let it match on identifiers instead.
+        // A citizenid-shaped search term matches that person's identifiers
+        // (row citizenids are only resolved later, for the page being sent)
         let searchIdentifiers = null;
         if (needle && /^[A-Za-z0-9_-]{3,32}$/.test(rawQuery)) {
             try {
                 const owned = await identifiersForCitizen(rawQuery);
                 if (owned.length > 0) searchIdentifiers = new Set(owned);
             } catch (e) {
-                // A failed lookup narrows the search rather than breaking it.
+                // Lookup failure: plain text search only
                 console.warn('[Bans] citizen lookup for search term failed:', e.message);
             }
         }
@@ -154,8 +132,7 @@ router.get('/api/bans/all', async (req, res) => {
         const activeCount = merged.filter(r => r.active).length;
         const slice = merged.slice((page - 1) * limit, page * limit);
 
-        // --- Put a face on the page --------------------------------------
-        // Only for the rows actually being sent, and in one query.
+        // Owners for the sent page only, in one query
         const owners = await citizensByIdentifier(slice.flatMap(r => r.identifiers));
         for (const row of slice) {
             const found = [];
@@ -165,9 +142,7 @@ router.get('/api/bans/all', async (req, res) => {
                 }
             }
             row.characters = found;
-            // A ban belongs to an account, and an account can hold several
-            // characters. One citizenid is only stated where there is
-            // exactly one; otherwise the list says how many there are.
+            // citizenid only when exactly one character matches; the list carries all of them
             row.citizenid = found.length === 1 ? found[0].citizenid : null;
             if (!row.name && found.length > 0) row.name = found[0].name;
         }
@@ -183,17 +158,14 @@ router.get('/api/bans/all', async (req, res) => {
             filter: {
                 citizenid: citizenid || null,
                 q: rawQuery || null,
-                // So the page can say the search term was understood as a
-                // person rather than as free text that happened to hit.
+                // Search term resolved to a person, not free text
                 qMatchedCitizen: Boolean(searchIdentifiers),
                 active: activeOnly,
                 include: wantWarnings ? 'warnings' : 'bans',
                 source: onlySource,
             },
             identity,
-            // Said plainly rather than left to be noticed: the table has no
-            // created-at column, so those rows cannot take part in a sort
-            // by date and are ordered by id among themselves.
+            // No created-at column: undated rows sort by id after the dated ones
             sort: 'In force first, then newest. The bans table records no date; those rows follow the dated ones.',
         });
     } catch (e) {
@@ -210,8 +182,7 @@ router.get('/api/players/:citizenid/bans', async (req, res) => {
         const who = await identityFor(req.params.citizenid);
         if (!who) return res.status(404).json({ error: 'Player not found' });
 
-        // Without identifiers there can be no matching ban either - then an
-        // empty list is the right answer, not an error.
+        // No identifiers: no ban can match; empty list, not an error
         const keys = [who.license, who.discord].filter(Boolean);
         if (keys.length === 0) {
             return res.json({ bans: [], identity: who, count: 0 });
@@ -282,9 +253,7 @@ router.post('/api/manage/ban', async (req, res) => {
             Object.values(payload)
         );
 
-        // Someone being banned while they are playing belongs off the
-        // server - otherwise the ban only bites on their next attempt to
-        // connect.
+        // Kick if online, else the ban only bites on the next connect
         let kicked = false;
         if (await isPlayerOnline(citizenid)) {
             try {

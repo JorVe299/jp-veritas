@@ -27,9 +27,6 @@ const NOTIFY_TYPES = [
     { id: 'error', label: 'Error' },
 ];
 
-// Raw world coordinates are not operable - nobody knows off the top of
-// their head where 441/-982 is. Three places that come up in an admin's
-// day are therefore ready as buttons and write the numbers into the fields.
 const DESTINATIONS = [
     { id: 'mrpd', name: 'Mission Row PD', x: 441.0, y: -982.0, z: 30.7 },
     { id: 'pillbox', name: 'Pillbox Hospital', x: 298.0, y: -584.0, z: 43.3 },
@@ -46,23 +43,10 @@ const OFFLINE_LINE = 'Live actions reach the running game, so they need the citi
     + 'the server. The buttons stay disabled until they connect.';
 
 /**
- * Interventions in the running game, and the whereabouts.
- *
- * Two cards, because the two halves carry a different truth value: the
- * actions only exist while someone is connected - offline they are simply
- * not possible. The position, by contrast, is information offline too: it
- * says where the character logged out. Putting both in one card would have
- * devalued the one half along with the other.
- *
- * Not connected therefore means: the buttons stay and are disabled, with a
- * line that names the reason. Cleared away, they would leave open the
- * question of whether the action exists at all.
+ * Live actions and position, as two cards: only the position means something offline
+ * Offline: buttons stay disabled with a reason; hidden, they would seem not to exist
  */
 export default function LiveActionsManager({ selectedPlayer, onApplied }) {
-    // The position is information and hangs off players.view, which is what
-    // gets this card mounted in the first place. Intervening - kicking,
-    // reviving, healing, teleporting, notifying - hangs off actions.live and
-    // is independent of that.
     const { can } = useCan();
     const canAct = can('actions.live');
 
@@ -78,8 +62,7 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
 
     const res = usePlayerResource(fetchPlayerPosition, citizenid, version);
 
-    // The position route reports the connection state fresh. As long as it
-    // has not answered yet, the state from the wall applies.
+    // Position route's answer is fresher than the wall's state
     const online = res.status === 'ready'
         ? res.data?.online === true
         : Boolean(selectedPlayer?.isOnline);
@@ -87,22 +70,14 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
     const position = res.data?.position || null;
     const reload = () => setVersion((v) => v + 1);
 
-    // Only the button waits out a cooldown. The reloads after a kick, a
-    // teleport or a 409 are the card keeping itself honest and stay
-    // unthrottled. One key for every citizen: the point is the request
-    // rate, not fairness between players.
+    // Only the button is throttled, with one key for all citizens: it caps the request rate
     const refreshCooldown = useCooldown('live-position-refresh');
     const refreshByHand = () => {
         refreshCooldown.start();
         reload();
     };
 
-    /**
-     * Every action runs through here. A 409 is not a bug in the program but
-     * the information that the citizen has meanwhile left the server - in
-     * that case the connection state is pulled along right away, so the card
-     * does not keep claiming the opposite.
-     */
+    // 409: the citizen left meanwhile; reload so the card stops claiming they are online
     const run = async (key, call, logText, failTitle) => {
         setBusy(key);
         setFeedback(null);
@@ -173,9 +148,7 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
                 <div className="panel__body">
                     {!canAct && <PermissionLine what="act on players in the running game" />}
 
-                    {/* Two different reasons why nothing works, and they
-                        may stand side by side: not being allowed is not the
-                        same as not being able. */}
+                    {/* Can stand beside the PermissionLine: not allowed is not unable */}
                     {!online && <p className="field__hint">{OFFLINE_LINE}</p>}
 
                     <div className="field">
@@ -355,15 +328,10 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
                         </>
                     )}
 
-                    {/* The teleport is an intervention, not a read - it
-                        needs actions.live even though the position above it
-                        is freely viewable. Hence the line in this card too:
-                        here it applies to the fields below. */}
+                    {/* Teleport needs actions.live though the position is free to view */}
                     {!canAct && <PermissionLine what="teleport players" />}
 
-                    {/* key remount: as soon as a new position arrives, the
-                        fields start with it. No sync effect, no setState in
-                        an effect - the key takes care of it. */}
+                    {/* Keyed by position: new coordinates remount the form, no sync effect */}
                     <TeleportForm
                         key={`tp-${positionKey(position)}`}
                         start={position}
@@ -402,12 +370,9 @@ function positionHint(res, online) {
     return online ? 'Where they are right now' : 'Where they logged out';
 }
 
-/* -------------------------------------------------------------------------
-   Teleport. The last known position sits in the fields as the starting
-   value - from there one can shift by a few metres without copying
-   coordinates from anywhere.
-   ------------------------------------------------------------------------- */
+// --- Teleport -------------------------------------------------------------
 
+// Starts at the last known position: nudging a few metres needs no copying
 function TeleportForm({ start, disabled, working, onSubmit }) {
     const [x, setX] = useState(start ? String(round(start.x)) : '');
     const [y, setY] = useState(start ? String(round(start.y)) : '');

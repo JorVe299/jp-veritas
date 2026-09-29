@@ -1,29 +1,18 @@
-// backend/utils/banlist.test.js
-//
-// Merging two ban records is easy to get subtly wrong in ways nobody sees
-// until it matters:
-//
-//   - a txAdmin row that looks liftable, so an admin hunts for a button
-//     that cannot exist
-//   - a sort that buries the ban actually keeping someone out
-//   - a "filter by citizen" that matches the wrong person because an
-//     identifier was compared loosely
-//
-// So the shape, the order and the matching are each pinned down here.
+// Pins the merged shape (source, liftability), the order and exact identifier matching
 
 const test = require('node:test');
 const assert = require('node:assert');
 
 const banlist = require('./banlist');
 
-// A row of the bans table, already through shapeBan().
+// `bans` row after shapeBan()
 const dbBan = (over) => ({
     id: 7, name: 'Jordan', license: 'license:AAA', discord: 'discord:111', ip: '1.2.3.4',
     reason: 'Cheating', bannedBy: 'StaffOne', expire: 0, expiresAt: null,
     permanent: true, active: true, ...over,
 });
 
-// A txAdmin action, already through shapeAction().
+// txAdmin action after shapeAction()
 const txBan = (over) => ({
     id: 'PERM-0001', type: 'ban', playerName: 'Jordan', reason: 'Cheating', author: 'StaffOne',
     identifiers: ['license:aaa', 'discord:111'],
@@ -31,7 +20,7 @@ const txBan = (over) => ({
     permanent: true, revoked: false, revokedAt: null, expired: false, active: true, ...over,
 });
 
-// --- Which record a row came from -----------------------------------------
+// --- Source ---------------------------------------------------------------
 
 test('only a database row says it can be lifted here', () => {
     assert.equal(banlist.fromDatabase(dbBan()).canLift, true);
@@ -47,15 +36,14 @@ test('every row names its source, and the keys cannot collide', () => {
 });
 
 test('the bans table is reported as undated rather than given a date', () => {
-    // Inventing one from the row id would be a number dressed as a fact.
+    // No date guessed from the row id
     const row = banlist.fromDatabase(dbBan());
     assert.equal(row.issuedAt, null);
     assert.equal(row.issuedAtKnown, false);
 });
 
 test('a database row is never marked as lifted', () => {
-    // That table has no revocation concept - lifting deletes the row - so
-    // a row that exists was not lifted, and must not read as though it was.
+    // No revocation concept (lifting deletes the row): an existing row is not revoked
     assert.equal(banlist.fromDatabase(dbBan({ active: false })).revoked, false);
 });
 
@@ -69,7 +57,7 @@ test('an identifier column that is empty produces no identifier', () => {
     assert.deepEqual(row.identifiers, ['license:aaa']);
 });
 
-// --- The order --------------------------------------------------------------
+// --- Order ----------------------------------------------------------------
 
 test('what is in force comes first, whatever the dates say', () => {
     const over = banlist.fromTxAdmin(txBan({ id: 'B', active: false, expired: true, issuedAt: '2026-09-20T00:00:00.000Z' }));
@@ -119,7 +107,7 @@ test('sorting leaves the caller\'s array alone', () => {
     assert.deepEqual(rows.map(r => r.key), before);
 });
 
-// --- Finding one person -----------------------------------------------------
+// --- Per-person matching --------------------------------------------------
 
 test('a citizen matches only on an identifier that is really theirs', () => {
     const row = banlist.fromTxAdmin(txBan({ identifiers: ['license:aaa'] }));
@@ -129,8 +117,7 @@ test('a citizen matches only on an identifier that is really theirs', () => {
 });
 
 test('a citizen with no identifiers matches nothing', () => {
-    // The honest outcome for a character whose account holds no ids: no
-    // ban can be shown to belong to them, and none is.
+    // No identifiers on the account: no ban belongs to them
     const row = banlist.fromTxAdmin(txBan());
     assert.equal(banlist.belongsTo(row, new Set()), false);
     assert.equal(banlist.belongsTo(row, null), false);
@@ -141,7 +128,7 @@ test('one shared identifier is enough', () => {
     assert.equal(banlist.belongsTo(row, new Set(['discord:111', 'fivem:9'])), true);
 });
 
-// --- Free text --------------------------------------------------------------
+// --- Free text ------------------------------------------------------------
 
 test('search reaches the fields a person would type', () => {
     const row = banlist.fromTxAdmin(txBan());

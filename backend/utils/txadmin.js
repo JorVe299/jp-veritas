@@ -1,40 +1,16 @@
-// backend/utils/txadmin.js
-// Reading txAdmin's record of bans and warnings.
-//
-// txAdmin keeps none of this in the game database. Its players, bans and
-// warnings live in a single JSON file beside the server, normally
-//
-//   <server>/txData/<profile>/data/playersDB.json
-//
-// which txAdmin itself writes. So this module reads a file rather than a
-// table, and it only ever reads. Nothing here writes to that store: two
-// processes writing the same JSON file is exactly how a ban list gets
-// truncated, and a ban list is not something to be careless with.
-//
-// A txAdmin action is tied to identifiers, not to a character:
-//
-//   { id, type: 'ban'|'warn', ids: ['license:..','discord:..'],
-//     reason, author, timestamp, expiration, revocation: {...} }
-//
-// which is why the caller passes in the identifiers of an account and gets
-// back what was issued against any of them.
+// Read-only access to txAdmin's playersDB.json (bans and warnings live there, not in the DB)
+// Never writes: two writers on one JSON file is how a ban list gets truncated
+// Actions are keyed by identifiers, not characters: { id, type, ids, reason, author, ... }
 const fs = require('fs');
 const path = require('path');
 
-// One explicit setting. It may point at the JSON file, at the profile
-// folder, or at txData itself - all three are things a person could
-// reasonably have to hand, and guessing wrong should not be a setup step.
+// Accepts the file, a profile folder or txData itself
 const CONFIGURED = (process.env.TXADMIN_DB_PATH || '').trim();
 
-// Whether a player is told which admin issued the ban. Off by default:
-// the reason is the player's business, the name of the staff member who
-// typed it is a decision for the server owner, and handing it out
-// unasked is how a moderator ends up with a direct message.
+// Off by default: players see the reason, not which staff member issued it
 const SHOW_AUTHOR = process.env.TXADMIN_SHOW_BAN_AUTHOR === 'true';
 
-// A safety valve, not a tuning knob. playersDB.json grows with the server;
-// a file far past this is either a very large community that needs the
-// path pointed at something else, or not the file we think it is.
+// Safety valve: a larger file is a huge community or the wrong file
 const MAX_BYTES = 256 * 1024 * 1024;
 
 const FILE_NAME = 'playersDB.json';
@@ -54,8 +30,7 @@ function fileAt(candidate) {
     const direct = path.join(candidate, 'data', FILE_NAME);
     if (fs.existsSync(direct)) return direct;
 
-    // txData itself: pick the profile that has the file. 'default' first,
-    // because that is what txAdmin creates unless someone renamed it.
+    // txData itself: first profile with the file; 'default' (txAdmin's own name) first
     let entries;
     try {
         entries = fs.readdirSync(candidate, { withFileTypes: true })
@@ -72,14 +47,10 @@ function fileAt(candidate) {
     return null;
 }
 
-// Without a configured path, look for a txData folder near the panel. The
-// usual case is the panel living inside or beside the server directory, so
-// a few levels up covers it - and when it does not, the setting exists.
+// No setting: look for txData in backend/ and up to four parent folders
 function discover() {
     if (CONFIGURED) {
-        // A relative setting resolves against the backend folder rather
-        // than the working directory, for the same reason the .env does:
-        // where the panel was started from should not change what it reads.
+        // Relative to backend/, not the cwd (same reason as the .env path)
         const found = fileAt(path.resolve(__dirname, '..', CONFIGURED));
         return found
             ? { path: found, source: 'TXADMIN_DB_PATH' }
@@ -103,9 +74,7 @@ function discover() {
 }
 
 // --- Loading and caching --------------------------------------------------
-// The file is re-read only when it changes on disk. txAdmin rewrites it on
-// every action, so mtime and size together are a reliable enough signal,
-// and the alternative - parsing tens of megabytes per request - is not.
+// Re-parsed only when mtime or size changes (txAdmin rewrites the file on every action)
 
 let cache = null; // { path, mtimeMs, size, index, total }
 
@@ -113,9 +82,7 @@ function identifierKey(value) {
     return String(value || '').trim().toLowerCase();
 }
 
-// identifier -> [action], built once per file version. Actions are shared
-// between entries rather than copied: one action usually carries several
-// identifiers for the same person.
+// identifier -> [action], once per file version; one action appears under each of its ids
 function buildIndex(actions) {
     const index = new Map();
     for (const action of actions) {
@@ -170,9 +137,7 @@ async function load() {
     try {
         parsed = JSON.parse(await fs.promises.readFile(located.path, 'utf8'));
     } catch (e) {
-        // A half-written file during a txAdmin save looks exactly like this.
-        // Saying so beats reporting an empty ban history, which would be a
-        // statement about the player rather than about the file.
+        // Typical mid-save state; must not read as an empty ban history
         return {
             ok: false,
             reason: 'txAdmin\'s player database could not be parsed',
@@ -189,8 +154,7 @@ async function load() {
         };
     }
 
-    // Only the index is kept. The 'players' array is the bulk of the file
-    // and nothing here needs it.
+    // Only the index is kept; 'players' is the bulk of the file and unused
     cache = {
         path: located.path,
         mtimeMs: stat.mtimeMs,
@@ -209,9 +173,8 @@ function toIso(seconds) {
     return new Date(n * 1000).toISOString();
 }
 
-// txAdmin writes `expiration: false` for a permanent ban and a unix
-// timestamp otherwise. A revoked action keeps its row and gains a
-// revocation timestamp rather than being deleted.
+// expiration: false = permanent, else unix seconds
+// Revoked actions stay in the file with a revocation timestamp
 function shapeAction(action, nowSeconds) {
     const now = Number.isFinite(nowSeconds) ? nowSeconds : Math.floor(Date.now() / 1000);
     const expiration = action?.expiration;
@@ -230,23 +193,20 @@ function shapeAction(action, nowSeconds) {
         revoked,
         revokedAt: toIso(revokedAt),
         expired,
-        // The one field a player actually acts on: is this still in force?
+        // In force now: the field a player acts on
         active: !revoked && !expired,
     };
 
-    // Deliberately absent unless switched on: who issued it. Also absent
-    // always: hwids and the identifier list, which say more about the
-    // account than the ban does.
+    // SECURITY: author only with TXADMIN_SHOW_BAN_AUTHOR; hwids and identifiers never
     if (SHOW_AUTHOR) shaped.author = typeof action?.author === 'string' ? action.author : null;
 
     return shaped;
 }
 
-// --- The one thing this module is for -------------------------------------
+// --- Queries --------------------------------------------------------------
 
 /**
- * Every txAdmin action recorded against any of these identifiers.
- *
+ * Every txAdmin action recorded against any of these identifiers
  * @param {string[]} identifiers  e.g. ['discord:123', 'license:abc']
  * @param {object}   [options]
  * @param {string[]} [options.types]  which action types to return
@@ -258,8 +218,7 @@ async function actionsFor(identifiers, options = {}) {
     const types = Array.isArray(options.types) ? options.types : ['ban'];
     const wanted = new Set(types);
 
-    // One action can be indexed under several of this account's
-    // identifiers, so collect by identity before shaping.
+    // Dedupe by object identity: one action sits under several identifiers
     const seen = new Set();
     const picked = [];
     for (const identifier of identifiers || []) {
@@ -287,21 +246,11 @@ async function actionsFor(identifiers, options = {}) {
 }
 
 /**
- * The whole record, for staff rather than for one player.
- *
- * Deliberately a different shape from actionsFor(): an admin looking at a
- * ban list needs the name it was issued against, who issued it and which
- * identifiers it covers, none of which a player is shown about themselves.
- * The panel already prints licence and Discord id in its own ban list, so
- * this reveals nothing that surface does not.
- *
- * Searching and filtering happen once both records are merged - in
- * routes/bans.js, with the helpers in utils/banlist.js - so this hands over
- * everything of the wanted types.
- *
+ * Whole record for staff: adds name, author, identifiers (already shown in the panel's list)
+ * Search and filtering happen after merging (routes/bans.js, utils/banlist.js)
  * @param {object}   [options]
  * @param {string[]} [options.types]   which action types to include
- * @param {number}   [options.limit]   a busy server's store is long
+ * @param {number}   [options.limit]   default 200, max 1000
  */
 async function allActions(options = {}) {
     const state = await load();
@@ -311,8 +260,7 @@ async function allActions(options = {}) {
     const limit = Math.min(Math.max(parseInt(options.limit, 10) || 200, 1), 1000);
     const now = Math.floor(Date.now() / 1000);
 
-    // The index holds each action once per identifier, so collect by
-    // identity before doing anything else.
+    // Dedupe: the index holds each action once per identifier
     const seen = new Set();
     for (const bucket of state.index.values()) {
         for (const action of bucket) seen.add(action);
@@ -327,8 +275,7 @@ async function allActions(options = {}) {
         if (!wanted.has(type)) continue;
 
         const shaped = shapeAction(action, now);
-        // Staff see what a player does not: who it was issued against and
-        // by whom. Not a leak - the panel's own ban list shows the same.
+        // Staff-only fields; the panel's own ban list shows the same data
         shaped.playerName = typeof action.playerName === 'string' ? action.playerName : null;
         shaped.author = typeof action.author === 'string' ? action.author : null;
         shaped.identifiers = Array.isArray(action.ids) ? action.ids.map(identifierKey) : [];
@@ -345,15 +292,14 @@ async function allActions(options = {}) {
         actions: rows.slice(0, limit),
         count: total,
         activeCount,
-        // So the page can say "showing 200 of 4000" rather than quietly
-        // pretending the list ends there.
+        // Lets the page say "showing 200 of 4000"
         truncated: total > limit,
         limit,
         path: state.path,
     };
 }
 
-/** Whether the store can be reached at all - for the diagnostics panel. */
+/** Store reachability, for the diagnostics panel */
 async function status() {
     const state = await load();
     return state.ok
@@ -362,16 +308,8 @@ async function status() {
 }
 
 /**
- * Why a match did or did not happen.
- *
- * When a ban that plainly exists does not appear for the person it was
- * issued against, exactly two things can be wrong, and neither is visible
- * from outside: the store may not key that action by anything this account
- * is known by, or the account may resolve to fewer identifiers than it
- * should. This answers both.
- *
- * It reports which KINDS of identifier the store uses and whether each of
- * THIS account's identifiers appears - never anyone else's values.
+ * Match diagnostics: identifier kinds the store uses, and which of THIS account's ids it holds
+ * Never reveals other accounts' identifier values
  */
 async function describe(identifiers) {
     const state = await load();

@@ -8,29 +8,8 @@ import { formatMoney } from '../utils/format';
 const MEMBER_LIMIT = 200;
 
 /**
- * One organisation as a row: a police force, a taxi firm, a gang.
- *
- * Three distinctions carry this row, and all three are easy to flatten by
- * accident:
- *
- * 1. `activeMembers` and `memberships` are not two readings of one number.
- *    The first counts characters carrying this job on their record, the
- *    second counts rows in player_groups. On Qbox both exist and they can
- *    disagree - somebody set as police in one place and not the other. That
- *    disagreement is a fact about the server, so both numbers stand next to
- *    each other and the row says so when they differ.
- *
- * 2. `account: null` means no account row exists at all. It is not a
- *    balance of zero, and an admin hunting for missing setup needs to see
- *    which of the two it is.
- *
- * 3. Without accounts.view the server sends no account field at all. Then
- *    no money column appears - an empty one would suggest the balances are
- *    zero rather than unseen.
- *
- * The member list is only fetched once the row is opened. Thirty
- * organisations would otherwise mean thirty queries for a page nobody has
- * looked at yet.
+ * `activeMembers` (character jobs) and `memberships` (player_groups) may disagree: both shown
+ * `account: null` means no account row, not zero; without accounts.view no money column
  */
 export default function OrganisationLine({
     organisation,
@@ -45,7 +24,6 @@ export default function OrganisationLine({
     const label = organisation.label || name;
     const isGang = organisation.type === 'gang';
     const account = organisation.account ?? null;
-    // Distinguishes "the field is missing" from "the field says null".
     const hasAccountField = Object.prototype.hasOwnProperty.call(organisation, 'account');
 
     const active = Number(organisation.activeMembers) || 0;
@@ -56,7 +34,7 @@ export default function OrganisationLine({
 
     const grades = Number(organisation.gradeCount) || 0;
 
-    // Stable per organisation, so opening the row fires exactly one request.
+    // Stable per organisation: opening the row fires exactly one request
     const loadMembers = useCallback(
         () => fetchOrganisationMembers(name, { limit: MEMBER_LIMIT }),
         [name],
@@ -70,13 +48,7 @@ export default function OrganisationLine({
                 <span className="pill">{isGang ? 'Gang' : 'Job'}</span>
                 {account?.frozen && <span className="pill pill--debit">Frozen</span>}
 
-                {/* No money column at all without accounts.view: an empty
-                    one would read as "nothing in there".
-
-                    With it, three states and not two. A balance, an
-                    explicit null meaning no account row exists, and - only
-                    if the server sends no account field at all - nothing
-                    here, because then even "no account" would be a guess. */}
+                {/* No account field: nothing here, since even "No account" would be a guess */}
                 {moneyVisible && hasAccountField && (account
                     ? <span className="line__amount u-mono">{formatMoney(account.amount)}</span>
                     : <span className="pill pill--unknown line__badge">No account</span>
@@ -91,7 +63,6 @@ export default function OrganisationLine({
                 {moneyVisible && account && <span>{authorizedText(account)}</span>}
             </div>
 
-            {/* The two headcounts side by side rather than merged. */}
             <div className="tally">
                 <div className="tally__item">
                     <span className="tally__value u-mono">{active}</span>
@@ -118,9 +89,7 @@ export default function OrganisationLine({
                 </div>
             </div>
 
-            {/* Only a net difference is visible from here, so nothing is
-                claimed about who is missing where - the member list below
-                answers that, name by name. */}
+            {/* Only a net difference is known here: no claim about who is missing where */}
             {diverges && (
                 <p className="line__meta line__meta--flag">
                     These two do not match. The character record and the membership
@@ -142,17 +111,14 @@ export default function OrganisationLine({
 
             {open && (
                 <div className="orgdetail">
-                    {/* Money first: it is the part that can be changed. */}
+                    {/* Money first: the editable part */}
                     {moneyVisible && hasAccountField && (
                         <section className="orgdetail__part">
                             <h4 className="orgdetail__title u-caps">Account</h4>
 
                             {account ? (
                                 <ul className="lines">
-                                    {/* The very same row as everywhere else, so a
-                                        society balance is operated exactly like any
-                                        other - including the second press that a
-                                        company account demands. */}
+                                    {/* Same row as elsewhere, second press included */}
                                     <AccountLine
                                         account={{ ...account, kind: 'business', label }}
                                         canEdit={canEditAccounts}
@@ -176,9 +142,7 @@ export default function OrganisationLine({
                 </div>
             )}
 
-            {/* Only reachable when the server sent no account field at all
-                while still reporting money as visible - a shape we do not
-                invent a balance for. */}
+            {/* Money visible but no account field: no balance is invented */}
             {moneyVisible && !hasAccountField && (
                 <StatusNote
                     tone="warn"
@@ -197,14 +161,8 @@ function authorizedText(account) {
     return count === 1 ? '1 citizen authorized' : `${count} citizens authorized`;
 }
 
-/* -------------------------------------------------------------------------
-   Who is in it.
-
-   Two lists, not one: the active holders come off the character record, the
-   memberships out of player_groups. Merging them would hide exactly the case
-   worth seeing - somebody who holds a membership but is not working the job
-   right now.
-   ------------------------------------------------------------------------- */
+// --- Members --------------------------------------------------------------
+// Two lists, not merged: a membership without the active job is the case worth seeing
 
 function MemberList({ res, groupsAvailable }) {
     if (res.status === 'loading') {
@@ -245,9 +203,7 @@ function MemberList({ res, groupsAvailable }) {
     const active = Array.isArray(data.active) ? data.active : [];
     const members = Array.isArray(data.members) ? data.members : null;
 
-    // Memberships carry only a citizenid. Where the active list knows the
-    // name, it is borrowed - otherwise the id stands on its own rather than
-    // a placeholder name being made up.
+    // Memberships carry only a citizenid: names borrowed from the active list, never made up
     const names = new Map(active.map((entry) => [entry.citizenid, entry.name]));
 
     return (
@@ -294,7 +250,6 @@ function MemberList({ res, groupsAvailable }) {
                                     <span className="line__name">
                                         {names.get(entry.citizenid) || entry.citizenid}
                                     </span>
-                                    {/* The case this whole list exists for. */}
                                     <span className={`pill line__badge${entry.alsoActive ? '' : ' pill--unknown'}`}>
                                         {entry.alsoActive ? 'Also working it' : 'Not working it'}
                                     </span>

@@ -6,13 +6,8 @@ import { updatePlayerJob } from '../api';
 import { useCan } from '../lib/useCan';
 import { jobTitle } from '../utils/format';
 
-// Note: App.jsx gives this component a key={citizenid}. That remounts it when
-// the citizen changes, and the state below then starts with that citizen's
-// job automatically - no sync effect needed.
+// Workspace keys this by citizenid: state starts from each citizen's job, no sync effect
 export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied }) {
-    // Whoever may see the citizen list may see this card; only someone with
-    // job.edit may change it. The more common case is the first without the
-    // second - then the job stays readable and only the form is shut down.
     const { can } = useCan();
     const canEdit = can('job.edit');
 
@@ -25,8 +20,7 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
     const currentJob = jobList[selectedJob];
     const gradeEntries = currentJob ? Object.entries(currentJob.grades || {}) : [];
 
-    // Derived instead of synchronized: if the stored rank drops out of the
-    // chosen job's list, the first available rank takes over.
+    // Derived, not synced: a rank missing from the chosen job falls back to its first
     const gradeValue = currentJob && currentJob.grades?.[selectedGrade]
         ? selectedGrade
         : (gradeEntries[0]?.[0] ?? '');
@@ -40,7 +34,6 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
     const handleJobChange = (e) => {
         const next = e.target.value;
         setSelectedJob(next);
-        // Reset the rank to the first entry of the new job
         setSelectedGrade(Object.keys(jobList[next]?.grades || {})[0] ?? '0');
         setFeedback(null);
     };
@@ -72,7 +65,7 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
                     : 'This citizen is not connected, so the change was written to the database.',
             });
 
-            // Bring the header area and the wall up to date at once
+            // Patch updates the billboard and the wall at once
             onApplied?.(
                 {
                     job: {
@@ -133,10 +126,7 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
                     </select>
                 </div>
 
-                {/* The rank ladder shows all grades of this job at once and
-                    highlights the chosen one instead of hiding it away in a
-                    dropdown. That makes the distance between two ranks
-                    visible, not just the rank itself. */}
+                {/* Ladder, not a dropdown: shows the distance between ranks */}
                 <div className="field">
                     <span className="field__label" id="grade-label">Rank</span>
                     {gradeEntries.length === 0 ? (

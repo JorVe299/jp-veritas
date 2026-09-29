@@ -3,15 +3,8 @@ import StatusNote from './StatusNote';
 import { useCatalog, CATALOG_LIMIT } from '../lib/useCatalog';
 
 /**
- * Selection from one of the large reference catalogs (items, vehicles).
- *
- * Deliberately not a <select>: with around 900 vehicles a dropdown would be
- * neither loadable nor operable. Instead a search field that filters on the
- * server, and below it the same ladder that carries grades in the job module.
- *
- * The choice made stays visible even when a new search drops it out of the
- * result list - otherwise it would no longer be clear what actually gets
- * sent on submit.
+ * Server-searched picker for a large catalog; ~900 vehicles rule out a <select>
+ * Selection stays shown when a search drops it: it is what gets submitted
  */
 export default function CatalogPicker({
     id,

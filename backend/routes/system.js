@@ -1,8 +1,4 @@
-// backend/routes/system.js
-// Diagnostics and maintenance. Deliberately verbose: almost every fault in
-// this project so far has been silent - a bridge that does not answer and a
-// database that does not belong to the game server look identical from the
-// outside.
+// Diagnostics and maintenance; verbose on purpose: most faults here are otherwise silent
 const express = require('express');
 const axios = require('axios');
 const { getTableColumns, tableExists, clearSchemaCache, listTables } = require('../utils/dbHandler');
@@ -21,8 +17,7 @@ const REQUIRED = {
     player_vehicles: ['citizenid', 'vehicle', 'plate', 'garage', 'state'],
 };
 
-// Shows exactly what the bridge answers and checks it against the database.
-// Meant for debugging "every player shows up as offline".
+// Raw bridge answer, cross-checked with the DB (debugs "everyone shows as offline")
 router.get('/api/system/bridge', async (req, res) => {
     const url = `${FIVEM_API_URL}/get-online-players`;
     const started = Date.now();
@@ -32,8 +27,7 @@ router.get('/api/system/bridge', async (req, res) => {
         const isObject = r.data && typeof r.data === 'object' && !Array.isArray(r.data);
         const onlineIDs = isObject ? r.data : {};
 
-        // Cross-check against the database - this is where "the player
-        // really is offline" parts ways with "wrong database"
+        // Tells "really offline" apart from "wrong database"
         let dbCheck;
         try {
             const mismatch = await checkDatabaseMatchesServer(onlineIDs);
@@ -50,7 +44,7 @@ router.get('/api/system/bridge', async (req, res) => {
             latencyMs: Date.now() - started,
             httpStatus: r.status,
             contentType: r.headers['content-type'] || null,
-            // Lua turns an empty table into [] - then simply nobody is online
+            // Lua encodes an empty table as []: nobody online
             payloadShape: Array.isArray(r.data) ? 'array (= nobody online)' : typeof r.data,
             onlineCount: Object.keys(onlineIDs).length,
             citizenids: Object.keys(onlineIDs),
@@ -70,12 +64,10 @@ router.get('/api/system/bridge', async (req, res) => {
     }
 });
 
-// Which tables and columns does the backend actually find?
-// This settles up front whether vehicle and inventory management can work
-// on this schema at all.
+// Tables and columns found: can vehicle and inventory management work on this schema?
 router.get('/api/system/schema', async (req, res) => {
     try {
-        clearSchemaCache(); // deliberately read fresh, this is a diagnostics route
+        clearSchemaCache(); // diagnostics: always read fresh
 
         const report = {};
         for (const [table, needed] of Object.entries(REQUIRED)) {
@@ -99,11 +91,9 @@ router.get('/api/system/schema', async (req, res) => {
             ok: problems.length === 0,
             problems,
             tables: report,
-            // The full list, so it is visible which further modules this
-            // schema would support.
+            // Full list: which further modules this schema could support
             allTables: await listTables(),
-            // ?inspect=a,b,c shows the columns of further tables - useful for
-            // checking whether a module fits this schema.
+            // ?inspect=a,b,c adds the columns of further tables
             inspected: await inspectTables(req.query.inspect)
         });
     } catch (e) {
@@ -116,17 +106,13 @@ async function inspectTables(raw) {
     const names = String(raw || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
     const out = {};
     for (const name of names) {
-        // Table names come from the URL; getTableColumns queries them as a
-        // bound parameter, so no interpolation is involved here.
+        // Names from the URL are bound parameters in getTableColumns: no interpolation
         out[name] = await getTableColumns(name);
     }
     return names.length ? out : undefined;
 }
 
-// What the bridge reports about itself: which framework it found, which
-// inventory, and whether the two ends agree about the token. It belongs
-// here, with everything else that answers "is this installation wired up
-// right".
+// Bridge self-report: framework, inventory, token agreement
 router.get('/api/system/framework', async (req, res) => {
     const status = await fetchStatus();
 
@@ -145,19 +131,10 @@ router.get('/api/system/framework', async (req, res) => {
     });
 });
 
-// Whether txAdmin's ban record can be reached, and from where.
-//
-// Veritas ID answers this per player, but only ever to that player and only
-// as "could not be read". Whoever runs the server needs the other half: the
-// path that was tried and why it did not work. That belongs here, with the
-// rest of the diagnostics, not in front of a citizen.
+// txAdmin store reachability and path, for the operator; the portal only says "could not be read"
 router.get('/api/system/txadmin', async (req, res) => {
     try {
-        // With ?citizenid= or ?discord= this answers the harder question:
-        // the store is readable and the ban is in it, so why does the
-        // person it was issued against not see it? Matching happens on
-        // identifiers, and neither side of that comparison is visible
-        // from outside - so both are printed here.
+        // ?citizenid= / ?discord=: why a stored ban does not match this person
         const { citizenid } = req.query;
         let discord = req.query.discord;
         if (!discord && citizenid) discord = await discordOf(String(citizenid));
@@ -182,7 +159,7 @@ router.get('/api/system/txadmin', async (req, res) => {
             ...state,
             configured: Boolean((process.env.TXADMIN_DB_PATH || '').trim()),
             showsBanAuthor: txadmin.SHOW_AUTHOR,
-            // So a reader can tell "found nothing" from "never looked".
+            // "found nothing" vs "never looked"
             searched: state.available ? undefined : 'TXADMIN_DB_PATH, then a txData folder near the panel',
             hintForMatching: 'Add ?citizenid=XXXX to see why a particular person does or does not match.',
         });
@@ -192,8 +169,7 @@ router.get('/api/system/txadmin', async (req, res) => {
     }
 });
 
-// The check turned into one sentence, because a table of identifiers is
-// not an answer - it is the material for one.
+// The describe() report as one actionable sentence
 function verdictFor(report) {
     if (!report.available) return report.reason;
 
@@ -212,9 +188,7 @@ function verdictFor(report) {
     return `None of this account's identifiers appear in the store. It keys actions by [${kinds}]; this account resolves to [${mine}]. If the ban was issued against an identifier the users table does not hold, the two can never meet.`;
 }
 
-// Route for reloading the JSON data without a restart. Once a minute per
-// person: it rereads every catalog file, and the button that calls it is
-// not the only way to send it.
+// Reloads the catalog JSON without a restart; once a minute per person (any client can call it)
 router.post('/api/system/refresh', oncePer('system.refresh', 60_000), (req, res) => {
     try {
         loadGameData(); // runs sync and load again

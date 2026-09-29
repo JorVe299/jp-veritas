@@ -1,9 +1,8 @@
-// backend/utils/rateLimit.test.js
 const test = require('node:test');
 const assert = require('node:assert');
 const { oncePer } = require('./rateLimit');
 
-// A stand-in for Express's req/res pair, holding only what the limiter touches.
+// Minimal req/res stand-in: only what the limiter touches
 function call(limit, user, ip = '10.0.0.1') {
     const req = { user: user ? { id: user } : undefined, ip };
     const out = { status: 200, headers: {}, body: null, passed: false };

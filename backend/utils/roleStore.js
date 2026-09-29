@@ -1,28 +1,6 @@
-// backend/utils/roleStore.js
-// Roles as data.
-//
-// They used to be four constants in the source, which is fine for one
-// community and wrong for a server with several teams: a support lead, a
-// vehicle team and a whitelist crew need three different sets of
-// permissions, and none of them should require a redeploy to create.
-//
-// So a role is now a record the owner edits:
-//
-//   { id, label, capabilities: [...], discordUserIds: [], discordRoleIds: [] }
-//
-// Two invariants hold whatever is in the file, because breaking either one
-// locks the owner out of their own panel:
-//
-//   1. The owner role always exists, always holds every capability, and
-//      cannot be deleted.
-//   2. The order of the list is the ranking. Whoever matches several roles
-//      gets the first one, so the answer never depends on the order the
-//      .env happens to be written in.
-//
-// The Discord mapping deliberately lives in two places. What the owner
-// edits here is stored in this file; what is in the .env keeps working and
-// is the way back in when this file is wrong - a panel that can edit its
-// own door needs a key that is kept somewhere else.
+// Roles as editable records: { id, label, capabilities, discordUserIds, discordRoleIds }
+// Invariants (BACKEND.md §4): owner always exists, holds everything, is first, cannot be deleted
+// List order = rank; the .env mappings stay the way back in if this file is wrong
 
 const fs = require('fs');
 const path = require('path');
@@ -31,8 +9,7 @@ const STORE = path.join(__dirname, '../data/permissions.json');
 
 const OWNER_ROLE = 'owner';
 
-// Shipped with the panel. They can be relabelled, re-permissioned and (all
-// but the owner) deleted - they are a starting point, not a fixed set.
+// Starting set: relabel, re-permission, delete (all but the owner) at will
 const BUILT_IN = ['owner', 'administrator', 'supporter', 'citizen'];
 
 const BUILT_IN_LABELS = {
@@ -42,8 +19,7 @@ const BUILT_IN_LABELS = {
     citizen: 'Citizen',
 };
 
-// A role id ends up in a signed session and in a JSON file, so it stays
-// boring on purpose: lowercase, no spaces, nothing that needs escaping.
+// Ends up in the session and a JSON file: lowercase, no spaces, nothing to escape
 const ID_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/;
 
 const MAX_ROLES = 40;
@@ -53,15 +29,14 @@ function normaliseId(value) {
     return String(value || '').trim().toLowerCase();
 }
 
-/** A suggested id for a label, for the common case of not typing one. */
+/** Id suggested from a label when none is typed */
 function idFromLabel(label) {
     const slug = String(label || '')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
         .slice(0, 32);
-    // An id has to start with a letter; prefixing beats refusing a label
-    // that was perfectly reasonable to type.
+    // Ids start with a letter: prefix rather than refuse the label
     return /^[a-z]/.test(slug) ? slug : `role-${slug}`.slice(0, 32);
 }
 
@@ -74,9 +49,7 @@ function cleanLabel(value, fallback) {
     return text ? text.slice(0, MAX_LABEL) : fallback;
 }
 
-// Discord snowflakes, and nothing else. A malformed id in this list would
-// silently match nobody, which looks exactly like a permission that was
-// never granted.
+// Snowflakes only: a malformed id matches nobody and looks like a missing grant
 function cleanIdList(value) {
     const list = Array.isArray(value)
         ? value
@@ -96,9 +69,7 @@ function sanitizeRole(raw, capabilityIds) {
     return {
         id,
         label: cleanLabel(raw?.label, BUILT_IN_LABELS[id] || id),
-        // Unknown capabilities are dropped: otherwise a renamed or removed
-        // one leaves a dead entry behind that reads like a granted
-        // permission.
+        // Unknown capabilities dropped: a stale entry would read like a grant
         capabilities: id === OWNER_ROLE
             ? capabilityIds.slice()
             : capabilityIds.filter(c => Array.isArray(raw?.capabilities) && raw.capabilities.includes(c)),
@@ -107,7 +78,7 @@ function sanitizeRole(raw, capabilityIds) {
     };
 }
 
-/** Whatever is on disk, turned into a state that holds the invariants. */
+/** Any on-disk content -> a state that holds the invariants */
 function sanitizeState(raw, capabilityIds, defaults) {
     const roles = [];
     const seen = new Set();
@@ -120,8 +91,7 @@ function sanitizeState(raw, capabilityIds, defaults) {
         roles.push(role);
     }
 
-    // A file that lost the owner, or never had one, still has to produce a
-    // panel somebody can get into.
+    // Owner restored if missing: the panel must stay enterable
     if (!seen.has(OWNER_ROLE)) {
         roles.unshift({
             id: OWNER_ROLE,
@@ -133,8 +103,7 @@ function sanitizeState(raw, capabilityIds, defaults) {
         seen.add(OWNER_ROLE);
     }
 
-    // No role list at all means a fresh installation, which gets the
-    // starting set rather than a panel with one role in it.
+    // No role list = fresh install: seed the built-in roles
     if (!listed) {
         for (const id of BUILT_IN) {
             if (seen.has(id)) continue;
@@ -149,18 +118,14 @@ function sanitizeState(raw, capabilityIds, defaults) {
         }
     }
 
-    // The owner outranks everyone, so it is first whatever the file says.
+    // Owner first, whatever the file says
     const owner = roles.splice(roles.findIndex(r => r.id === OWNER_ROLE), 1)[0];
     owner.capabilities = capabilityIds.slice();
 
     return { version: 2, roles: [owner, ...roles].slice(0, MAX_ROLES) };
 }
 
-/**
- * Why a write was refused, in a sentence the person running the server can
- * act on. Node's own message names the syscall and the path but not what to
- * do about either.
- */
+/** Actionable reason for a refused write (Node's message names the syscall, not the fix) */
 function writeHint(e, file) {
     const dir = path.dirname(file);
 
@@ -176,15 +141,13 @@ function writeHint(e, file) {
     if (e.code === 'EISDIR') {
         return `${file} is a folder, not a file. Remove it and let the panel create the file itself.`;
     }
-    // Node already puts the code at the front of most messages; saying it
-    // twice reads like two different faults.
+    // Most Node messages already start with the code; avoid printing it twice
     const message = String(e.message || 'the write was refused');
     return e.code && !message.startsWith(e.code) ? `${e.code}: ${message}` : message;
 }
 
 function createStore({ capabilityIds, defaults, file }) {
-    // Overridable so the tests can run against a scratch file instead of
-    // the one a live panel is keeping its roles in.
+    // Overridable: tests use a scratch file
     const STORE_FILE = file || STORE;
     let state = null;
 
@@ -194,10 +157,7 @@ function createStore({ capabilityIds, defaults, file }) {
             if (fs.existsSync(STORE_FILE)) {
                 const raw = fs.readFileSync(STORE_FILE, 'utf8');
                 const parsed = raw.trim() ? JSON.parse(raw) : {};
-                // A file with content but no role list is not a fresh
-                // installation, however much it gets treated as one below.
-                // Starting from the shipped roles is the only safe reading,
-                // but the owner has to hear that it happened.
+                // Content but no role list: shipped roles, with a warning
                 if (raw.trim() && !Array.isArray(parsed?.roles)) {
                     console.warn(`[Perms] ${STORE_FILE} holds no role list - starting from the shipped roles. Saving in the panel rewrites the file.`);
                 }
@@ -212,18 +172,8 @@ function createStore({ capabilityIds, defaults, file }) {
     }
 
     /**
-     * Write first, adopt second.
-     *
-     * The order matters. This used to take the new state into memory and
-     * then try to write it, so a write that failed left the process holding
-     * roles the file knew nothing about: the panel showed the change, said
-     * it had failed, and lost it again at the next restart. Now a refused
-     * write leaves everything exactly as it was, and what the panel shows
-     * is what is actually on disk.
-     *
-     * The write goes to a neighbouring file and is renamed into place.
-     * A half-written permission file is a panel nobody can sign in to, and
-     * rename is atomic on the same filesystem.
+     * Write first, adopt second: a refused write changes nothing (BACKEND.md §4)
+     * Temp file + rename: atomic on one filesystem; a half-written file locks everyone out
      */
     function persist(next) {
         const candidate = sanitizeState(next, capabilityIds, defaults);
@@ -237,10 +187,7 @@ function createStore({ capabilityIds, defaults, file }) {
             try { fs.unlinkSync(tmp); } catch { /* it may never have been made */ }
             console.error(`[Perms] could not write ${STORE_FILE}: ${e.code || ''} ${e.message}`);
 
-            // The reason travels with the error. Without it the panel can
-            // only say "could not be saved", and an owner staring at that
-            // has no way of knowing it is a file permission on their own
-            // server rather than something they typed.
+            // hint carries the cause (e.g. folder permissions) to the panel
             const err = new Error('The permissions could not be saved');
             err.status = 500;
             err.hint = writeHint(e, STORE_FILE);
@@ -279,16 +226,11 @@ function createStore({ capabilityIds, defaults, file }) {
         if (roles.some(r => r.id === wantedId)) {
             throw Object.assign(new Error(`There is already a role called '${wantedId}'`), { status: 409 });
         }
-        // Two roles reading the same in the list is worse than a clash of
-        // ids: the ids are what the code keys on, the labels are what a
-        // person picks from when granting permissions, and picking the
-        // wrong one there is the mistake this whole file exists to avoid.
+        // Duplicate labels refused: people grant by label, so look-alikes invite the wrong pick
         if (roles.some(r => r.label.toLowerCase() === wantedLabel.toLowerCase())) {
             throw Object.assign(new Error(`There is already a role named '${wantedLabel}'`), { status: 409 });
         }
 
-        // Copying an existing role is the common case: a second support
-        // team usually starts as the first one plus or minus a little.
         const source = copyFrom ? get(copyFrom) : null;
         if (copyFrom && !source) {
             throw Object.assign(new Error(`There is no role '${copyFrom}' to copy`), { status: 404 });
@@ -301,9 +243,7 @@ function createStore({ capabilityIds, defaults, file }) {
         const next = {
             id: wantedId,
             label: wantedLabel,
-            // Never the owner's set, whatever was copied: a new role that
-            // silently held everything would be a lock nobody notices is
-            // open.
+            // Grantable capabilities only; the owner-only right never transfers
             capabilities: wantedId === OWNER_ROLE ? [] : capabilityIds.filter(c => granted.includes(c)),
             discordUserIds: cleanIdList(discordUserIds),
             discordRoleIds: cleanIdList(discordRoleIds),
@@ -333,9 +273,7 @@ function createStore({ capabilityIds, defaults, file }) {
             return {
                 ...role,
                 label: patch.label === undefined ? role.label : cleanLabel(patch.label, role.label),
-                // The owner's capabilities are not editable. Letting them be
-                // would make it possible to take the last key off the last
-                // keyring.
+                // SECURITY: owner capabilities are fixed
                 capabilities: target === OWNER_ROLE || patch.capabilities === undefined
                     ? role.capabilities
                     : capabilityIds.filter(c => patch.capabilities.includes(c)),
@@ -365,7 +303,7 @@ function createStore({ capabilityIds, defaults, file }) {
         return target;
     }
 
-    /** Move a role up or down the ranking, which is what decides ties. */
+    /** Applies a new ranking (the tie-breaker between matching roles) */
     function reorder(orderedIds) {
         const roles = list();
         const byId = new Map(roles.map(r => [r.id, r]));
@@ -374,22 +312,21 @@ function createStore({ capabilityIds, defaults, file }) {
             const role = byId.get(normaliseId(id));
             if (role && !next.includes(role)) next.push(role);
         }
-        // Anything the caller forgot keeps its place at the end rather than
-        // quietly disappearing.
+        // Unlisted roles are kept (appended), never dropped
         for (const role of roles) if (!next.includes(role)) next.push(role);
 
         persist({ version: 2, roles: next });
         return list();
     }
 
-    /** The capability map the rest of the panel still speaks in. */
+    /** { roleId: capabilities[] }, the shape the rest of the panel uses */
     function matrix() {
         const out = {};
         for (const role of list()) out[role.id] = role.capabilities;
         return out;
     }
 
-    /** Replace the capability sets without touching labels or mappings. */
+    /** Replaces capability sets only; labels and mappings untouched */
     function saveMatrix(raw) {
         const next = list().map(role => ({
             ...role,

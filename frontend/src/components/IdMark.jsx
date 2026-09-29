@@ -1,11 +1,6 @@
 /**
- * The mark of Veritas ID.
- *
- * Expressly not the panel's mark. That one is a tile in the aspect ratio of
- * the citizen wall with a V cut out of it - a mark about a catalog of other
- * people. This one is a card in the hand: a portrait and three lines, in
- * landscape, so that at 26 pixels in a bar the silhouette alone already
- * says which of the two surfaces is open.
+ * Veritas ID mark: a landscape ID card
+ * Silhouette must differ from the panel's Mark: at 26px it tells the two surfaces apart
  */
 export default function IdMark({ size = 26, className = '' }) {
     return (

@@ -1,16 +1,9 @@
-/* ==========================================================================
-   Veritas - Shell, top bar, modules, tile wall
-   ========================================================================== */
-
 :root {
     --gutter: clamp(1rem, 3.2vw, 2.75rem);
 }
 
-/* --------------------------------------------------------------------------
-   1. Shell
-   A fixed top bar, and exactly one scrolling area beneath it. The page
-   itself never scrolls sideways - only the rails do.
-   -------------------------------------------------------------------------- */
+/* === 1. Shell ========================================================== */
+/* A fixed top bar over exactly one scrolling area */
 
 .app {
     display: grid;
@@ -26,7 +19,7 @@
     scroll-behavior: smooth;
 }
 
-/* --- Top bar -------------------------------------------------------------- */
+/* --- Top bar ----------------------------------------------------------- */
 
 .topbar {
     display: flex;
@@ -64,8 +57,7 @@
     transform: translateY(1px);
 }
 
-/* Already on the start page: the button stays usable but steps back, so it
-   does not invite a journey that leads nowhere. */
+/* Already on the start page: stays usable but stops inviting */
 .topbar__brand.is-here {
     cursor: default;
 }
@@ -107,9 +99,8 @@
     background: var(--c-surface);
 }
 
-/* --- State of the bridge --------------------------------------------------
-   Carries the distinction the whole product rests on: "nobody there" is not
-   the same as "we do not know". ------------------------------------------ */
+/* --- Bridge state ------------------------------------------------------ */
+/* Offline ("nobody there") and unknown ("could not ask") stay visually distinct */
 
 .bridge {
     display: inline-flex;
@@ -135,15 +126,12 @@
     background: var(--c-unknown-soft);
 }
 
-/* While the first answer is outstanding nothing is claimed - neither a
-   connection nor its absence. Neutral is the right statement here. */
+/* Before the first answer: neutral, claiming neither a connection nor its absence */
 .bridge--idle {
     color: var(--c-text-faint);
 }
 
-/* --------------------------------------------------------------------------
-   2. Kopfbereich (Billboard)
-   -------------------------------------------------------------------------- */
+/* === 2. Billboard ====================================================== */
 
 .billboard {
     position: relative;
@@ -155,10 +143,7 @@
     padding: var(--s-8) var(--gutter) var(--s-6);
     isolation: isolate;
     overflow: hidden;
-    /* The balance figures size themselves against this width (.u-fit).
-       The billboard rather than its inner row: it is already the isolated
-       layer the plate sits in, so containing it adds no new layer between
-       the cards' backdrop blur and the picture it blurs. */
+    /* Container for .u-fit balances; not the inner row: no new layer between blur and plate */
     container-type: inline-size;
 }
 
@@ -187,7 +172,6 @@
     mix-blend-mode: overlay;
 }
 
-/* A long gradient mask: the image carries colour, the text stays legible. */
 .billboard__scrim {
     position: absolute;
     inset: 0;
@@ -263,11 +247,7 @@
     font-size: var(--fs-sm);
 }
 
-/* Each fact moves to the next line as a whole - the meta line is a
-   wrapping flex row, so a fact that fits is never broken, and nowrap added
-   nothing but the failure case: one fact wider than the whole line (a long
-   job label on a phone) ran out of the billboard and was clipped by it.
-   Now only that fact breaks, and only then. */
+/* No nowrap: the row wraps whole facts; only a fact wider than the line breaks, not clips */
 .billboard__fact {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -299,11 +279,7 @@
     display: block;
     margin-top: var(--s-1);
     font-size: var(--fs-xl);
-    /* .u-fit keeps it at --fs-xl for any everyday balance. The room: two
-       cards share the billboard's width, each minus its own padding and
-       border, minus the gap between them. On a phone that is less than
-       a five-figure sum needs at full size, so there the figure shrinks
-       rather than running out of its card. */
+    /* Room: two cards share the billboard's width, less their padding, borders and the gap */
     --fit-max: var(--fs-xl);
     --fit-room: calc((100cqi - 4.75rem) / 2);
     font-weight: 500;
@@ -311,7 +287,7 @@
     letter-spacing: -0.02em;
 }
 
-/* --- Status pill --- */
+/* --- Status pill ------------------------------------------------------- */
 
 .pill {
     display: inline-flex;
@@ -329,11 +305,8 @@
     white-space: nowrap;
 }
 
-/* A pill whose words come from the server or from an owner - a role
-   label, a vehicle state. It may never be wider than the row it sits in:
-   its words sit in a .u-clip span and give way with an ellipsis, and the
-   pill carries the full words as its title. The fixed pills ("Live",
-   "Frozen") stay as they are - they cannot outgrow anything. */
+/* Server- or owner-supplied words: never wider than the row;
+   the words sit in a .u-clip span, the full text in the pill's title */
 .pill--fit {
     max-width: 100%;
     min-width: 0;
@@ -358,27 +331,20 @@
     background: var(--c-unknown-soft);
 }
 
-/* "Not on the server" is expressly not a signal: it is a confirmed,
-   unremarkable normal state and keeps the neutral base form. It is written
-   down here so that stays deliberate rather than accidental. */
+/* "Not on the server" is a confirmed normal state, not a signal: stays neutral */
 .pill--off {
     color: var(--c-text-muted);
 }
 
-/* Impounded: not a normal state but an intervention by an administrator -
-   and therefore the only vehicle state that carries a signal. */
+/* Impounded: an admin intervention, so the only vehicle state with a signal */
 .pill--debit {
     color: var(--c-debit);
     border-color: var(--c-debit-line);
     background: var(--c-debit-soft);
 }
 
-/* --------------------------------------------------------------------------
-   3. Write log
-   Completed operations stay visible. The record thereby shows what was
-   changed on it during this session, instead of letting it disappear into
-   a notification.
-   -------------------------------------------------------------------------- */
+/* === 3. Write log ====================================================== */
+/* Completed writes stay visible for the session instead of vanishing in a notification */
 
 .ledger {
     border: 1px solid var(--c-border-strong);
@@ -438,8 +404,7 @@
 .ledger__row--live { color: var(--c-live); }
 .ledger__row--offline { color: var(--c-unknown); }
 
-/* The colour marks which path the write took.
-   The text itself stays achromatic and therefore calmly readable. */
+/* The row colour marks the write path; the text itself stays neutral */
 .ledger__what {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -457,17 +422,10 @@
     flex: none;
 }
 
-/* --------------------------------------------------------------------------
-   4. Modules
-   New modules (inventory, vehicles, ...) dock in here as <section
-   class="panel"> and arrange themselves automatically.
-   -------------------------------------------------------------------------- */
+/* === 4. Modules ======================================================== */
+/* New modules dock in as <section class="panel"> and lay themselves out */
 
-/* --------------------------------------------------------------------------
-   Start page
-   The only surface in the panel that begins with nothing selected. It
-   therefore carries the mark at full size and says what is actually running.
-   -------------------------------------------------------------------------- */
+/* --- Start page -------------------------------------------------------- */
 
 .home {
     position: relative;
@@ -559,11 +517,7 @@
     margin-top: var(--s-5);
 }
 
-/* The reading size of the pill. Same component, same shape and the same
-   three signal states - only set in sentence case, because the start page
-   states a whole fact ("Game server reachable · 9 on the server") where
-   the tile badge states one word. It used to be a second component called
-   .chip, which was the same pill under another name. */
+/* The same pill in sentence case: the start page states whole facts, not one word */
 .pill--lg {
     padding: var(--s-2) var(--s-3);
     font-size: var(--fs-sm);
@@ -571,10 +525,7 @@
     letter-spacing: 0;
     text-transform: none;
     backdrop-filter: blur(8px);
-    /* A whole sentence, sometimes with a role label or a citizen id in it.
-       It sits in wrapping rows, so it moves to its own line first and only
-       breaks inside once it is wider than the row - on a 320px phone,
-       "Game server unreachable · online status unverified" is. */
+    /* A whole sentence: moves to its own line first, breaks only when wider than the row */
     max-width: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
@@ -588,9 +539,7 @@
     font-size: var(--fs-sm);
 }
 
-/* --- Destinations --------------------------------------------------------
-   A list, not a grid of cards: it is read top to bottom, and every row
-   earns its place by saying what actually stands behind it. -------------- */
+/* --- Destinations ------------------------------------------------------ */
 
 .dests {
     padding: var(--s-7) var(--gutter) var(--s-8);
@@ -690,11 +639,8 @@
     }
 }
 
-/* --------------------------------------------------------------------------
-   Section bar
-   Carries the module wall. It sticks below the top bar so the section stays
-   reachable even when a long card (vehicles, bans) runs far down the page.
-   -------------------------------------------------------------------------- */
+/* --- Section bar ------------------------------------------------------- */
+/* Sticky: the sections stay reachable below long cards (vehicles, bans) */
 
 .tabs {
     position: sticky;
@@ -745,7 +691,6 @@
     opacity: 0.7;
 }
 
-/* The only chrome accent, as on the tile's focus ring: white. */
 .tab.is-active {
     color: var(--c-text);
     border-bottom-color: var(--c-focus);
@@ -772,8 +717,7 @@
         padding-inline: var(--s-2);
     }
 
-    /* On a phone the glyph carries the section and the label only follows
-       on the active one - otherwise the bar does not fit on one line. */
+    /* Labels visually hidden except on the active tab: the bar must fit one line */
     .tab:not(.is-active) .tab__label {
         position: absolute;
         width: 1px;
@@ -792,8 +736,7 @@
 
 .modules {
     display: grid;
-    /* min(): a 21rem column is wider than a 360px phone leaves after the
-       gutters, and would push every card past the right edge there. */
+    /* min(): 21rem is wider than a 360px phone minus gutters; cards would overflow */
     grid-template-columns: repeat(auto-fit, minmax(min(21rem, 100%), 1fr));
     gap: var(--s-4);
     padding: 0 var(--gutter) var(--s-6);
@@ -823,8 +766,7 @@
     color: var(--c-text-faint);
 }
 
-/* The heading's text column. Its hint is often assembled from data
-   ("Currently Los Santos Police Department · Lieutenant"). */
+/* Heading text column: its hint is often assembled from data */
 .panel__head > div {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -881,16 +823,13 @@
     color: var(--c-text-faint);
 }
 
-/* Two sections in one card: the stock above, the operation that changes it
-   below (bans, memberships). The line separates them without needing a
-   second heading - it is the same subject. */
+/* Stock above, its operation below: one subject, so a rule instead of a second heading */
 .panel__body + .panel__body,
 .panel__body + .panel__form > .panel__body {
     border-top: 1px solid var(--c-border);
 }
 
-/* Several equally ranked actions side by side. They share the width and
-   wrap rather than shrink until the label is no longer readable. */
+/* Equal-rank actions share the width and wrap rather than squeeze their labels */
 .acts {
     display: flex;
     flex-wrap: wrap;
@@ -901,18 +840,14 @@
     flex: 1 1 9rem;
 }
 
-/* X, Y and Z belong together and therefore stay on one line even in a
-   narrow card - three number fields stacked under each other would no
-   longer read as a coordinate. */
+/* X, Y, Z stay on one line in any card: stacked they stop reading as a coordinate */
 .coords {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--s-2);
 }
 
-/* --- Grade ladder --------------------------------------------------------
-   Every grade of a job at once, the chosen one brought forward. The distance
-   between two grades becomes visible that way. -------------------------- */
+/* --- Grade ladder ------------------------------------------------------ */
 
 .ladder {
     display: flex;
@@ -982,7 +917,7 @@
     opacity: 0.6;
 }
 
-/* --- Segment-Umschalter --- */
+/* --- Segmented control ------------------------------------------------- */
 
 .segment {
     display: flex;
@@ -1035,7 +970,7 @@
     cursor: not-allowed;
 }
 
-/* --- Preview line in the money module --- */
+/* --- Preview line in the money module ---------------------------------- */
 
 .preview {
     display: flex;
@@ -1054,9 +989,7 @@
     color: var(--c-text-muted);
 }
 
-/* The exact figure an action will produce, so it is never shortened. The
-   row wraps, so a long value first drops under its label and only breaks
-   inside once it is wider than the whole row. */
+/* The exact resulting figure, never shortened: drops under its label before it breaks */
 .preview__value {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -1067,17 +1000,12 @@
 .preview__value--up { color: var(--c-live); }
 .preview__value--down { color: var(--c-debit); }
 
-/* While a new catalog query runs the old result list stays put but is
-   visibly held back - the same gesture as on the wall. */
 .ladder.is-stale {
     opacity: 0.45;
 }
 
-/* --- Data rows -----------------------------------------------------------
-   Stock lists inside the modules (vehicles, inventory). Unlike the grade
-   ladder a row here is not a switch but a record with actions of its own -
-   hence a form of its own rather than a variant.
-   -------------------------------------------------------------------------- */
+/* --- Data rows --------------------------------------------------------- */
+/* Records with their own actions, not switches: a separate form, not a ladder variant */
 
 .lines {
     display: flex;
@@ -1088,8 +1016,7 @@
     padding: 0;
 }
 
-/* Past a handful of entries the list scrolls within itself, so the card
-   does not grow endlessly next to its neighbours in the grid. */
+/* Scrolls within itself so the card does not outgrow its grid neighbours */
 .lines--scroll {
     max-height: 26rem;
     overflow-y: auto;
@@ -1121,8 +1048,7 @@
 
 .line__slot {
     flex: none;
-    /* An identifier (a gang or role id, a row count). Kept whole beside the
-       name, but never wider than the row. */
+    /* An identifier: kept whole beside the name, never wider than the row */
     max-width: 100%;
     overflow-wrap: anywhere;
     font-size: var(--fs-sm);
@@ -1135,22 +1061,16 @@
     max-width: 100%;
 }
 
-/* The balance carries the row - it sits at the far right and at the size of
-   a panel title, because it is the one number the row is read for. */
 .line__amount {
     margin-left: auto;
     flex: none;
-    /* Never cut and never shortened - it is the figure the row's controls
-       act on. Past the width of the row (only a nonsensical balance gets
-       there) it breaks rather than running out of the card. */
+    /* Never cut: the row's controls act on this figure; past the row width it breaks */
     max-width: 100%;
     overflow-wrap: anywhere;
     font-size: var(--fs-md);
     font-weight: 600;
 }
 
-/* While a new query runs the old list stays put but is held back - the same
-   gesture as on the wall and in the grade ladder. */
 .lines.is-stale {
     opacity: 0.45;
 }
@@ -1161,8 +1081,7 @@
     gap: var(--s-1) var(--s-4);
     font-size: var(--fs-sm);
     color: var(--c-text-faint);
-    /* Account ids, licenses, IPs, "Opened by" names: copied by staff, so
-       they break rather than being cut. */
+    /* Ids, licenses, IPs: copied by staff, so they break rather than being cut */
     overflow-wrap: anywhere;
 }
 
@@ -1184,9 +1103,7 @@
     gap: var(--s-2);
 }
 
-/* --- Sliders -------------------------------------------------------------
-   Estimating and setting precisely on the same value: the slider for the
-   gesture, the field for the number. ------------------------------------- */
+/* --- Sliders ----------------------------------------------------------- */
 
 .gauge {
     display: grid;
@@ -1209,9 +1126,7 @@
     opacity: 0.5;
 }
 
-/* --------------------------------------------------------------------------
-   5. The wall
-   -------------------------------------------------------------------------- */
+/* === 5. The wall ======================================================= */
 
 .wall {
     padding-bottom: var(--s-7);
@@ -1221,8 +1136,6 @@
     transition: opacity 0.2s ease;
 }
 
-/* While a new query runs the old result stays put but is visibly held back
-   and slightly muted. */
 .wall__body.is-stale {
     opacity: 0.4;
     filter: saturate(0.4);
@@ -1241,13 +1154,12 @@
     color: var(--c-text-faint);
 }
 
-/* --- Schiene --- */
+/* --- Rail -------------------------------------------------------------- */
 
 .rail {
     transition: opacity 0.28s var(--ease-out), transform 0.28s var(--ease-out);
 }
 
-/* The focused rail lifts, the rest of the wall steps back. */
 .wall__body:has(.tile:hover) .rail {
     opacity: 0.55;
 }
@@ -1268,9 +1180,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--s-2);
-    /* A rail is named after an employer, and an employer's label is
-       whatever the server calls it. A long one wraps under itself rather
-       than pushing the scroll arrows off the row. */
+    /* Server-named employer: a long label wraps rather than pushing the scroll arrows off */
     min-width: 0;
     overflow-wrap: anywhere;
     color: var(--c-text);
@@ -1310,8 +1220,7 @@
     gap: var(--rail-gap);
     list-style: none;
     margin: 0;
-    /* Vertical padding: the enlarged tile and its shadow need room, because
-       overflow-x bounds the box vertically as well. */
+    /* Room for the enlarged tile and its shadow: overflow-x clips vertically too */
     padding: 0.875rem var(--gutter) 1.75rem;
     overflow-x: auto;
     overflow-y: hidden;
@@ -1336,10 +1245,8 @@
     position: relative;
 }
 
-/* --- Tile ----------------------------------------------------------------
-   The one designed moment of movement in the interface: the tile grows, its
-   neighbours step back, and inside it appear the details you would otherwise
-   have to open it for. -------------------------------------------------- */
+/* --- Tile -------------------------------------------------------------- */
+/* The one designed movement in the interface */
 
 .tile {
     position: relative;
@@ -1396,7 +1303,6 @@
     background: linear-gradient(to top, rgba(6, 5, 4, 0.96) 14%, rgba(6, 5, 4, 0.7) 44%, rgba(6, 5, 4, 0.06) 78%);
 }
 
-/* Selection: one continuous white ring, the only chrome accent. */
 .tile.is-selected .tile__art {
     box-shadow: inset 0 0 0 2px var(--c-focus);
 }
@@ -1470,16 +1376,14 @@
     -webkit-box-orient: vertical;
 }
 
-/* The reveal rides up over the image from below rather than making the tile
-   grow: that way it does not change the height of the row. */
+/* Rides up over the image instead of growing the tile: the row height never changes */
 .tile__reveal {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
     z-index: 3;
-    /* 0fr -> 1fr instead of max-height: this animates the grid track and
-       triggers no layout recalculation. */
+    /* 0fr -> 1fr instead of max-height: animates the grid track, no layout recalculation */
     display: grid;
     grid-template-rows: 0fr;
     opacity: 0;
@@ -1490,8 +1394,7 @@
     min-height: 0;
     overflow: hidden;
     padding: 0 var(--s-3) var(--s-3);
-    /* The balances size themselves against the tile (.u-fit). Its width is
-       the tile's, never its content's, so containing it changes nothing. */
+    /* Container for .u-fit balances; width is the tile's, never the content's */
     container-type: inline-size;
 }
 
@@ -1533,17 +1436,14 @@
     color: var(--c-text-faint);
 }
 
-/* The room is the tile minus the key ("CASH", "BANK" in tracked caps,
-   2.5rem) and the 0.5rem gap beside it. */
+/* Room: the tile minus the key (tracked caps, 2.5rem) and the 0.5rem gap */
 .tile__moneyvalue {
     --fit-max: var(--fs-micro);
     --fit-room: calc(100cqi - 3rem);
     text-align: right;
 }
 
-/* --------------------------------------------------------------------------
-   6. States: empty, placeholder, notice
-   -------------------------------------------------------------------------- */
+/* === 6. States: empty, placeholder, notice ============================= */
 
 .empty {
     display: flex;
@@ -1565,7 +1465,7 @@
     max-width: 100%;
     font-size: var(--fs-md);
     font-weight: 700;
-    /* It quotes the search back, and a search can be one long word. */
+    /* Quotes the search back, which can be one long word */
     overflow-wrap: anywhere;
 }
 
@@ -1602,7 +1502,7 @@
     100% { background-position: -200% 0; }
 }
 
-/* --- Inline feedback (in place of alert()) --- */
+/* --- Inline feedback (in place of alert()) ----------------------------- */
 
 .note {
     display: grid;
@@ -1623,7 +1523,7 @@
 .note__title {
     font-weight: 700;
     color: var(--c-text);
-    /* Titles carry server messages and names too, not only fixed words. */
+    /* Titles carry server messages and names too, not only fixed words */
     overflow-wrap: anywhere;
 }
 
@@ -1659,16 +1559,10 @@
     margin: var(--s-5) var(--gutter) 0;
 }
 
-/* --------------------------------------------------------------------------
-   7. Sign-in
-   The entrance hall, the session in the top bar, and the warning bar for
-   unprotected operation. No colours of its own: everything comes from the
-   same tokens.
-   -------------------------------------------------------------------------- */
+/* === 7. Sign-in ======================================================== */
+/* No colours of its own: tokens only */
 
-/* The entrance hall. Deliberately empty: there is exactly one thing to do
-   here, and nothing in the background pretending to be data nobody may
-   see yet. */
+/* Deliberately empty: one thing to do, no background posing as data nobody may see yet */
 .gate {
     position: relative;
     display: grid;
@@ -1738,7 +1632,7 @@
     margin-top: var(--s-1);
 }
 
-/* --- Session in the top bar ----------------------------------------------- */
+/* --- Session in the top bar -------------------------------------------- */
 
 .session {
     display: flex;
@@ -1758,8 +1652,7 @@
     object-fit: cover;
 }
 
-/* No picture available, or it failed to load: initials instead of a broken
-   image glyph. Same size, same shape, no jump in the layout. */
+/* No picture or a failed one: initials in the same box, no broken glyph, no layout jump */
 .session__avatar--mark {
     display: grid;
     place-items: center;
@@ -1779,9 +1672,8 @@
     font-weight: 600;
 }
 
-/* --- Warning bar: the panel runs unprotected ------------------------------
-   It sits outside the scrolling area and cannot be clicked away.
-   A message that can be scrolled out of sight is not enough here. */
+/* --- Warning bar: the panel runs unprotected --------------------------- */
+/* Outside the scrolling area and not dismissible: it must never scroll out of sight */
 
 .app--warned {
     grid-template-rows: var(--topbar-h) auto minmax(0, 1fr);
@@ -1795,10 +1687,8 @@
     border-radius: 0;
 }
 
-/* --------------------------------------------------------------------------
-   8. Responsive
-   The goal: from a 360px phone to a wide desk without breaking.
-   -------------------------------------------------------------------------- */
+/* === 8. Responsive ===================================================== */
+/* Must hold from a 360px phone to a wide desk */
 
 @media (max-width: 900px) {
     :root {
@@ -1827,8 +1717,7 @@
         font-size: var(--fs-micro);
     }
 
-    /* Mark, bridge and session share the first row - the name gives way
-       first, the picture and sign-out stay. */
+    /* Shared first row: the name gives way first; picture and sign-out stay */
     .session__name {
         max-width: 7rem;
     }
@@ -1838,8 +1727,7 @@
         padding-top: var(--s-6);
     }
 
-    /* A shallower lead-in: that way the first rail is still in the first
-       screenful and the admin sees at once who is on the server. */
+    /* Shallower lead-in: the first rail (who is on the server) stays in the first screen */
     .billboard--idle {
         min-height: 0;
         padding-block: var(--s-5) var(--s-5);
@@ -1869,8 +1757,7 @@
         max-width: none;
     }
 
-    /* On a phone there is not enough width for bridge, name and sign-out.
-       The name goes, the picture stays as the identifier. */
+    /* No room for bridge, name and sign-out: the picture stays as the identifier */
     .session__name {
         display: none;
     }
@@ -1879,9 +1766,7 @@
         padding: var(--s-5);
     }
 
-    /* On a phone the smallest type sits in front of the busiest part of the
-       image. The lower part of the mask is therefore pulled deeper, so that
-       the meta line and the balances do not lie on palm fronds. */
+    /* Deeper lower mask: the smallest type sits on the busiest part of the image */
     .billboard__scrim {
         background:
             linear-gradient(to top,
@@ -1907,8 +1792,7 @@
         justify-content: space-between;
     }
 
-    /* On a phone there is no hover state to carry the enlargement - the
-       tile stays calm, only the selection is marked. */
+    /* No hover on a phone to carry the enlargement: only the selection is marked */
     .tile:hover,
     .tile:focus-visible {
         transform: none;
@@ -1931,7 +1815,7 @@
     }
 }
 
-/* Pointing devices without hover (touch): the same calm as on a phone. */
+/* Touch: the same calm as on a phone */
 @media (hover: none) {
     .tile:hover {
         transform: none;
@@ -1943,12 +1827,8 @@
     }
 }
 
-/* --------------------------------------------------------------------------
-   9. Inventory
-   A summary in the card, the actual editing in an area of its own. The grid
-   is modelled on the inventory in game: equally sized tiles, image in the
-   middle, amount top right, weight below.
-   -------------------------------------------------------------------------- */
+/* === 9. Inventory ====================================================== */
+/* Grid modelled on the in-game inventory: equal tiles, image centred, amount top right */
 
 .invsum {
     display: flex;
@@ -1980,7 +1860,7 @@
     color: var(--c-text);
 }
 
-/* --- Weight bar ----------------------------------------------------------- */
+/* --- Weight bar -------------------------------------------------------- */
 
 .weigh {
     display: flex;
@@ -2008,8 +1888,7 @@
     overflow: hidden;
 }
 
-/* scaleX rather than width: animating the width triggers a layout
-   recalculation on every change, the transform runs in the compositor. */
+/* scaleX, not width: the transform animates in the compositor without layout */
 .weigh__fill {
     width: 100%;
     height: 100%;
@@ -2019,13 +1898,12 @@
     transition: transform 0.18s var(--ease-out);
 }
 
-/* Over the limit is not a "nearly full" warning but a state the server
-   would not have produced - hence the debit tone. */
+/* Over the limit is a state the server would not produce, not a warning: debit tone */
 .weigh__fill--over {
     background: var(--c-debit);
 }
 
-/* --- Full-surface editing ------------------------------------------------- */
+/* --- Full-surface editing ---------------------------------------------- */
 
 .sheet {
     position: fixed;
@@ -2102,21 +1980,18 @@
     min-width: 0;
 }
 
-/* The account list has no side column: a list that is read across the page
-   needs the whole width. */
 .sheet__body--single {
     display: flex;
     flex-direction: column;
     gap: var(--s-4);
 }
 
-/* --- The grid ------------------------------------------------------------- */
+/* --- The grid ---------------------------------------------------------- */
 
 .grid {
     display: grid;
-    /* Five slots per row as in the game - the tiles shrink along rather than
-       letting the row wrap. minmax(0,1fr) stops a long item name from
-       pushing the grid apart. */
+    /* Five slots per row as in the game: tiles shrink, the row never wraps;
+       minmax(0,1fr) keeps a long item name from pushing the grid apart */
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: var(--s-2);
     align-content: start;
@@ -2135,8 +2010,7 @@
     text-align: left;
     cursor: default;
     transition: border-color 0.12s var(--ease-out), background 0.12s var(--ease-out);
-    /* The monogram sizes itself against the slot. Its width comes from the
-       grid, never from its content. */
+    /* Container for the monogram; width comes from the grid, never the content */
     container-type: inline-size;
 }
 
@@ -2153,8 +2027,7 @@
     cursor: grabbing;
 }
 
-/* The tile currently being dragged stays visible but held back - otherwise
-   you lose sight of where the drag started. */
+/* The dragged tile stays visible, held back: the drag origin stays in sight */
 .slot--source {
     opacity: 0.35;
 }
@@ -2191,13 +2064,8 @@
     object-fit: contain;
 }
 
-/* Without ox_inventory icons the tiles carry the first characters of the
-   item name - the grid stays readable even so. */
-/* Five slots across a small phone leave barely 2rem inside each, less
-   than three bold capitals need at the normal size (about 2.35em) - the
-   monogram ran out of its slot. 40cqi is that width with a little to
-   spare: wherever three capitals fit at --fs-sm they stay at --fs-sm, and
-   only a slot too narrow for them makes them smaller. */
+/* Monogram when ox_inventory has no icon; 40cqi: three bold capitals (~2.35em) just fit
+   the slot, so they stay at --fs-sm unless the slot is too narrow for them */
 .slot__fallback {
     font-size: min(var(--fs-sm), 40cqi);
     font-weight: 700;
@@ -2226,7 +2094,7 @@
     pointer-events: none;
 }
 
-/* --- Drop here to remove -------------------------------------------------- */
+/* --- Drop here to remove ----------------------------------------------- */
 
 .trash {
     display: grid;
@@ -2247,7 +2115,7 @@
     color: var(--c-debit);
 }
 
-/* --- The selected tile ---------------------------------------------------- */
+/* --- The selected tile ------------------------------------------------- */
 
 .detail {
     display: flex;
@@ -2305,15 +2173,10 @@
     }
 }
 
-/* --------------------------------------------------------------------------
-   10. Roles and permissions
-   Two things: the line that explains inside a card why nothing can be
-   changed, and the matrix in which the owner changes it. No colours of its
-   own - everything comes from the same tokens as the rest.
-   -------------------------------------------------------------------------- */
+/* === 10. Roles and permissions ========================================= */
+/* No colours of its own: tokens only */
 
-/* Once per card, not on every button. Deliberately quiet: this is a note,
-   not an error - nothing is broken, a permission is simply missing. */
+/* Once per card, not per button; quiet: a missing permission is a note, not an error */
 .denied {
     display: flex;
     align-items: flex-start;
@@ -2333,16 +2196,12 @@
     color: var(--c-text-faint);
 }
 
-/* The way to put it right stands behind it, held back: important enough to
-   be there, too incidental to dominate the sentence. */
 .denied__where {
     color: var(--c-text-faint);
 }
 
-/* --- The matrix ----------------------------------------------------------
-   Rows are capabilities, columns are roles. A real table, because it is one:
-   the header row stays put while scrolling and screen readers name the role
-   and the capability for every checkbox. */
+/* --- The matrix -------------------------------------------------------- */
+/* A real table: sticky header row; screen readers name role and capability per checkbox */
 
 .matrix {
     width: 100%;
@@ -2361,10 +2220,8 @@
     vertical-align: bottom;
 }
 
-/* A role label is named by the owner. The column keeps it whole up to a
-   point and then wraps it, rather than growing one column across the
-   sheet. break-word, not anywhere: an ordinary label must keep the column
-   as wide as its longest word, as before. */
+/* Owner-named: wraps rather than widening the column; break-word, not anywhere,
+   so an ordinary label keeps the column as wide as its longest word */
 .matrix__role {
     display: block;
     max-width: 12rem;
@@ -2387,8 +2244,6 @@
     color: var(--c-text-faint);
 }
 
-/* The section heading separates the areas without a second heading: the
-   same tracked caps line as everywhere else in the panel. */
 .matrix__group {
     padding: var(--s-4) var(--s-2) var(--s-2);
     text-align: left;
@@ -2408,9 +2263,7 @@
     color: var(--c-text);
 }
 
-/* The identifier is shown alongside, because that is exactly what appears
-   in the server's 403 response ("required: money.edit"). Without it you
-   would have to guess which row is meant. */
+/* Shown because the server's 403 names it ("required: money.edit") */
 .matrix__id {
     display: block;
     font-size: var(--fs-micro);
@@ -2437,8 +2290,7 @@
     cursor: not-allowed;
 }
 
-/* The owner: not a dead checkbox that looks like a control, but a check
-   mark with the word next to it. */
+/* Owner: a check mark and a word, not a dead checkbox posing as a control */
 .matrix__always {
     display: inline-flex;
     align-items: center;
@@ -2454,11 +2306,8 @@
     color: var(--c-text-faint);
 }
 
-/* --- The roster ----------------------------------------------------------
-   The roles themselves, above the grid: what exists, in which order, and
-   who holds it. It borrows the data row from the modules unchanged - a role
-   is a record with actions of its own, which is exactly what that row is
-   for - and adds only the rank in front and the form that folds out of it. */
+/* --- The roster -------------------------------------------------------- */
+/* Reuses the modules' data row unchanged; adds only the rank and the fold-out form */
 
 .roster,
 .roster__grid {
@@ -2478,9 +2327,7 @@
     color: var(--c-text-faint);
 }
 
-/* The rank is the one number in the row that means something on its own:
-   it decides who wins when somebody matches twice. It keeps a fixed width
-   so the names below each other start at the same place. */
+/* Fixed width: the names below each other start at the same place */
 .role__rank {
     flex: none;
     min-width: 1.5rem;
@@ -2488,15 +2335,13 @@
     color: var(--c-text-faint);
 }
 
-/* The sentence that a deletion reaches backwards needs the whole row: cut
-   into a column beside two counts it would read as a footnote. */
+/* The deletion warning takes the whole row: beside two counts it reads as a footnote */
 .role__warn {
     flex: 1 1 100%;
     color: var(--c-text-muted);
 }
 
-/* The form inside the row. A column rather than the module's two-up grid:
-   a list of Discord ids is nothing to put in half a row. */
+/* A column, not the modules' two-up grid: a list of Discord ids needs the full row */
 .role__edit {
     display: flex;
     flex-direction: column;
@@ -2523,14 +2368,12 @@
     min-width: 0;
 }
 
-/* Wrong, not broken: the field keeps the hint's place and only takes the
-   colour that says the id would have been thrown away. */
+/* Wrong, not broken: takes the hint's place, coloured because the id would be dropped */
 .role__problem {
     color: var(--c-debit);
 }
 
-/* Making a role is an addition, not a record - hence the dashed edge that
-   the drop area uses, rather than the solid one of a row that exists. */
+/* An addition, not an existing record: the drop area's dashed edge */
 .roster__new {
     display: flex;
     flex-direction: column;
@@ -2553,12 +2396,8 @@
     gap: var(--s-2) var(--s-3);
 }
 
-/* --- Columns that no longer fit ------------------------------------------
-   Roles are made now, so the grid can be ten columns wide. It keeps them
-   rather than turning into a one-role view: the question it is read for is
-   what this role may do that the other one may not, and a dropdown answers
-   that by asking you to remember the other column. So the capability column
-   stays put while the rest scrolls under it. */
+/* --- Columns that do not fit ------------------------------------------- */
+/* Roles stay side by side to be compared: the capability column sticks, the rest scrolls */
 
 .matrix__what {
     position: sticky;
@@ -2567,20 +2406,17 @@
     background: var(--c-surface);
 }
 
-/* The corner belongs to both sticky edges and therefore has to sit above
-   the header row it shares its line with. */
+/* Corner of both sticky edges: must sit above the header row it shares */
 .matrix__corner {
     z-index: 2;
 }
 
-/* Without this the rows would slide out from under the sticky column and
-   show through it. */
+/* Opaque on hover too, or the rows show through the sticky column */
 .matrix__row:hover .matrix__what {
     background: var(--c-surface-2);
 }
 
-/* A column that shrinks to its ticks is no longer readable as a role, so
-   they keep their width and the sheet scrolls sideways instead. */
+/* Shrunk to its ticks a column stops reading as a role: keep the width, scroll sideways */
 .matrix__col {
     min-width: 7rem;
 }
@@ -2602,16 +2438,14 @@
     gap: var(--s-2);
 }
 
-/* Folded away, not switched off: it keeps its name and steps back, because
-   pressing it again is the only way to bring the column back. */
+/* Folded, not disabled: pressing it again is the only way to bring the column back */
 .matrix__folded {
     opacity: 0.45;
 }
 
-/* --- Role and access in the top bar --------------------------------------- */
+/* --- Role and access in the top bar ------------------------------------ */
 
-/* A role label is whatever the owner named it. It gives way before the
-   bar does, with the full label in its title. */
+/* Owner-named label: gives way before the bar does; the full label is in its title */
 .session__role {
     flex: none;
     max-width: 10rem;
@@ -2621,10 +2455,8 @@
     flex: none;
 }
 
-/* --- Bars outside the stage ----------------------------------------------
-   The warning and the permission note share one row of the grid, so the
-   scrolling area below keeps its height - even when both are showing at
-   the same time. */
+/* --- Bars outside the stage -------------------------------------------- */
+/* Warning and permission note share one grid row: the stage keeps its height with both */
 
 .banners {
     position: relative;
@@ -2633,8 +2465,7 @@
     flex-direction: column;
 }
 
-/* No alarm tone: a withdrawn permission is not an error but a change
-   somebody else made. */
+/* No alarm tone: a withdrawn permission is someone else's change, not an error */
 .banner--perm {
     display: flex;
     align-items: center;
@@ -2651,8 +2482,7 @@
 }
 
 @media (max-width: 860px) {
-    /* On narrow screens the table does not carry the identifier - the text
-       of the capability stays, and the columns get the room. */
+    /* The identifier goes, the capability text stays: the columns get the room */
     .matrix__id {
         display: none;
     }
@@ -2662,19 +2492,11 @@
     }
 }
 
-/* --------------------------------------------------------------------------
-   11. The server area
-   The second main area. Everything here belongs to the installation rather
-   than to a citizen, so it gets no billboard and no plate - there is no face
-   to put on it. It borrows the section bar, the panel and the data rows from
-   the citizen side unchanged; what follows is only what has no counterpart
-   there.
-   -------------------------------------------------------------------------- */
+/* === 11. The server area =============================================== */
+/* No billboard or plate: no face to show; section bar, panel and data rows are reused as is */
 
-/* --- The switch in the top bar -------------------------------------------
-   A segment control, the same one the modules use for their two- and
-   three-way choices. A second, bespoke kind of switch for the largest choice
-   on the screen would be one switch language too many. */
+/* --- The switch in the top bar ----------------------------------------- */
+/* The modules' segmented control: no second switch language */
 
 .topbar__areas {
     flex: none;
@@ -2684,18 +2506,13 @@
     padding-inline: var(--s-3);
 }
 
-/* Takes the width the search would have had. Without it the bridge and the
-   session slide left the moment the field goes, and the bar visibly
-   rearranges itself on every switch. */
+/* Holds the search's width: the bar does not rearrange on every switch */
 .topbar__spacer {
     flex: 1 1 auto;
     min-width: 0;
 }
 
-/* --- The heading of the area ---------------------------------------------
-   Deliberately quiet next to the citizen billboard: that one carries a
-   portrait and a name, this one carries a sentence. Making it as loud would
-   claim a subject it does not have. */
+/* --- The heading of the area ------------------------------------------- */
 
 .areahead {
     display: flex;
@@ -2713,19 +2530,13 @@
     color: var(--c-text-muted);
 }
 
-/* One column instead of the module grid. Used by the Bans section: squeezed
-   into a grid column, its single wide list (rows carrying a source, a state
-   and the identifiers they hang off) wraps into something nobody can scan. */
+/* One column for the Bans list: squeezed into a grid column its wide rows cannot be scanned */
 .modules--stack {
     grid-template-columns: minmax(0, 1fr);
 }
 
-/* --- Counts side by side -------------------------------------------------
-   Built for the one number pair that must not be merged: how many people
-   work a job right now, and how many memberships are on record for it. Those
-   come from two different tables and can disagree, which is a fact about the
-   server rather than a rounding error. Two figures of equal size next to
-   each other say that; one averaged figure would hide it. */
+/* --- Counts side by side ----------------------------------------------- */
+/* Working now and memberships on record come from two tables that may disagree: never merge */
 
 .tally {
     display: flex;
@@ -2749,9 +2560,7 @@
     min-width: 0;
 }
 
-/* A total across every account can be long. Figure and key share a line
-   while they fit; past that the key drops below, and only a figure wider
-   than the whole card breaks - never shortened, it is the exact sum. */
+/* The exact sum, never shortened: the key drops below before the figure breaks */
 .tally__value {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -2759,8 +2568,7 @@
     font-weight: 600;
 }
 
-/* Not a zero. "There is no such number here" keeps the faint tone that every
-   unknown value in this panel wears. */
+/* Not a zero: "no such number" wears the faint tone of every unknown value */
 .tally__value--none {
     color: var(--c-text-faint);
     font-weight: 400;
@@ -2771,9 +2579,7 @@
     color: var(--c-text-faint);
 }
 
-/* The line that names a disagreement between two counts. It stays in the
-   quiet meta tone - nothing is broken, the server simply holds two answers -
-   but it is set off far enough not to be skimmed past. */
+/* Count disagreement: quiet tone (nothing is broken), set off so it is not skimmed past */
 .line__meta--flag {
     gap: 0;
     padding-left: var(--s-3);
@@ -2781,9 +2587,8 @@
     color: var(--c-text-muted);
 }
 
-/* --- The opened organisation ---------------------------------------------
-   Account and members, unfolded inside the row rather than in an overlay:
-   what is read here is read against the numbers in the row above it. */
+/* --- The opened organisation ------------------------------------------- */
+/* Unfolds in the row, not an overlay: it is read against the row's numbers above */
 
 .orgdetail {
     display: flex;
@@ -2804,12 +2609,10 @@
     color: var(--c-text-muted);
 }
 
-/* The two member lists side by side where there is room, because they are
-   read against each other - who is working it, and who is only on the books.
-   Stacked they would read as two unrelated lists. */
+/* Side by side where there is room: working and on-the-books are read against each other */
 .orgdetail__lists {
     display: grid;
-    /* min(): inside a row inside a card, 16rem is more than a phone has. */
+    /* min(): inside a row inside a card, 16rem is more than a phone has */
     grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
     gap: var(--s-4);
     align-items: start;
@@ -2822,9 +2625,7 @@
     min-width: 0;
 }
 
-/* --- Key and value -------------------------------------------------------
-   The diagnostics read as a report: a fixed left column of names and the
-   readings against it. A real definition list, because that is what it is. */
+/* --- Key and value ----------------------------------------------------- */
 
 .kv {
     display: flex;
@@ -2859,16 +2660,13 @@
     overflow-wrap: anywhere;
 }
 
-/* A reading the server did not send. Named rather than left blank: an empty
-   row reads like a setting that is switched off. */
+/* A missing reading is named, not blank: an empty row reads as a setting switched off */
 .kv__value--none {
     color: var(--c-text-faint);
 }
 
-/* --- A list that is usually in the way -----------------------------------
-   Every table in the database is worth having but not worth reading, so it
-   folds away. A details element rather than state of our own: it keeps the
-   keyboard behaviour and works before any script runs. */
+/* --- A list that is usually in the way --------------------------------- */
+/* <details>, not component state: native keyboard behaviour, works before any script runs */
 
 .reveal {
     border-top: 1px solid var(--c-border);
@@ -2890,39 +2688,29 @@
     margin-top: var(--s-3);
 }
 
-/* --- One list out of two ban records -------------------------------------
-   The rows of both records stand in one list, sorted together, so the thing
-   that has to survive a hurried glance is which record a row is written in:
-   only a database row can be lifted from the panel. That is carried in
-   words on every row rather than in a colour, because a shade tells nobody
-   which of the two it means. Nothing here signals alarm - a ban in force is
-   a fact about the server, not an incident. */
+/* --- One list out of two ban records ----------------------------------- */
+/* Each row names its record in words, not colour: only database rows can be lifted here;
+   no alarm tone: a ban in force is a fact about the server, not an incident */
 
-/* Two pills at the end of the row: where it is written down, and how it
-   stands. They travel together to the right edge, so the state pill keeps
-   the place the eye already looks for it in every other list. */
+/* Source and state pills go right together: the state pill stays where every list puts it */
 .line__badges {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: var(--s-2);
     margin-left: auto;
-    /* Allowed to narrow (never below its widest pill), so on a phone the
-       two pills stack instead of running out of the row together. */
+    /* May narrow to its widest pill: on a phone the two pills stack instead of overflowing */
     flex: 0 1 auto;
     max-width: 100%;
 }
 
-/* Provenance, not a verdict: it keeps the neutral pill and gives up the
-   uppercase tracking, so it reads as a label beside the state rather than
-   competing with it. */
+/* Provenance, not a verdict: neutral and untracked, a label beside the state, not a rival */
 .line__src {
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: none;
 }
 
-/* The one-citizen filter and the sentence that says how it was matched. */
 .banfilter {
     display: flex;
     flex-wrap: wrap;
@@ -2930,8 +2718,7 @@
     gap: var(--s-2) var(--s-3);
 }
 
-/* A pill that removes itself. The filter it names is the only reason the
-   list is short, so the statement and the way out of it are one control. */
+/* The filter it names is why the list is short: statement and way out are one control */
 .pill--drop {
     cursor: pointer;
     font: inherit;
@@ -2950,15 +2737,13 @@
     opacity: 0.7;
 }
 
-/* Over and done with: the reason keeps its place in the row but gives up
-   the weight of one that is keeping somebody out right now. */
+/* Expired: keeps its place, loses the weight of a ban in force */
 .line--spent .line__name {
     font-weight: 500;
     color: var(--c-text-muted);
 }
 
-/* The identifiers fold away inside the row, so the divider and the padding
-   the reveal carries at the foot of a panel would be too much here. */
+/* Inside a row the reveal drops the divider and padding it has at a panel's foot */
 .line__ids {
     border-top: 0;
     padding-top: 0;
@@ -2981,8 +2766,7 @@
 }
 
 @media (max-width: 900px) {
-    /* The switch keeps its labels but gives up its padding before the bar
-       wraps - "Citizens" and "Server" cannot be guessed from a glyph. */
+    /* Padding goes before the labels do: the areas cannot be guessed from a glyph */
     .topbar__areas .segment__btn {
         padding-inline: var(--s-2);
     }
@@ -2993,9 +2777,7 @@
 }
 
 @media (max-width: 560px) {
-    /* The report loses its column and becomes stacked pairs: 11rem of names
-       plus a reading does not fit, and a squeezed column would break the
-       readings mid-word. */
+    /* Stacked pairs: 11rem of names plus a reading do not fit; squeezed, readings break mid-word */
     .kv__key {
         flex: 1 1 100%;
     }

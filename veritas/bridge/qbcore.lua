@@ -1,10 +1,4 @@
--- veritas/bridge/qbcore.lua
--- QBCore and Qbox share almost everything: both expose a core object with
--- the same Functions table. They differ in the export used to reach it, and
--- Qbox additionally keeps memberships in player_groups.
---
--- The shared part lives here; qbox.lua only supplies the different export
--- and label and reuses these functions.
+-- QBCore adapter; QBFamily.build() is shared with qbox.lua (same Functions table, other export)
 
 local function build(id, label, resourceName, exportName)
     local core
@@ -20,8 +14,7 @@ local function build(id, label, resourceName, exportName)
     end
 
     function adapter.init()
-        -- pcall, because reaching for an export of a resource that is
-        -- present but not finished loading throws rather than returning nil.
+        -- pcall: an export of a still-loading resource throws instead of returning nil
         local ok, obj = pcall(function()
             return exports[resourceName][exportName]()
         end)
@@ -48,7 +41,7 @@ local function build(id, label, resourceName, exportName)
         return out
     end
 
-    -- AddMoney refuses negative amounts, so subtracting is its own call.
+    -- AddMoney refuses negative amounts: subtracting is its own call
     function adapter.addMoney(player, account, amount, reason)
         return player.Functions.AddMoney(account, amount, reason) ~= false
     end
@@ -68,8 +61,7 @@ local function build(id, label, resourceName, exportName)
     end
 
     function adapter.revive(player, src)
-        -- Which event applies depends on the ambulance script. Both common
-        -- names are fired; the one that does not fit goes nowhere.
+        -- Event name depends on the ambulance script: fire both common ones
         TriggerClientEvent('hospital:client:Revive', src)
         TriggerClientEvent('qbx_medical:client:playerRevived', src)
         player.Functions.SetMetaData('isdead', false)
@@ -108,7 +100,7 @@ local function build(id, label, resourceName, exportName)
     return adapter
 end
 
--- Exported so qbox.lua can build on the same functions.
+-- For qbox.lua
 QBFamily = { build = build }
 
 Bridge.register(build('qbcore', 'QBCore (qb-core)', 'qb-core', 'GetCoreObject'))

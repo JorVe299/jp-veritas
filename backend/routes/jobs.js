@@ -1,15 +1,5 @@
-// backend/routes/jobs.js
-// Jobs and gangs as organisations, not as a field on a character.
-//
-// Everything else in the panel starts from a citizen. This does not: a
-// police force has a balance, a headcount and a rank structure whether or
-// not anyone is looking at a particular officer. That is why it is its own
-// route rather than another card in the citizen view.
-//
-// The member count is deliberately taken from two places. Qbox keeps the
-// active job on the character AND the memberships in player_groups, and the
-// two can disagree - somebody set as police in one place and not the other.
-// Showing both numbers makes that visible instead of averaging it away.
+// Jobs and gangs as organisations: balance, headcount, ranks, independent of any citizen
+// Two member counts on purpose: active job (character) vs player_groups; they can disagree
 const express = require('express');
 const { db, parseJSON, tableExists } = require('../utils/dbHandler');
 const { getJobs, getGangs } = require('../utils/dataLoader');
@@ -20,7 +10,7 @@ const router = express.Router();
 const ACCOUNTS_TABLE = 'bank_accounts_new';
 const GROUPS_TABLE = 'player_groups';
 
-// How many characters carry this as their active job, keyed by job name.
+// Characters per active job name
 async function activeCounts(fw) {
     const rows = fw.id === 'esx'
         ? (await db.execute(`SELECT job AS name, COUNT(*) AS n FROM ${fw.table} GROUP BY job`))[0]
@@ -35,7 +25,7 @@ async function activeCounts(fw) {
     return out;
 }
 
-// How many memberships exist per group, split by type.
+// Memberships per group and type (player_groups)
 async function membershipCounts() {
     if (!await tableExists(GROUPS_TABLE)) return null;
 
@@ -49,7 +39,7 @@ async function membershipCounts() {
     return out;
 }
 
-// Balances keyed by account id, which for a society account is the job name.
+// Balances by account id (society account id = job name)
 async function balances() {
     if (!await tableExists(ACCOUNTS_TABLE)) return null;
 
@@ -67,9 +57,7 @@ async function balances() {
 }
 
 // --- Overview -------------------------------------------------------------
-// One row per job and gang. Money is only attached for callers who are
-// allowed to see accounts - the same route then simply says less, rather
-// than refusing the whole page to a supporter who may see the roster.
+// Money only with accounts.view; without it the page shows less instead of failing
 router.get('/api/jobs', async (req, res) => {
     const type = ['job', 'gang', 'all'].includes(req.query.type) ? req.query.type : 'all';
     const search = String(req.query.search || '').toLowerCase().trim();
@@ -91,8 +79,7 @@ router.get('/api/jobs', async (req, res) => {
                 type: kind,
                 label: meta?.label || name,
                 gradeCount: Object.keys(grades).length,
-                // The highest grade is what a boss holds; useful to see at a
-                // glance whether a rank structure is set up at all.
+                // Highest grade: shows whether a rank structure exists
                 topGrade: Object.entries(grades)
                     .sort((a, b) => Number(b[0]) - Number(a[0]))[0]?.[1]?.name || null,
                 activeMembers: active[name] || 0,
@@ -103,9 +90,7 @@ router.get('/api/jobs', async (req, res) => {
                 const acc = money[name];
                 row.account = acc
                     ? { id: name, ...acc }
-                    // No account row at all is different from one holding
-                    // zero, and an admin looking for missing setup wants to
-                    // tell those apart.
+                    // null (no account row) is not 0: missing setup stays visible
                     : null;
             }
             return row;
@@ -141,7 +126,7 @@ router.get('/api/jobs', async (req, res) => {
     }
 });
 
-// --- Who is in it ---------------------------------------------------------
+// --- Members --------------------------------------------------------------
 router.get('/api/jobs/:name/members', async (req, res) => {
     const name = req.params.name;
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 200);
@@ -149,7 +134,7 @@ router.get('/api/jobs/:name/members', async (req, res) => {
     try {
         const fw = await profile();
 
-        // Active holders, straight off the character record.
+        // Active holders, from the character record
         const [activeRows] = fw.id === 'esx'
             ? await db.execute(
                 `SELECT ${fw.selectFields} FROM ${fw.table} WHERE job = ? LIMIT ${limit}`, [name])
@@ -162,8 +147,7 @@ router.get('/api/jobs/:name/members', async (req, res) => {
             return { citizenid: p.citizenid, name: p.name, jobLabel: p.jobLabel };
         });
 
-        // Memberships, which may include people whose active job is something
-        // else - that is the interesting part, not a glitch.
+        // Memberships can include people with another active job: meaningful, not a glitch
         let members = null;
         if (await tableExists(GROUPS_TABLE)) {
             const [rows] = await db.execute(

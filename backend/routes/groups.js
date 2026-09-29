@@ -1,10 +1,5 @@
-// backend/routes/groups.js
-// Memberships from the player_groups table (citizenid, group, type, grade).
-//
-// Qbox keeps jobs and gangs here in addition to the job column: a player can
-// belong to several groups, while the job column only carries the active
-// one. That is why this is its own module and not an extension of
-// /manage/job.
+// Memberships in player_groups (citizenid, group, type, grade)
+// Qbox: several groups per player; the job column holds only the active one
 const express = require('express');
 const { db, tableExists } = require('../utils/dbHandler');
 const { getJobs, getGangs } = require('../utils/dataLoader');
@@ -12,7 +7,7 @@ const { getJobs, getGangs } = require('../utils/dataLoader');
 const router = express.Router();
 const TABLE = 'player_groups';
 
-// 'group' is a reserved word in MySQL and always needs backticks.
+// Reserved word in MySQL: always backticked
 const GROUP_COL = '`group`';
 
 const TYPES = ['job', 'gang'];
@@ -26,12 +21,11 @@ async function ensureTable(res) {
     return false;
 }
 
-// Catalog for a type: jobs come from jobs.json, gangs from gangs.json.
 function catalogFor(type) {
     return type === 'gang' ? getGangs() : getJobs();
 }
 
-// --- A player's memberships ----------------------------------------------
+// --- A player's memberships -----------------------------------------------
 router.get('/api/players/:citizenid/groups', async (req, res) => {
     try {
         if (!await ensureTable(res)) return;
@@ -50,9 +44,7 @@ router.get('/api/players/:citizenid/groups', async (req, res) => {
                 grade: Number(row.grade) || 0,
                 label: meta?.label || row.name,
                 gradeName: gradeMeta?.name || null,
-                // Groups that no longer exist in the reference data are
-                // leftovers of a removed resource - that should be visible
-                // rather than shown as if they were valid entries.
+                // Unknown to the catalog: leftover of a removed resource, flagged as such
                 known: Boolean(meta)
             };
         });
@@ -83,7 +75,7 @@ router.post('/api/manage/group', async (req, res) => {
         return res.status(400).json({ error: 'grade must be a whole number between 0 and 100' });
     }
 
-    // Check against the reference data as long as any is loaded.
+    // Validate against the catalog when one is loaded
     const catalog = catalogFor(type);
     if (Object.keys(catalog).length > 0) {
         const meta = catalog[group];
@@ -99,8 +91,7 @@ router.post('/api/manage/group', async (req, res) => {
         const [player] = await db.execute('SELECT citizenid FROM players WHERE citizenid = ?', [citizenid]);
         if (player.length === 0) return res.status(404).json({ error: 'Player not found' });
 
-        // A player belongs to a group exactly once - so update rather than
-        // insert a second row.
+        // One row per player and group: update instead of a second insert
         const [existing] = await db.execute(
             `SELECT grade FROM ${TABLE} WHERE citizenid = ? AND ${GROUP_COL} = ?`,
             [citizenid, group]
@@ -137,9 +128,7 @@ router.post('/api/manage/group', async (req, res) => {
 router.delete('/api/manage/group', async (req, res) => {
     const { citizenid, group, type } = req.body;
     if (!citizenid || !group) return res.status(400).json({ error: 'citizenid and group are required' });
-    // Required, as on the write: a name is only unique within a type.
-    // Nothing stops a server from having a 'vagos' job and a 'vagos' gang,
-    // and removing the gang must not take the job with it.
+    // type required: names are unique per type only (a 'vagos' job and gang can coexist)
     if (!TYPES.includes(type)) return res.status(400).json({ error: `type must be one of ${TYPES.join(', ')}` });
 
     try {

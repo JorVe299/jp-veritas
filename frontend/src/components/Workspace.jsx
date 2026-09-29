@@ -25,8 +25,6 @@ import { formatTime } from '../utils/format';
 
 const LOG_LIMIT = 6;
 
-// What actually stands behind each server section, in one line, for the
-// start page. Module level: none of it depends on a render.
 const SERVER_HINTS = {
     orgs: 'The jobs and gangs players belong to, and who is in them.',
     accounts: 'Every account on this server, personal and company.',
@@ -34,21 +32,13 @@ const SERVER_HINTS = {
     system: 'What this installation is, when something looks wrong.',
 };
 
-// Without a configured Discord login the panel runs unprotected. If the
-// server sends no text of its own, at least this one stands here.
 const OPEN_PANEL_WARNING =
     'Discord login is not configured - this panel is open to anyone who can reach it.';
 
 /**
- * The actual panel. It is mounted only once a session is confirmed (or the
- * protection has demonstrably been switched off) - that way no data request
- * runs into a 401 before it is even clear who is working here.
- *
- * The same applies one level down for permissions: a card that lacks its
- * permission is not mounted at all. If it were, its load call would run
- * into a 403 and the card would report an error - even though nothing is
- * broken. What the user may see but not change stays in place, by contrast:
- * there only the controls are locked.
+ * Panel shell; mounted only after the session is confirmed (or auth is off): no early 401s
+ * Cards lacking their view permission are not mounted: a first-load 403 would read as a fault
+ * Cards are keyed per citizen: every form restarts when the selection changes
  */
 export default function Workspace({
     user,
@@ -64,36 +54,24 @@ export default function Workspace({
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [selectedPlayer, setSelectedPlayer] = useState(null);
-    // Counted up after every mutation and makes the wall reload.
     const [rosterVersion, setRosterVersion] = useState(0);
     const [jobs, setJobs] = useState({});
     const [jobsError, setJobsError] = useState(null);
     const [gangs, setGangs] = useState({});
     const [gangsError, setGangsError] = useState(null);
-    // Completed writes of the running session.
     const [writeLog, setWriteLog] = useState([]);
     const [permissionsOpen, setPermissionsOpen] = useState(false);
-    // Deliberately not tied to the citizen: someone correcting several
-    // balances one after another should stay in "Money".
+    // Survives citizen changes: correcting balances in a row stays in "Money"
     const [tab, setTab] = useState('identity');
 
-    // Which of the two main areas is showing, and where the server one
-    // stands. Both live here rather than in a router: there are two states
-    // in total, no deep links to keep, and a router would be a dependency
-    // bought for nothing.
+    // Plain state, no router: no deep links to keep
     const [area, setArea] = useState('citizens');
     const [serverTab, setServerTab] = useState('orgs');
 
-    // Which citizen the server-wide ban list is narrowed to, if any. It
-    // lives here rather than in the panel because it is set from the other
-    // area entirely: the Enforcement tab hands a citizen over and the list
-    // opens already filtered. The panel offers the way back out, which is
-    // why the clearing handler travels down with it.
+    // Lifted here: set from the Enforcement tab, cleared from the server ban list
     const [bansCitizenid, setBansCitizenid] = useState('');
 
-    // One source for all cards. Hangs off the user object: when the session
-    // is reloaded it carries the fresh permission list, and the whole UI
-    // follows it - with no re-login.
+    // Keyed on user: a session reload updates every card's permissions, no re-login
     const permissions = useMemo(
         () => buildPermissions(user, authDisabled),
         [user, authDisabled],
@@ -106,9 +84,7 @@ export default function Workspace({
     const roster = useRoster(search, page, rosterVersion, canViewPlayers);
     const stageRef = useRef(null);
 
-    // Load the job reference data once per session, not on every change.
-    // /api/meta/* hangs off the players.view permission - without it we do
-    // not even ask.
+    // Once per session; /api/meta/* requires players.view, so not requested without it
     useEffect(() => {
         if (!canViewPlayers) return undefined;
 
@@ -121,8 +97,6 @@ export default function Workspace({
         return () => { cancelled = true; };
     }, [canViewPlayers]);
 
-    // The gang reference data, on the same terms as the jobs above: once per
-    // session, behind the same players.view gate that /api/meta/* hangs off.
     useEffect(() => {
         if (!canViewPlayers) return undefined;
 
@@ -140,16 +114,13 @@ export default function Workspace({
         setPage(1);
     }, []);
 
-    // Selecting brings the header area up: after the click everything that
-    // can be changed sits in one field of view.
+    // Scroll up on select: billboard and cards land in one field of view
     const handleSelect = useCallback((player) => {
         setSelectedPlayer(player);
         setWriteLog([]);
         stageRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
 
-    // A mutation reported success: update the selected citizen right away,
-    // hold on to what happened and pull the wall along.
     const handleApplied = useCallback((patch, entry) => {
         setSelectedPlayer((prev) => (prev ? { ...prev, ...patch } : prev));
         setRosterVersion((v) => v + 1);
@@ -164,16 +135,13 @@ export default function Workspace({
     const bridgeDown = Boolean(roster.bridge && !roster.bridge.reachable);
     const warned = authDisabled || permissionNotice;
 
-    // "On the server right now" is only a statement when the bridge is
-    // answering. Otherwise we do not know it and do not claim it either.
+    // Online only counts while the bridge answers; otherwise unknown, never claimed
     const onlineNow = Boolean(selectedPlayer?.isOnline && !bridgeDown);
 
-    // Licenses and character data hang off two different permissions; one
-    // of them is enough for the card to have anything to show at all.
+    // Licences and character data have separate permissions; either one fills the card
     const canSeeCharacterData = can('metadata.view') || can('charinfo.edit');
 
-    /* The sections of the module wall. Only what this user may actually see
-       is offered - a section that opens up empty explains nothing. */
+    // Only sections the user can see: an empty section explains nothing
     const tabs = useMemo(() => {
         const list = [
             { id: 'identity', label: 'Identity', icon: 'id' },
@@ -193,18 +161,10 @@ export default function Workspace({
         return list;
     }, [can, onlineNow]);
 
-    // Derived instead of synchronized: if the user loses a permission in
-    // the middle of the work, the selection falls back to the first section
-    // still present, without an effect having to chase after it.
+    // Derived, not synced: losing a permission falls back to the first tab without an effect
     const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0].id;
 
-    /* The sections of the server area. Same rule as above: a section whose
-       permission is missing is not mounted at all, because its very first
-       request would come back 403 and the section would report a fault
-       where there is none.
-
-       Diagnostics needs system.view, which also covers the framework
-       probe. */
+    // Same mount rule as the cards; system.view also covers the framework probe
     const serverTabs = useMemo(() => {
         const list = [];
 
@@ -216,17 +176,14 @@ export default function Workspace({
         return list;
     }, [can]);
 
-    // No server permission at all, no second area - and then no switch
-    // either. An area that opens onto nothing explains nothing.
+    // No server section: no server area, and so no area switch
     const areas = useMemo(() => {
         const list = [{ id: 'citizens', label: 'Citizens', icon: 'users' }];
         if (serverTabs.length > 0) list.push({ id: 'server', label: 'Server', icon: 'server' });
         return list;
     }, [serverTabs]);
 
-    // Derived, like the tab above: if the last server permission is taken
-    // away mid-session, the area falls back to the citizens without an
-    // effect having to chase after it.
+    // Derived like activeTab: losing the last server permission falls back to citizens
     const activeArea = area === 'home' || areas.some((a) => a.id === area)
         ? area
         : 'citizens';
@@ -234,24 +191,18 @@ export default function Workspace({
         ? serverTab
         : serverTabs[0]?.id;
 
-    // Switching area starts at the top: the two areas are different heights
-    // and keeping the scroll offset would land mid-card in the other one.
+    // Back to the top: areas differ in height; a kept offset would land mid-card
     const handleAreaChange = useCallback((next) => {
         setArea(next);
         stageRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
 
-    // Choosing a citizen from the start page means switching area and
-    // opening them there. Without the switch the selection would stay out
-    // of sight.
     const handleSelectFromHome = useCallback((player) => {
         handleSelect(player);
         setArea('citizens');
     }, [handleSelect]);
 
-    // The citizen's account card used to open the server-wide list in an
-    // overlay of its own. The list now lives in the server area, so the
-    // card sends the user there instead of holding a second copy.
+    // The account card links to the server-wide list instead of holding a copy
     const showAllAccounts = useCallback(() => {
         setServerTab('accounts');
         handleAreaChange('server');
@@ -259,13 +210,8 @@ export default function Workspace({
 
     const serverAccountsReachable = serverTabs.some((t) => t.id === 'accounts');
 
-    // The same move as the accounts one above, for the ban record. The
-    // citizen card can only ever show the bans that match the character in
-    // front of it, out of the database table alone; the server-wide list
-    // holds both records and the entries hanging off identifiers with no
-    // character behind them. So the Enforcement tab sends the user there
-    // with this citizen already filtered, instead of growing a second copy
-    // of that list inside the card.
+    // Same for bans: the card sees only this character's DB bans; the server list holds
+    // both ban records and identifier-only entries, so link there, filtered to the citizen
     const showBansForCitizen = useCallback(() => {
         const citizenid = selectedPlayer?.citizenid;
         if (!citizenid) return;
@@ -278,14 +224,7 @@ export default function Workspace({
 
     const serverBansReachable = serverTabs.some((t) => t.id === 'bans');
 
-    /* The destinations on the start page. Only what this user may actually
-       enter is offered - a row pointing at a locked door would be worse
-       than no row.
-
-       Plain data, no callbacks: a closure built here would capture the
-       scroll ref and be created fresh on every render, which is both a
-       React warning and a pointless allocation. Where a row leads is a
-       fact; acting on it belongs to the handler below. */
+    // Plain data, no callbacks: a closure here would capture the scroll ref (React warning)
     const destinations = useMemo(() => {
         const list = [];
 
@@ -318,9 +257,7 @@ export default function Workspace({
         handleAreaChange(dest.area);
     }, [handleAreaChange]);
 
-    // Whoever is connected right now, as far as the loaded page carries
-    // them. The start page says so itself when the bridge counts more than
-    // what stands here.
+    // Only the loaded page's online players; the start page flags a higher bridge count
     const onlinePlayers = useMemo(
         () => (bridgeDown ? [] : roster.players.filter((p) => p.isOnline)),
         [roster.players, bridgeDown],
@@ -352,14 +289,10 @@ export default function Workspace({
                     onSignOut={onSignOut}
                 />
 
-                {/* Both bars stand outside the scrolling area and share one
-                    row of the grid - otherwise the stage below would get no
-                    height of its own once two messages are up. */}
+                {/* One shared grid row outside the stage: two banners must not starve it */}
                 {warned && (
                     <div className="banners">
-                        {/* Running unprotected is no detail: in this state
-                            anyone who can reach the port can create money.
-                            The warning cannot be clicked away. */}
+                        {/* Not dismissible: anyone who can reach the port can create money */}
                         {authDisabled && (
                             <StatusNote
                                 className="banner"
@@ -369,10 +302,7 @@ export default function Workspace({
                             />
                         )}
 
-                        {/* A permission was withdrawn mid-work. Once here,
-                            instead of in every card separately - the cards
-                            saw nothing of it but a 403, which on its own
-                            explains nothing. */}
+                        {/* Once here, not per card: the cards only see an unexplained 403 */}
                         {permissionNotice && (
                             <div className="banner banner--perm" role="status">
                                 <Icon name="info" size={16} />
@@ -392,10 +322,7 @@ export default function Workspace({
                 )}
 
                 <div className="stage" ref={stageRef}>
-                    {/* The two main areas. The citizen one is everything the
-                        panel was; the server one holds what belongs to no
-                        citizen. Only one is mounted at a time, so the other
-                        one's cards issue no requests while out of sight. */}
+                    {/* One area mounted at a time: hidden areas issue no requests */}
                     {activeArea === 'home' ? (
                         <HomeArea
                             roleLabel={permissions.roleLabel}
@@ -426,9 +353,6 @@ export default function Workspace({
                                 onClear={() => setWriteLog([])}
                             />
                         ) : (
-                            /* Without players.view there is no way in: everything
-                               on this page starts with a citizen. Saying that
-                               once is more honest than an empty wall. */
                             <StatusNote
                                 className="note--wide"
                                 tone="info"
@@ -440,18 +364,7 @@ export default function Workspace({
                         )}
 
                         {canViewPlayers && selectedPlayer && (
-                            /* The module wall now stands in sections. Before,
-                               up to thirteen cards lay stacked at once and you
-                               scrolled past all of them to change one.
-
-                               A new module goes into the section it belongs to
-                               by subject, and shows up there by itself.
-                               key still makes sure the forms restart when the
-                               citizen changes.
-
-                               The condition in front of each card is its view
-                               permission, not its edit permission: locked
-                               controls explain themselves, a missing card does not. */
+                            /* Gated on view, not edit: locked controls explain themselves */
                             <>
                                 <CitizenTabs tabs={tabs} activeId={activeTab} onSelect={setTab} />
 
@@ -503,11 +416,6 @@ export default function Workspace({
                                                     key={`acc-${selectedPlayer.citizenid}`}
                                                     selectedPlayer={selectedPlayer}
                                                     onApplied={handleApplied}
-                                                    /* The server-wide list used to
-                                                       open from here as an overlay.
-                                                       It lives in the server area
-                                                       now, so the card points there
-                                                       instead of holding a copy. */
                                                     onShowAllAccounts={
                                                         serverAccountsReachable ? showAllAccounts : undefined
                                                     }
@@ -558,10 +466,6 @@ export default function Workspace({
                                             key={`ban-${selectedPlayer.citizenid}`}
                                             selectedPlayer={selectedPlayer}
                                             onApplied={handleApplied}
-                                            /* Left out where the server
-                                               area cannot be entered: a
-                                               door onto nothing explains
-                                               less than no door. */
                                             onShowServerBans={
                                                 serverBansReachable ? showBansForCitizen : undefined
                                             }

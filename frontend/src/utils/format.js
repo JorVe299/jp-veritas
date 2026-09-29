@@ -1,5 +1,4 @@
-// Central formatting. The surface is English, hence en-US with thousands
-// separators and no decimals - amounts get large.
+// en-US to match the English UI; no decimals: amounts get large
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
@@ -16,14 +15,12 @@ const timeFormatter = new Intl.DateTimeFormat('en-US', {
     hour12: false,
 });
 
-/** 12000 -> "12,000". Invalid values become an em dash. */
 export function formatMoney(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return '—';
     return moneyFormatter.format(n);
 }
 
-/** 12000 -> "$12,000" */
 export function formatCurrency(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return '—';
@@ -35,34 +32,27 @@ export function formatDelta(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return '—';
     const formatted = signedFormatter.format(n);
-    // Sign and amount are split so the $ sits tight against the digits.
     return `${formatted.slice(0, 1)}$${formatted.slice(1)}`;
 }
 
-// Three significant digits: "$1.23B" is short enough for the tightest box
-// it is used in, and still says which billion.
+// 3 significant digits: "$1.23B" fits the tightest box and still says which billion
 const compactFormatter = new Intl.NumberFormat('en-US', {
     notation: 'compact',
     maximumSignificantDigits: 3,
 });
 
-// Compact notation stops at T and then grows digit by digit again
-// ("1,230,000T"). Past that point a mantissa and an exponent are the only
-// bounded way to write it - and above 2^53 the trailing digits a full
-// number would show are float noise anyway.
+// Compact stops at T and then grows unbounded ("1,230,000T"); scientific stays short
 const scientificFormatter = new Intl.NumberFormat('en-US', {
     notation: 'scientific',
     maximumSignificantDigits: 3,
 });
 
-// 999.5T and up would round to "1000T" in compact notation.
+// 999.5T and up would round to "1000T" in compact notation
 const COMPACT_CEILING = 9.995e14;
 
 /**
- * 1234567 -> "1.23M", for display only where a box is genuinely too narrow
- * for the full figure. Never for a value somebody acts on, and never alone:
- * whatever shows this also carries the exact figure (title and
- * screen-reader text) - <Amount> does both, and decides from which size on.
+ * 1234567 -> "1.23M"; only where a box is too narrow for the full figure (see <Amount>)
+ * Never for a value acted on; never alone: exact figure also in title and screen-reader text
  */
 export function formatCompact(value) {
     const n = Number(value);
@@ -70,14 +60,13 @@ export function formatCompact(value) {
     return Math.abs(n) >= COMPACT_CEILING ? scientificFormatter.format(n) : compactFormatter.format(n);
 }
 
-/** 1234567890 -> "$1.23B". Same "$" placement as formatCurrency. */
 export function formatCurrencyCompact(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return '—';
     return `$${formatCompact(n)}`;
 }
 
-/** 02:14 - used on the write records so each one is placeable in time. */
+/** "02:14" (24-hour) */
 export function formatTime(date = new Date()) {
     return timeFormatter.format(date);
 }
@@ -91,13 +80,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
     hour12: false,
 });
 
-/**
- * Timestamps from the database come in three shapes: as ISO text, as Unix
- * seconds (that is how a ban stores its expire) and as milliseconds.
- * Seconds and milliseconds are both numbers - they are told apart by order
- * of magnitude, because second values do not reach that threshold until
- * the year 5138.
- */
+// ISO text, Unix seconds (ban expiry) or ms; seconds stay below 1e11 until the year 5138
 function toDate(value) {
     if (value === null || value === undefined || value === '') return null;
 
@@ -112,22 +95,21 @@ function toDate(value) {
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** "Mar 04, 2026, 21:40". Unreadable or missing values become an em dash. */
+/** "Mar 04, 2026, 21:40"; missing or unreadable -> "—" */
 export function formatDateTime(value) {
     const date = toDate(value);
     return date ? dateTimeFormatter.format(date) : '—';
 }
 
-/** World coordinates to one decimal - nobody aims finer than that in game. */
+/** One decimal: nobody aims finer in game */
 export function formatCoord(value) {
     const n = Number(value);
     return Number.isFinite(n) ? n.toFixed(1) : '—';
 }
 
 /**
- * Derived here rather than taken from the API's jobLabel: the wall needs
- * the grade alongside the employer, and an unemployed character has to
- * read the same way everywhere it appears.
+ * "Employer · Grade" or "Unemployed"
+ * Not the API's jobLabel: the grade is needed, and unemployed must read the same everywhere
  */
 export function jobTitle(player) {
     const job = player?.job;
@@ -137,14 +119,13 @@ export function jobTitle(player) {
     return grade ? `${label} · ${grade}` : label;
 }
 
-/** Just the employer, for grouping the wall into rails. */
+/** jobTitle without the grade: the rail key */
 export function jobGroup(player) {
     const job = player?.job;
     if (!job || !job.name) return 'Unemployed';
     return job.label || job.name;
 }
 
-/** "Jordan Michael" -> "JM". Used when a plate needs a monogram. */
 export function initials(name) {
     if (!name) return '??';
     const parts = String(name).trim().split(/\s+/).filter(Boolean);
@@ -153,7 +134,6 @@ export function initials(name) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/** Reads user input like "1,500" or "1500.50" as a number. */
 export function parseAmount(raw) {
     if (typeof raw !== 'string') return Number.NaN;
     const cleaned = raw.trim().replace(/,/g, '');

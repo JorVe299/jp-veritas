@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
-# Pull the current state and rebuild. Run this on the server instead of
-# copying files over with WinSCP:
-#
-#   /opt/veritas/deploy/update.sh
-#
-# Nothing in here touches backend/.env, backend/data/permissions.json or
-# veritas/config.lua - those are gitignored and stay as they are on the server.
+# Server update: pull, reinstall, rebuild, restart (run as /opt/veritas/deploy/update.sh)
+# Gitignored files (backend/.env, backend/data/*.json, veritas/config.lua) stay untouched
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -15,8 +10,7 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 echo "==> Pulling $BRANCH"
 git fetch --prune origin
-# Hard reset rather than merge: the server is a copy, not a place to edit.
-# Anything changed here by hand would otherwise stop the next pull dead.
+# Hard reset, not merge: the server is a copy; local edits would block the next pull
 git reset --hard "origin/$BRANCH"
 
 echo "==> Backend dependencies"
@@ -26,8 +20,7 @@ echo "==> Building the panel"
 npm --prefix frontend ci
 npm --prefix frontend run build
 
-# Restarting needs root, so it only happens when this runs as root or the
-# service is allowed through sudo. Otherwise the line below just says so.
+# Restart needs root (or sudo rights for the service); otherwise say so
 if systemctl is-enabled --quiet veritas 2>/dev/null; then
     echo "==> Restarting veritas.service"
     systemctl restart veritas

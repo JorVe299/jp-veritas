@@ -13,19 +13,11 @@ function kg(grams) {
 }
 
 /**
- * Inventory in the module wall: this only states what is in it. Editing
- * happens in a sheet of its own that the button opens.
- *
- * Reason for the split: an inventory has 41 slots and gets dragged, stacked
- * and split. That needs room and attention - squeezed in between job and
- * vehicles it would be neither legible nor usable, and this way nobody
- * rearranges an inventory by accident while what they really wanted was to
- * change the rank.
+ * Inventory summary card; editing lives in InventorySheet
+ * Split: 41 draggable slots need room, and no one should rearrange them by accident
  */
 export default function InventoryManager({ selectedPlayer, onApplied }) {
-    // inventory.view carries the card, inventory.edit the grid in the sheet.
-    // Without the second the sheet stays reachable all the same: looking at
-    // all 41 slots is something other than rearranging them.
+    // Without inventory.edit the sheet still opens read-only: viewing is not rearranging
     const { can } = useCan();
     const canEdit = can('inventory.edit');
 
@@ -41,14 +33,12 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
     const max = Number(data.maxWeight) || 0;
     const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
 
-    // The sheet reports every change upwards; the card then reloads so that
-    // summary and grid do not drift apart.
+    // Reload on every sheet change: summary and grid must not drift apart
     const handleApplied = (patch, entry) => {
         setVersion((v) => v + 1);
         onApplied?.(patch, entry);
     };
 
-    // Three or four items as a preview are enough to tell what this is about.
     const peek = items.slice(0, 4);
     const rest = items.length - peek.length;
 

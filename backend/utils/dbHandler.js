@@ -1,7 +1,7 @@
-// backend/utils/dbHandler.js
+// MySQL pool and schema introspection
 const mysql = require('mysql2/promise');
 
-// Central DB pool - every database access goes through this module
+// Single pool; all DB access goes through this module
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -11,15 +11,13 @@ const db = mysql.createPool({
     connectionLimit: 10
 });
 
-// Whitelist: column names cannot be passed as prepared-statement
-// parameters, so they are checked against a fixed list here
+// Column names cannot be bound as parameters: allowlist
 const ALLOWED_COLUMNS = [
     'citizenid', 'charinfo', 'money', 'job', 'gang',
     'inventory', 'metadata', 'position', 'license', 'name', 'phone_number'
 ];
 
-// Helper: parse JSON when needed (depending on driver and version MySQL
-// returns JSON columns sometimes as a string, sometimes as an object)
+// JSON columns arrive as string or object, depending on driver and version
 function parseJSON(data) {
     if (typeof data === 'string') {
         try { return JSON.parse(data); } catch { return {}; }
@@ -27,7 +25,7 @@ function parseJSON(data) {
     return data || {};
 }
 
-// Writes a single JSON column of a player back
+// Writes one allowlisted players column
 async function updatePlayerColumn(citizenid, column, value) {
     if (!ALLOWED_COLUMNS.includes(column)) throw new Error(`Column ${column} is not allowed`);
 
@@ -39,10 +37,8 @@ async function updatePlayerColumn(citizenid, column, value) {
     return result.affectedRows > 0;
 }
 
-// --- Schema introspection ------------------------------------------------
-// Qbox, QBCore and the various inventory resources name their columns
-// differently. Rather than hard-wiring one variant, we ask the database
-// once what is actually there and build the queries from that.
+// --- Schema introspection -------------------------------------------------
+// Column names differ across Qbox, QBCore and inventories: discovered once, then cached
 
 const schemaCache = new Map();
 
@@ -64,9 +60,7 @@ async function tableExists(table) {
     return (await getTableColumns(table)).length > 0;
 }
 
-// Reduces an object to the fields the table actually has.
-// That way an INSERT does not fail just because this Qbox version has one
-// column fewer than the one it was developed against.
+// Drops fields the table lacks: an INSERT survives schema version differences
 async function pickExistingColumns(table, data) {
     const columns = await getTableColumns(table);
     const out = {};
@@ -76,8 +70,7 @@ async function pickExistingColumns(table, data) {
     return out;
 }
 
-// Every table in the database. Diagnostics only: it shows which further
-// modules this schema could support at all.
+// Diagnostics only: shows which modules this schema could support
 async function listTables() {
     const [rows] = await db.execute(
         `SELECT TABLE_NAME AS name, TABLE_ROWS AS approxRows

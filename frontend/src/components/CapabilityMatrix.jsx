@@ -1,28 +1,7 @@
 import { Fragment, useState } from 'react';
 import Icon from './Icon';
 
-/**
- * Rows are capabilities, columns are roles.
- *
- * The table stays a table now that roles are made rather than shipped, and
- * that was a decision rather than the path of least resistance. A role
- * selector - one role at a time, picked from a dropdown - would have scaled
- * to forty columns without a scrollbar, but it would have taken away the
- * one thing this grid is read for: whether the new vehicle crew may do
- * anything the old one may not. That comparison is the whole question. A
- * dropdown answers it by making you remember the other column.
- *
- * So it keeps the columns and takes on the width instead:
- *
- *   - the capability column is sticky, so a column ten across still says
- *     which right it is ticking,
- *   - the sheet's body scrolls sideways once the columns no longer fit,
- *   - and past half a dozen roles each column can be folded away, which
- *     changes nothing that is saved. Comparing two of ten roles is done by
- *     putting the other eight aside, not by scrolling between them.
- *
- * A new role appears here the moment it exists, with nothing ticked.
- */
+/** Capability-by-role grid; a table, not a role picker: it is read to compare roles */
 export default function CapabilityMatrix({
     roles,
     groups,
@@ -31,8 +10,7 @@ export default function CapabilityMatrix({
     saving,
     onToggle,
 }) {
-    // Hidden rather than visible: a role created a minute ago is then shown
-    // without anybody having to remember to switch it on.
+    // Tracks hidden, not shown, roles: a new role appears without being switched on
     const [hidden, setHidden] = useState(() => new Set());
 
     const shown = roles.filter((role) => !hidden.has(role.id));
@@ -125,10 +103,7 @@ export default function CapabilityMatrix({
                                         {shown.map((role) => (
                                             <td key={role.id} className="matrix__cell">
                                                 {role.locked ? (
-                                                    /* The owner is not editable. A dead
-                                                       tick would look like a control -
-                                                       so what stands here is a tick
-                                                       with the word alongside it. */
+                                                    /* A lone tick would pass for a control */
                                                     <span className="matrix__always">
                                                         <Icon name="check" size={15} />
                                                         <span className="matrix__word">Always</span>

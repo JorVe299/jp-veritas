@@ -8,15 +8,8 @@ const INITIAL = {
 };
 
 /**
- * Loads one partial record of a citizen (vehicles, inventory, metadata).
- *
- * The special case that shows up explicitly here: HTTP 501 does not mean
- * "empty" but "this table does not exist in this schema". Showing an empty
- * list would be a false statement at that point - instead the module signs
- * itself off as unavailable.
- *
- * `loader` has to be stable (the helpers from api.js are), otherwise the
- * effect runs again on every render.
+ * Partial citizen record (vehicles, inventory, metadata); loader must be stable (api.js)
+ * 501 = table missing in this schema: 'unavailable', never an empty list
  */
 export function usePlayerResource(loader, citizenid, reloadToken = 0) {
     const [state, setState] = useState(INITIAL);
@@ -24,8 +17,7 @@ export function usePlayerResource(loader, citizenid, reloadToken = 0) {
     useEffect(() => {
         if (!citizenid) return undefined;
 
-        // Against race conditions: an older answer must not overwrite a
-        // newer one after a reload.
+        // An older answer must not overwrite a newer one after a reload
         let cancelled = false;
 
         loader(citizenid)

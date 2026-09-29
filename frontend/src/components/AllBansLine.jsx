@@ -4,25 +4,7 @@ import { DASH } from '../lib/portalText';
 import { failureNote, successNote } from '../lib/writeFeedback';
 import { formatDateTime } from '../utils/format';
 
-/**
- * One row of the merged ban list.
- *
- * The list holds two records at once, so every row has to answer "where is
- * this written down" before anything else. That is not decoration: only a
- * row out of the database table can be lifted from this panel, and an
- * admin who reads a txAdmin ban as ours goes hunting for a button that is
- * not there. Hence a source marker on every single row, and on a txAdmin
- * row no control at all - not a disabled one, not a hint of one. A control
- * that cannot be honoured teaches the wrong thing about who holds the ban.
- *
- * How the entry stands is read from the server's flags and never worked
- * out again here. The order of the branches is the order the flags rank
- * in: a lifted ban is not in force however permanent it was, and an expiry
- * that has passed is not a block.
- *
- * `canEdit` comes from outside and is not justified here - the panel says
- * it once for all rows.
- */
+/** Row of the merged ban list (database table + txAdmin); !canEdit is explained by the panel */
 export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
     const [confirming, setConfirming] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -40,10 +22,7 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
     const issuedBy = text(entry?.issuedBy);
     const reference = text(entry?.nativeId);
 
-    // Everything under the reason in reading order: who it is against,
-    // which character record that turned out to be, who issued it, when it
-    // began, how it ends, and what to quote when asking about it
-    // elsewhere. Missing parts are left out rather than filled with a dash.
+    // Reading order under the reason; missing parts are dropped, never shown as a dash
     const facts = [
         name ? { key: 'who', text: `Against ${name}` } : null,
         holderFact(entry, characters),
@@ -55,8 +34,7 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
             : null,
     ].filter(Boolean);
 
-    // Lifting deletes the row, so it takes two presses and no confirm()
-    // dialog: the button changes its label and waits there.
+    // Deletes the row: two presses via the button label, no confirm() dialog
     const handleLift = async () => {
         setBusy(true);
         onFeedback(null);
@@ -77,8 +55,7 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
             <div className="line__top">
                 <span className="line__name">{reason || 'No reason recorded'}</span>
                 <span className="line__badges">
-                    {/* Said on every row, in words rather than a shade:
-                        which of the two records this one is written in. */}
+                    {/* Source in words on every row: only database rows can be lifted here */}
                     <span className="pill pill--off line__src">
                         {fromDatabase ? 'Database' : 'txAdmin'}
                     </span>
@@ -95,11 +72,7 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
                 ))}
             </div>
 
-            {/* The characters behind the ban and the identifiers it hangs
-                off are what staff cross-reference by, and a run of hex
-                strings across every row is noise on the ones nobody is
-                cross-referencing. Folded away, grouped by kind, counted in
-                the summary so it is worth opening only when it is. */}
+            {/* Folded: hex identifiers on every row are noise; the summary counts them */}
             {(identifierCount > 0 || characters.length > 1) && (
                 <details className="reveal line__ids">
                     <summary className="reveal__summary">
@@ -130,8 +103,7 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
                 </details>
             )}
 
-            {/* Only where the server said the row can be lifted. A txAdmin
-                row arrives with canLift false and gets nothing at all. */}
+            {/* txAdmin rows (canLift false) get no control, not even a disabled one */}
             {entry?.canLift === true && (
                 <>
                     {confirming && (
@@ -177,7 +149,6 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
     );
 }
 
-/** A trimmed string, or null - every one of these fields can arrive empty. */
 function text(value) {
     if (typeof value === 'number') return Number.isFinite(value) ? String(value) : null;
     if (typeof value !== 'string') return null;
@@ -185,21 +156,14 @@ function text(value) {
     return trimmed || null;
 }
 
-/** A timestamp, or null where there is none - never a sentence trailing into a dash. */
+// Null instead of DASH, so no sentence ends in a dash
 function when(value) {
     const shown = formatDateTime(value);
     return shown === DASH ? null : shown;
 }
 
-/**
- * When the ban was issued.
- *
- * The bans table has no created-at column, so its rows genuinely carry no
- * date. A blank there would read as "just now" and a date worked out from
- * the row id would be a number dressed up as a fact, so the row says which
- * of the two cases it is: the table records none, or txAdmin's entry
- * happens to be missing one.
- */
+// The bans table has no created-at column: say so; a blank reads as "just now",
+// and a date derived from the row id would be invented
 function issuedLine(entry, fromDatabase) {
     const issued = entry?.issuedAtKnown === true ? when(entry?.issuedAt) : null;
     if (issued) return `Issued ${issued}`;
@@ -207,15 +171,7 @@ function issuedLine(entry, fromDatabase) {
     return 'Issue date not recorded';
 }
 
-/**
- * Whose ban this is, in character terms.
- *
- * A ban hangs off a license, a Discord ID or an IP, and an account can
- * hold several characters - so the server states a citizenid only where
- * there is exactly one. Picking one out of several would name the wrong
- * person half the time, and naming none at all would hide that the ban
- * reaches all of them. Both other cases are therefore said out loud.
- */
+// Server sends a citizenid only for exactly one character; never pick one out of several
 function holderFact(entry, characters) {
     const citizenid = text(entry?.citizenid);
     if (citizenid) return { key: 'holder', label: 'Citizen', text: citizenid, mono: true };
@@ -235,14 +191,13 @@ function revealSummary(characters, identifierCount, identifiers) {
     return parts.join(' · ');
 }
 
-/** Whether this entry is in force. Read from the server's field, not recomputed. */
+// The server's flag, never recomputed here
 function inForce(entry) {
     return entry?.active === true;
 }
 
 function stateOf(entry, warning) {
-    // A warning blocks nobody, so "in force" and "expired" are the wrong
-    // words for it entirely. It is named for what it is and left at that.
+    // A warning blocks nobody: no in-force or expired wording
     if (warning) {
         return { badge: 'Warning', pill: 'pill--off', spent: true, term: null };
     }
@@ -259,8 +214,7 @@ function stateOf(entry, warning) {
         };
     }
 
-    // A lifted ban is not in force however permanent it was, so this
-    // branch stands ahead of the expiry one.
+    // Branch order is flag rank: lifted outranks expired
     if (entry?.revoked === true) {
         const lifted = when(entry?.revokedAt);
         return {
@@ -281,19 +235,11 @@ function stateOf(entry, warning) {
         };
     }
 
-    // Not in force, and the record does not say which way it ended. Saying
-    // "expired" or "lifted" here would be inventing the half that did not
-    // arrive.
+    // Record does not say how it ended: never guess expired or lifted
     return { badge: 'Not in force', pill: 'pill--off', spent: true, term: null };
 }
 
-/**
- * The identifiers, sorted into the kinds they carry in front of the colon:
- * license, discord, ip, and whatever else a given source writes. Anything
- * without a prefix goes to "other" rather than being dropped - an
- * identifier this panel cannot categorise is still an identifier the ban
- * hangs off.
- */
+// Grouped by prefix; unprefixed values go to "other", never dropped: the ban hangs off them too
 function groupIdentifiers(list) {
     const groups = new Map();
 

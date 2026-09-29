@@ -1,16 +1,5 @@
-// backend/utils/roleStore.test.js
-//
-// Roles are now editable, which means the panel can be asked to change the
-// thing that decides who may change it. Three ways that ends badly:
-//
-//   - the owner role is deleted, renamed away or stripped, and nobody can
-//     get back in to undo it
-//   - a role is deleted but its permissions outlive it in an open session
-//   - the ranking shifts, so somebody who matches two roles silently gets
-//     the wrong one
-//
-// Each is pinned down below, against a scratch file rather than the one a
-// live panel keeps its roles in.
+// Lockout guards for editable roles, against a scratch file: owner stays intact,
+// deleted roles grant nothing (open sessions included), ranking decides between matches
 
 const test = require('node:test');
 const assert = require('node:assert');
@@ -80,7 +69,7 @@ test('the owner stays at the top of the ranking', () => {
 });
 
 test('the owner can still be relabelled', () => {
-    // Cosmetic, and harmless: the id is what the code keys on.
+    // Cosmetic: the code keys on the id
     const store = freshStore();
     assert.equal(store.update('owner', { label: 'Founder' }).label, 'Founder');
     assert.equal(store.get('owner').id, 'owner');
@@ -112,10 +101,7 @@ test('copying a role takes its permissions but not its identity', () => {
 });
 
 test('copying the owner cannot produce a second owner', () => {
-    // It does copy every capability, and that is fine: handing out
-    // permissions is not one of them. OWNER_ONLY is deliberately absent
-    // from the capability list, so there is nothing to copy that would let
-    // the new role change who may change what.
+    // Copies every capability; fine, since OWNER_ONLY is not one of them
     const store = freshStore();
     const copy = store.create({ id: 'deputy', label: 'Deputy', copyFrom: 'owner' });
 
@@ -141,13 +127,10 @@ test('an unusable id is refused rather than mangled', () => {
         assert.throws(() => store.create({ id, label: 'Something' }), /role id/i, `id ${JSON.stringify(id)}`);
     }
 
-    // A single letter is fine, though: a team called 'X' is a real thing
-    // to want, and refusing it would be a rule with no reason behind it.
+    // Single letters are fine: a team called 'X' is legitimate
     assert.equal(store.create({ id: 'x', label: 'X Team' }).id, 'x');
 
-    // Case is normalised rather than refused - 'Support' and 'support'
-    // are the same role, and telling somebody off for the capital would
-    // be a rule with no reason behind it.
+    // Case is normalised, not refused: 'Support' and 'support' are one role
     assert.equal(store.create({ id: 'Vehicles', label: 'Vehicles' }).id, 'vehicles');
 });
 
@@ -169,8 +152,7 @@ test('a deleted role grants nothing, immediately', () => {
     store.remove('temp-team');
 
     assert.equal(store.get('temp-team'), null);
-    // The matrix is what can() reads. A permission that outlived its role
-    // would be handed to every session still naming it.
+    // can() reads the matrix: a surviving entry would reach every session naming the role
     assert.equal('temp-team' in store.matrix(), false);
 });
 
@@ -182,8 +164,7 @@ test('deleting a role that is not there says so', () => {
 // --- Discord mapping ------------------------------------------------------
 
 test('only real snowflakes are kept as mappings', () => {
-    // A malformed id would match nobody, which looks exactly like a
-    // permission that was never granted.
+    // A malformed id matches nobody: looks like a grant that never happened
     assert.deepEqual(
         cleanIdList(['123456789012345678', 'not-an-id', '', '42', '  98765432109876543  ']),
         ['123456789012345678', '98765432109876543'],
@@ -219,9 +200,7 @@ test('a role left out of a reorder keeps its place rather than vanishing', () =>
 // --- Reading what is on disk ----------------------------------------------
 
 test('a file without a role list starts from the shipped roles, and says so', (t) => {
-    // Anything that is not a role list - a hand-edited file, one written by
-    // a much older panel - is read as a fresh installation. The warning is
-    // what keeps that from passing unnoticed.
+    // No role list (hand-edited, very old file) loads as a fresh install, with a warning
     const warned = t.mock.method(console, 'warn', () => {});
     const store = freshStore({ administrator: ['players.view'] });
 
@@ -254,9 +233,7 @@ test('the suggested id is derived from the label', () => {
 });
 
 test('two roles cannot share a name either', () => {
-    // The ids are what the code keys on; the labels are what a person
-    // picks from when granting permissions. Two identical entries in that
-    // list is the mistake worth preventing.
+    // People grant by label: two identical labels invite the wrong pick
     const store = freshStore();
     store.create({ id: 'team-one', label: 'Fleet Team' });
     assert.throws(() => store.create({ id: 'team-two', label: 'fleet team' }), /already a role named/i);
@@ -277,11 +254,8 @@ test('a role can be renamed to what it already is', () => {
 });
 
 // --- The frontend copy of these rules -------------------------------------
-// The role editor validates in the field so a pasted username is refused
-// where it was typed instead of vanishing on save. That means two copies of
-// the same rule, and two copies drift. This does not make the frontend
-// authoritative - the store still decides - it just makes a drift fail here
-// rather than in somebody's face.
+// The role editor duplicates these checks for inline errors; the store stays authoritative,
+// and drift fails here
 
 test('the frontend validates role ids by the same rule', () => {
     const mirror = fs.readFileSync(
@@ -308,17 +282,9 @@ test('the frontend validates Discord ids by the same rule', () => {
 });
 
 // --- A write that cannot land ---------------------------------------------
-//
-// The panel runs on a machine somebody else set up, and the folder it keeps
-// its roles in is not always one it may write to. That case used to end
-// badly in a quiet way: the new state was taken into memory and only then
-// written, so a refused write left the process holding roles the file knew
-// nothing about. The panel showed the change, reported that it had failed,
-// and lost it again at the next restart - and the owner was told only
-// "The permissions could not be saved", with the reason in a log they were
-// not reading.
+// Unwritable folder: nothing changes in memory, and the error names the cause (BACKEND.md §4)
 
-/** A store whose file can never be written: a file sits where its folder goes. */
+/** A store whose file can never be written: a file sits where its folder goes */
 function blockedStore() {
     scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'veritas-roles-'));
     fs.writeFileSync(path.join(scratchDir, 'wall'), 'not a folder');

@@ -10,17 +10,8 @@ import { useServerFetch } from '../lib/useServerData';
 import { failureNote, successNote } from '../lib/writeFeedback';
 
 /**
- * What this installation actually is.
- *
- * Almost every fault in this project has been a silent one: a bridge that
- * does not answer and a database belonging to some other game server look
- * exactly alike from the outside, and a wrong token shows up only as a 401
- * from the bridge, far away from its cause. This is the page that says
- * which of those it is.
- *
- * Every card hangs off system.view, including the framework probe, and each
- * card is only mounted when its own route would answer - mounting it anyway
- * would mean reporting a fault where none exists.
+ * Diagnostics for look-alike silent faults: dead bridge, wrong database, token mismatch
+ * Cards mount only with system.view: otherwise their routes' refusals would read as faults
  */
 export default function DiagnosticsPanel() {
     const { can } = useCan();
@@ -36,15 +27,9 @@ export default function DiagnosticsPanel() {
     );
 }
 
-/* -------------------------------------------------------------------------
-   What the bridge says it is running.
-   ------------------------------------------------------------------------- */
+// --- Framework ------------------------------------------------------------
 
-/**
- * The "ask again" of a read-only card: a token that makes the fetch run once
- * more, and the cooldown the button waits out afterwards. Each card has its
- * own key, since each asks something different of the bridge or database.
- */
+// One cooldown key per card: each asks the bridge or database something different
 function useAskAgain(key) {
     const [token, setToken] = useState(0);
     const cooldown = useCooldown(key);
@@ -65,8 +50,7 @@ function FrameworkCard() {
     const adapters = data.adapters && typeof data.adapters === 'object' ? data.adapters : {};
     const adapterNames = Object.keys(adapters);
 
-    // Only meaningful once an answer has actually arrived - before that,
-    // "false" would be a claim rather than a reading.
+    // Only once an answer arrived: before that, false would be a claim, not a reading
     const tokenMismatch = res.status === 'ready' && data.tokenMatchLikely === false;
 
     return (
@@ -135,7 +119,6 @@ function FrameworkCard() {
                             </div>
                         )}
 
-                        {/* The single most useful line on this page. */}
                         {tokenMismatch && (
                             <StatusNote
                                 tone="warn"
@@ -171,10 +154,7 @@ function frameworkHint(res, data) {
     return fw ? `Detected ${fw}` : 'The bridge named no framework';
 }
 
-/* -------------------------------------------------------------------------
-   The link itself: does it answer, how fast, and does it agree with the
-   database we are reading.
-   ------------------------------------------------------------------------- */
+// --- Bridge link ----------------------------------------------------------
 
 function BridgeCard() {
     const ask = useAskAgain('diagnostics-bridge');
@@ -224,8 +204,7 @@ function BridgeCard() {
                             <Row label="Answer shape" value={data.payloadShape} />
                         </dl>
 
-                        {/* Where "really offline" parts ways with "wrong
-                            database". Those two look identical on the wall. */}
+                        {/* Offline vs wrong database: identical on the wall */}
                         {dbCheck && (dbCheck.ok === false ? (
                             <StatusNote
                                 tone="warn"
@@ -275,7 +254,6 @@ function bridgeHint(res, data) {
     if (res.status === 'unreachable') return 'No answer';
     if (res.status === 'error') return 'Link state unknown';
 
-    // Each half only appears when it was actually measured.
     const parts = [
         msText(data.latencyMs) ? `Answered in ${msText(data.latencyMs)}` : null,
         countText(data.onlineCount) ? `${countText(data.onlineCount)} on the server` : null,
@@ -296,9 +274,7 @@ function mismatchText(check) {
     return parts.filter(Boolean).join(' ');
 }
 
-/* -------------------------------------------------------------------------
-   Does this schema carry what the modules need.
-   ------------------------------------------------------------------------- */
+// --- Schema ---------------------------------------------------------------
 
 function SchemaCard() {
     const ask = useAskAgain('diagnostics-schema');
@@ -436,9 +412,7 @@ function schemaHint(res, data, problemCount) {
     return 'Checked';
 }
 
-/* -------------------------------------------------------------------------
-   Reloading the reference data. The only thing on this page that writes.
-   ------------------------------------------------------------------------- */
+// --- Reference data -------------------------------------------------------
 
 function ReferenceDataCard({ canEdit }) {
     const [busy, setBusy] = useState(false);
@@ -448,16 +422,14 @@ function ReferenceDataCard({ canEdit }) {
     const run = async () => {
         if (!canEdit || !cooldown.ready) return;
 
-        // Every press counts, not only the ones that worked - the same way
-        // the server counts them.
+        // Every press counts, as on the server, not only successful ones
         cooldown.start();
         setBusy(true);
         setFeedback(null);
         try {
             const answer = await refreshGameData();
             const loaded = answer.data?.loaded || {};
-            // Only stated when the server actually counted - "null jobs"
-            // would be worse than saying nothing about the sizes.
+            // Only counts the server sent: never "null jobs"
             const counted = ['jobs', 'items', 'vehicles']
                 .map((kind) => (countText(loaded[kind]) ? `${countText(loaded[kind])} ${kind}` : null))
                 .filter(Boolean);
@@ -469,11 +441,8 @@ function ReferenceDataCard({ canEdit }) {
             ));
         } catch (err) {
             if (err.response?.status === 429) {
-                // Not a fault: the server allows this once a minute per
-                // user, and was asked sooner. Its count is the one that
-                // holds - after a page reload this browser has forgotten
-                // the last press, the server has not - so the button follows
-                // the server's remaining time rather than its own.
+                // Rate limit (once a minute per user), not a fault; the server's clock wins:
+                // a page reload forgets the last press, the server does not
                 const wait = retryAfterSeconds(err.response);
                 if (wait !== null) cooldown.start(wait * 1000);
                 setFeedback({
@@ -531,11 +500,6 @@ function ReferenceDataCard({ canEdit }) {
     );
 }
 
-/**
- * How long a 429 said to wait, in whole seconds. The body's retryAfter
- * first, the Retry-After header as the fallback; null when neither holds a
- * usable number, and the button then keeps the cooldown it started itself.
- */
 function retryAfterSeconds(response) {
     const candidates = [response?.data?.retryAfter, response?.headers?.['retry-after']];
     for (const value of candidates) {
@@ -547,12 +511,9 @@ function retryAfterSeconds(response) {
     return null;
 }
 
-/* --- Small shared pieces -------------------------------------------------- */
+// --- Shared pieces --------------------------------------------------------
 
-/**
- * One line of a report. A value the server did not send is named as unknown
- * rather than left blank - a blank row reads like an empty setting.
- */
+// Never blank for a missing value: a blank row reads like an empty setting
 function Row({ label, value, mono = false }) {
     const known = value !== null && value !== undefined && value !== '';
 

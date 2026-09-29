@@ -7,25 +7,11 @@ import { useCan } from '../lib/useCan';
 import { usePlayerResource } from '../lib/usePlayerResource';
 import { failureNote, modeOf, successNote } from '../lib/writeFeedback';
 
-// player_groups carries jobs and gangs in one table. This card is the gang
-// half of it and says so on every write: the job half belongs to the
-// Employment card, which holds the one job the citizen is on duty with.
+// player_groups mixes jobs and gangs; this card touches gang rows only
 const TYPE = 'gang';
 
-/**
- * Gang membership from player_groups.
- *
- * Built like the Employment card next to it - a picker for the gang, the
- * same rank ladder below it, one primary action in the foot. The one place
- * the two part ways is the list above: a citizen has exactly one job but can
- * be counted with several gangs, so what is on record stands over the form
- * and each row can be left on its own.
- */
+/** Gang memberships: unlike a job a citizen can hold several, each left on its own row */
 export default function GroupManager({ selectedPlayer, gangs, gangsError, onApplied }) {
-    // Whoever may see the citizen list may see this card; only someone with
-    // groups.edit may change it. The more common case is the first without
-    // the second - then the memberships stay readable and only the form is
-    // shut down.
     const { can } = useCan();
     const canEdit = can('groups.edit');
 
@@ -38,9 +24,7 @@ export default function GroupManager({ selectedPlayer, gangs, gangsError, onAppl
 
     const res = usePlayerResource(fetchPlayerGroups, citizenid, version);
 
-    // Read side of the gang-only rule: the route answers with jobs and gangs
-    // together, and everything that is not a gang belongs to the Employment
-    // card rather than here.
+    // The route returns jobs too; those belong to the Employment card
     const rows = Array.isArray(res.data?.groups) ? res.data.groups : [];
     const memberships = rows.filter((group) => group.type === TYPE);
 
@@ -49,15 +33,12 @@ export default function GroupManager({ selectedPlayer, gangs, gangsError, onAppl
     const gradeEntries = currentGang ? Object.entries(currentGang.grades || {}) : [];
     const gangCount = Object.keys(gangList).length;
 
-    // Derived instead of synchronized: if the stored rank drops out of the
-    // chosen gang's list, the first available rank takes over.
+    // Derived, not synced: a rank missing from the chosen gang falls back to its first
     const gradeValue = currentGang && currentGang.grades?.[selectedGrade]
         ? selectedGrade
         : (gradeEntries[0]?.[0] ?? '');
 
-    // What is on record for the gang in the picker, if anything. That is
-    // what "Now" on the ladder marks, and what decides whether applying
-    // adds a membership or moves an existing one.
+    // Decides add vs rank move, and where the ladder marks "Now"
     const held = memberships.find((group) => group.name === selectedGang);
     const originalGrade = held ? String(held.grade ?? 0) : null;
 
@@ -71,7 +52,6 @@ export default function GroupManager({ selectedPlayer, gangs, gangsError, onAppl
     const handleGangChange = (e) => {
         const next = e.target.value;
         setSelectedGang(next);
-        // Reset the rank to the first entry of the new gang
         setSelectedGrade(Object.keys(gangList[next]?.grades || {})[0] ?? '0');
         setFeedback(null);
     };
@@ -85,8 +65,7 @@ export default function GroupManager({ selectedPlayer, gangs, gangsError, onAppl
         setSaving(true);
         setFeedback(null);
         try {
-            // Write side of the gang-only rule: the type is fixed here, not
-            // chosen in the UI, so this card can never touch a job row.
+            // Type fixed, never from the UI: this card can never touch a job row
             const answer = await setPlayerGroup(citizenid, {
                 group: selectedGang,
                 type: TYPE,
@@ -190,10 +169,7 @@ export default function GroupManager({ selectedPlayer, gangs, gangsError, onAppl
                     )}
                 </div>
 
-                {/* The rank ladder shows all grades of this gang at once and
-                    highlights the chosen one instead of hiding it away in a
-                    dropdown. That makes the distance between two ranks
-                    visible, not just the rank itself. */}
+                {/* Ladder, not a dropdown: shows the distance between ranks */}
                 <div className="field">
                     <span className="field__label" id="gang-grade-label">Rank</span>
                     {gradeEntries.length === 0 ? (
@@ -246,8 +222,7 @@ export default function GroupManager({ selectedPlayer, gangs, gangsError, onAppl
     );
 }
 
-// Same shape as the Employment card's "Currently ..." line, counted rather
-// than named once there is more than one gang on record.
+// Same shape as the Employment card's "Currently ..." line
 function headHint(res, memberships) {
     if (res.status === 'loading') return 'Reading the gang list';
     if (res.status === 'unavailable') return 'Module unavailable';
@@ -261,11 +236,9 @@ function headHint(res, memberships) {
     return `Currently in ${memberships.length} gangs`;
 }
 
-/* -------------------------------------------------------------------------
-   One gang on record. The rank is changed through the form below, the same
-   way a job is; what stays with the row is leaving the gang.
-   ------------------------------------------------------------------------- */
+// --- Gang row -------------------------------------------------------------
 
+// Rank changes go through the form, as for jobs; the row only offers leaving
 function GangRow({ citizenid, group, canEdit, onFeedback, onChanged, onReport }) {
     const [confirming, setConfirming] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -277,8 +250,7 @@ function GangRow({ citizenid, group, canEdit, onFeedback, onChanged, onReport })
         setBusy(true);
         onFeedback(null);
         try {
-            // The type travels with the delete as well, so the row this card
-            // removes is always the gang one.
+            // Type sent with the delete too: never a same-named job row
             const answer = await removePlayerGroup(citizenid, group.name, TYPE);
             onFeedback(successNote(answer, `${label} removed`));
             onReport(modeOf(answer) ?? 'offline', `Left ${label}`);

@@ -5,13 +5,8 @@ import { MAX_IDS, MAX_LABEL, cleanLabel, sameIds, snowflakeProblem } from '../li
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
- * One role in the ranking.
- *
- * The row reads on its own - rank, name, id, how much it may do and who
- * holds it - and opens into the form that changes the name and the Discord
- * mapping. Capabilities are not in here: they are ticked in the grid below,
- * where a role can be compared with the others, and they are saved in bulk.
- * Everything this row does takes effect the moment its button is pressed.
+ * One role in the ranking; opens into a form for its name and Discord mapping
+ * Capabilities stay in the grid below (compared, saved in bulk); row actions apply on press
  */
 export default function RoleRow({
     role,
@@ -32,9 +27,7 @@ export default function RoleRow({
     const [confirming, setConfirming] = useState(false);
     const [working, setWorking] = useState(false);
 
-    // Absent, not empty: for anyone who may not edit, the server leaves both
-    // lists out of the answer rather than sending []. Showing "nobody is
-    // mapped" there would be an invention.
+    // Non-editors get no lists at all (not []): never render that as "nobody is mapped"
     const mappingKnown = Array.isArray(role.discordUserIds);
     const mapped = mappingKnown ? role.discordUserIds.length + role.discordRoleIds.length : 0;
 
@@ -93,8 +86,6 @@ export default function RoleRow({
                 <span className="u-sr">{`Rank ${rank} of ${total}.`}</span>
 
                 {role.locked && (
-                    /* Said once, here, where somebody would otherwise go
-                       looking for the controls that are missing. */
                     <span>
                         The owner cannot be re-permissioned or removed: it holds every
                         right, which is what stops a panel from locking its own owner
@@ -137,8 +128,7 @@ export default function RoleRow({
                             type="button"
                             className="btn btn--ghost btn--sm"
                             onClick={() => onMove(role.id, -1)}
-                            /* Rank 1 is the owner and does not move, so rank 2
-                               has nowhere left to go. */
+                            /* Rank 1 (owner) is fixed: rank 2 cannot move up */
                             disabled={held || rank <= 2}
                         >
                             Move up
@@ -244,8 +234,6 @@ export default function RoleRow({
                             </p>
 
                             {role.builtIn && (
-                                /* Quietly, but said: the file can grant this
-                                   role in ways the panel cannot even see. */
                                 <p className="field__hint">
                                     A role shipped with the panel can also be mapped in the
                                     server&apos;s .env file. Those entries are not listed here and
@@ -286,15 +274,7 @@ export default function RoleRow({
     );
 }
 
-/**
- * One of the two id lists.
- *
- * Every id is a chip that can be taken off again, and a new one is checked
- * before it is added. The server would take a username in without
- * complaining and drop it on the way to disk - which looks exactly like a
- * permission that was never granted, and is the hardest kind of mistake to
- * find afterwards.
- */
+// Validated before adding: the server silently drops a malformed id on save
 function IdList({ title, hint, ids, disabled, onChange }) {
     const [entry, setEntry] = useState('');
     const [problem, setProblem] = useState(null);
@@ -349,8 +329,7 @@ function IdList({ title, hint, ids, disabled, onChange }) {
                     placeholder="e.g. 356712004581392385"
                     onChange={(e) => { setEntry(e.target.value); setProblem(null); }}
                     onKeyDown={(e) => {
-                        // Enter adds the id. This sits inside no form on
-                        // purpose - a stray Enter must not save the role.
+                        // Not inside a form: a stray Enter must never save the role
                         if (e.key === 'Enter') { e.preventDefault(); add(); }
                     }}
                     disabled={disabled}

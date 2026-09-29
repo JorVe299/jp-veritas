@@ -5,9 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    // Forwards /api to the Node backend during development.
-    // That makes the frontend origin the same as the API origin -> no CORS,
-    // and session cookies work later on without special handling.
+    // /api -> backend in dev: same origin, no CORS, session cookies work
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
@@ -15,10 +13,7 @@ export default defineConfig({
       },
     },
   },
-  // `npm run preview` is a server of its own and does NOT inherit server.proxy.
-  // Without this, every /api call in preview goes nowhere.
-  // For real operation still do not use preview; let the backend serve the
-  // build instead (see server.js).
+  // `vite preview` does not inherit server.proxy; production is served by the backend (server.js)
   preview: {
     proxy: {
       '/api': {

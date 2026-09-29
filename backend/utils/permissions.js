@@ -1,18 +1,7 @@
-// backend/utils/permissions.js
-// Roles and permissions of the panel.
-//
-// Two principles that explain the rest:
-//
-// 1. Enforcement is central. Below is a route -> capability table, and a
-//    single middleware applies it. Scattering the checks across every
-//    route means one of them eventually gets forgotten - and a missing
-//    check is not something you can see from the outside.
-//
-// 2. The owner cannot lock themselves out. Their permissions are not
-//    configurable, and only they may hand out permissions at all.
-// The capabilities, grouped by area. 'view' and 'edit' are deliberately
-// separate: being allowed to look at an inventory without being allowed
-// to change it is the most common case for supporters.
+// Capabilities, the route -> capability table and enforce() (BACKEND.md §4)
+// Enforcement is central and fails closed; the owner cannot be locked out
+
+// view/edit split: looking without changing is the common supporter case
 const CAPABILITIES = [
     { id: 'players.view', group: 'Players', label: 'See the citizen list and details' },
     { id: 'money.edit', group: 'Players', label: 'Change cash and bank balance' },
@@ -47,20 +36,16 @@ const CAPABILITIES = [
 
 const CAPABILITY_IDS = CAPABILITIES.map(c => c.id);
 
-// Only the owner may hand out permissions. This deliberately does NOT
-// live in CAPABILITIES: if it did, it could be configured away, and then
-// nobody could change anything any more.
+// SECURITY: owner-only and not in CAPABILITIES, so it can never be configured away
 const OWNER_ONLY = 'permissions.edit';
 
-// Everything below this path belongs to the citizen portal and is guarded by
-// ownership rather than by a role, so the rule table does not cover it.
+// Citizen portal: guarded by ownership, not by role; outside the rule table
 const SELF_PREFIX = '/api/me';
 
-// Starting distribution. Supporters may look and help day to day, but not
-// touch money, accounts or memberships; a citizen may only look.
+// Initial grants: supporter = day-to-day help, no money, accounts or memberships
 const DEFAULTS = {
     owner: CAPABILITY_IDS.slice(),
-    // Everything except handing out permissions - that is not in CAPABILITY_IDS.
+    // All but permissions.edit (not in CAPABILITY_IDS)
     administrator: CAPABILITY_IDS.slice(),
     supporter: [
         'players.view',
@@ -73,29 +58,14 @@ const DEFAULTS = {
         'system.view',
         'orgs.view'
     ],
-    // Nothing at all, on purpose. This role is normally mapped to a broad
-    // Discord role, and 'players.view' would hand everyone holding it the
-    // full citizen list - phone numbers, birthdates, account numbers - plus
-    // the inventory, vehicles and licences of every character. That is a
-    // lot to grant by simply existing. The owner can tick whatever this
-    // role should actually see in the permissions sheet; starting from
-    // nothing means the grant is a decision rather than an oversight.
-    //
-    // Note this is the PANEL role called Citizen, which is a different
-    // thing from a Veritas ID user: a portal user holds no panel role at
-    // all and only ever sees their own characters.
+    // Empty on purpose: usually mapped to a broad Discord role, and players.view exposes
+    // every citizen's personal data; any grant should be a deliberate decision
+    // Panel role only; Veritas ID users hold no panel role
     citizen: []
 };
 
-// --- Storage ---------------------------------------------------------------
-// A JSON file rather than a table: this is configuration, not data. Writing
-// panel settings into the Qbox database, which belongs to the game server,
-// would be the wrong place for them.
-
-// Roles live in utils/roleStore.js now: they are records the owner edits
-// rather than constants in this file. What stays here is the part that has
-// to be code - which capabilities exist, which route needs which, and the
-// two rules that keep an owner from locking themselves out.
+// --- Storage --------------------------------------------------------------
+// Roles are records in utils/roleStore.js (a JSON file: panel config stays out of the game DB)
 const store = require('./roleStore').createStore({
     capabilityIds: CAPABILITY_IDS,
     defaults: DEFAULTS,
@@ -104,7 +74,7 @@ const store = require('./roleStore').createStore({
 const STORE = store.STORE;
 const OWNER_ROLE = store.OWNER_ROLE;
 
-/** Every role, in ranking order. The first match wins in authorize(). */
+/** Every role in ranking order; authorize() takes the first match */
 function listRoles() {
     return store.list();
 }
@@ -113,7 +83,7 @@ function getRole(id) {
     return store.get(id);
 }
 
-/** A role's display name, or the id itself for one that no longer exists. */
+/** Display name; the bare id for a deleted role */
 function labelOf(id) {
     const role = store.get(id);
     return role ? role.label : (id || null);
@@ -132,26 +102,22 @@ function save(next) {
 }
 
 function can(role, capability) {
-    if (role === OWNER_ROLE) return true; // without exception
+    if (role === OWNER_ROLE) return true;
     if (capability === OWNER_ONLY) return false;
     const found = store.get(role);
-    // A session naming a role that has since been deleted holds nothing.
-    // Failing closed is the only safe reading: the alternative is a
-    // permission that outlives the role it came from.
+    // SECURITY: a deleted role grants nothing (fail closed)
     return found ? found.capabilities.includes(capability) : false;
 }
 
-// What may this role do in total? Sent to the frontend so it can hide
-// buttons - but the decision is always made here in the backend.
+/** For the frontend to hide controls; the decision stays with enforce() */
 function capabilitiesOf(role) {
     if (role === OWNER_ROLE) return CAPABILITY_IDS.concat(OWNER_ONLY);
     const found = store.get(role);
     return found ? found.capabilities.slice() : [];
 }
 
-// --- Route -> capability -------------------------------------------------
-// The complete mapping, readable in one place. Anything missing here is
-// not therefore free - see enforce() below.
+// --- Route -> capability --------------------------------------------------
+// Complete table; unlisted routes are denied, and permissions.test.js fails on a gap
 
 const RULES = [
     // Reading
@@ -211,31 +177,21 @@ function requiredFor(method, routePath) {
     return hit ? hit[2] : null;
 }
 
-// Middleware. Anything that matches no rule is denied rather than let
-// through: a new route without an entry should stand out, not quietly
-// stand open to everyone.
+// SECURITY: fail closed; a path with no rule is denied
 function enforce(req, res, next) {
-    // Case-blind, like the router: '/API/players' is the players route, and
-    // an exact-case check here would let it past with no rule applied. The
-    // rules themselves stay exact, so an odd spelling matches none of them
-    // and is denied.
+    // SECURITY: prefix checks are case-blind like the router; RULES stay exact-case,
+    // so an odd spelling matches no rule and is denied
     const lower = req.path.toLowerCase();
     if (!lower.startsWith('/api/')) return next();
     if (lower.startsWith('/api/auth/')) return next();
 
-    // No session object at all means Discord login is switched off. Then
-    // there are no roles to enforce and the startup banner already says the
-    // panel is open. This is NOT the same as a session without a role.
+    // No req.user = login disabled (open panel, warned at startup); not a role-less session
     if (!req.user) return next();
 
-    // The citizen portal is scoped by identity, not by role: those routes
-    // never trust a citizenid from the client, they derive what may be seen
-    // from the signed-in Discord account. They carry their own guard.
+    // SECURITY: /api/me[/...] guards itself by ownership; /api/members etc. are not exempt
     if (req.path === SELF_PREFIX || req.path.startsWith(SELF_PREFIX + '/')) return next();
 
-    // A signed-in account with no panel role is a portal user. Letting that
-    // fall through would hand them every admin route - the one mistake this
-    // whole file exists to prevent.
+    // SECURITY: signed in without a panel role = portal user; never falls through
     const role = req.user.role;
     if (!role) {
         return res.status(403).json({

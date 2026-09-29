@@ -1,21 +1,12 @@
-// backend/routes/bans.test.js
-//
-// Issuing a ban is the one write in this file, and "Permanent" is what the
-// form starts on. That path once referred to a constant that had moved to
-// utils/banlist.js, so every permanent ban answered 500 - a ReferenceError,
-// caught and reported as a database error. Behind it sat a second fault: the
-// value it meant to write, fifty years out, does not fit the INT(11) column
-// the schema gives `expire`.
-//
-// Pinned down end to end here, against a stand-in database and bridge. The
-// real ones are a live game server.
+// Issuing a ban end to end, against a stand-in DB and bridge (BACKEND.md §8)
+// Permanent is the form's default: it must not 500, and must fit the INT(11) `expire` column
 
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const express = require('express');
 
-// Stand-ins go into the require cache before the route loads the modules.
+// Stand-ins enter the require cache before the route loads its modules
 function stub(relative, exports) {
     const file = require.resolve(path.join(__dirname, relative));
     require.cache[file] = { id: file, filename: file, loaded: true, exports };
@@ -45,8 +36,7 @@ stub('../utils/dbHandler', {
     getTableColumns: async () => [],
 });
 
-// Never the real bridge: a FiveM server running on this machine would
-// otherwise be asked about - and could kick - a real player.
+// Never the real bridge: a local FiveM server could be asked about, and kick, a real player
 stub('../utils/bridge', {
     isPlayerOnline: async () => false,
     callBridge: async () => { throw new Error('no bridge in tests'); },
@@ -55,7 +45,7 @@ stub('../utils/bridge', {
 const { router } = require('./bans');
 const banlist = require('../utils/banlist');
 
-// The largest value a signed INT(11) holds.
+// Signed INT(11) maximum
 const INT_MAX = 2147483647;
 
 async function ban(body) {
@@ -76,7 +66,7 @@ async function ban(body) {
     }
 }
 
-/** The `expire` value the last INSERT carried, looked up by column name. */
+/** `expire` of the last INSERT, by column name */
 function lastWrittenExpire() {
     const { sql, params } = inserts[inserts.length - 1];
     const columns = sql.match(/\(([^)]+)\)/)[1].split(',').map(c => c.trim());
@@ -116,14 +106,13 @@ test('a timed ban reads back as timed and in force', async () => {
 });
 
 test('the longest timed ban the form offers never overflows the column', () => {
-    // Ten years from now fits today; from 2028 on it would not.
+    // Ten years fits today; from 2028 on it would overflow
     assert.ok(banlist.expiryFor(3650) <= INT_MAX);
     const in2030 = Date.UTC(2030, 0, 1) / 1000;
     assert.equal(banlist.expiryFor(3650, in2030), INT_MAX);
 });
 
 test('the ceiling qb-adminmenu writes for a permanent ban reads as permanent', () => {
-    // Bans issued in game carry the same value, and used to be listed as
-    // running out in January 2038.
+    // In-game permanent bans carry the same value: must read as permanent, not as ending in 2038
     assert.equal(banlist.shapeBan({ id: 3, expire: INT_MAX }).permanent, true);
 });

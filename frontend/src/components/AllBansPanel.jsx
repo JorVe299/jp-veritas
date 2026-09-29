@@ -12,33 +12,9 @@ import { useCooldown } from '../lib/useCooldown';
 const LIMIT = 50;
 
 /**
- * Everyone kept out, out of both records at once.
- *
- * This panel replaces the two that stood here before - one for the
- * database table, one for txAdmin's file. Two lists side by side made the
- * gap visible but left the work to the reader: a server bans in two places
- * that know nothing about each other, and nobody asking "is this person
- * banned" cares which file the answer came out of. So the rows are merged
- * and sorted together.
- *
- * Three things the merge is not allowed to blur, and everything below is
- * shaped by them:
- *
- *   Where a row is written down stays on the row. Only a database row can
- *   be lifted from here; a txAdmin row is managed in txAdmin and carries
- *   no control at all. The source marker is what makes that legible
- *   instead of surprising.
- *
- *   A source that could not be read is not an absence of bans. The route
- *   answers that with 200 and says so per source, and this panel says it
- *   above the rows - loudly enough that a short list is never mistaken for
- *   the whole truth. That failure is the exact one the merge was built to
- *   undo, and merging makes it easier to miss, not harder.
- *
- *   The order is the server's: in force first, then newest. There is no
- *   sort control, because that order is the reason the list is readable at
- *   all - the question is always "who is kept out right now", and every
- *   other order buries the answer among entries that are over.
+ * Bans from both records (database table + txAdmin), merged and sorted together
+ * An unreadable source is not an absence of bans (route answers 200, flagged per source)
+ * Server's order, in force first; no sort control: any other order buries who is out now
  */
 export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
     const { can } = useCan();
@@ -51,11 +27,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
     const [token, setToken] = useState(0);
     const [feedback, setFeedback] = useState(null);
 
-    // The page belongs to one set of filters. Rather than an effect that
-    // chases the filters and resets it - which would be a synchronous
-    // setState in an effect for a value that is plainly derivable - the
-    // page carries the filters it was chosen under. Change any of them and
-    // it falls back to the first page by itself.
+    // Page carries its filter key instead of a reset effect: a filter change means page 1
     const filterKey = [search, citizenid, activeOnly, includeWarnings, source].join('\u0000');
     const [pageAt, setPageAt] = useState({ key: filterKey, value: 1 });
     const page = pageAt.key === filterKey ? pageAt.value : 1;
@@ -69,16 +41,12 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
     const rows = Array.isArray(data.bans) ? data.bans : [];
 
     const sources = data.sources || {};
-    // Which source the answer was actually assembled from. Read from the
-    // answer rather than from the control, so the sentences below describe
-    // the list on screen and not the request in flight.
+    // From the answer, not the control: describe the list shown, not the request in flight
     const applied = data.filter?.source || null;
     const databaseAsked = applied !== 'txadmin';
     const txadminAsked = applied !== 'database';
 
-    // available:false only counts as a failure for a source that was
-    // actually asked. One left out by the source filter is absent on
-    // purpose, and calling that a failure would cry wolf.
+    // available:false counts only for an asked source; the filter leaves the other out
     const databaseFailed = ready && databaseAsked && sources.database?.available === false;
     const txadminFailed = ready && txadminAsked && sources.txadmin?.available === false;
     const failedCount = (databaseFailed ? 1 : 0) + (txadminFailed ? 1 : 0);
@@ -88,9 +56,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
     const pages = Math.max(numberOrNull(data.pages) ?? 1, 1);
 
     const identity = data.identity || null;
-    // A citizen with no license, no Discord ID and no IP on record cannot
-    // match a ban, because a ban hangs off exactly those. An empty list
-    // then says nothing about that person, so it is not left to speak.
+    // A citizen without identifiers can match no ban: an empty list would say nothing
     const unmatchable = ready && Boolean(citizenid) && identity?.identifiers === 0;
 
     const goPage = (next) => {
@@ -105,9 +71,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
 
     const reload = () => setToken((v) => v + 1);
 
-    // The retry asks txAdmin and the database both. When a line reports a
-    // change the list reloads through reload() directly; only the button is
-    // held to one attempt a minute.
+    // Cooldown binds only the button: a line's change reloads directly
     const retryCooldown = useCooldown('allbans-retry');
     const retryByHand = () => {
         retryCooldown.start();
@@ -143,20 +107,14 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                     carries no control.
                 </p>
 
-                {/* One citizen, and the way back to everyone. The pill is
-                    the control: it states the filter and removes it, so
-                    nobody can be looking at a narrowed list without seeing
-                    that they are. */}
+                {/* Pill states and clears the filter: a narrowed list never goes unmarked */}
                 {citizenid && (
                     <div className="banfilter">
                         <button
                             type="button"
                             className="pill pill--lg pill--drop"
                             onClick={onClearCitizen}
-                            /* The visible words plus what pressing it
-                               does - the cross alone is a shape, not a
-                               sentence, and it is hidden from the reader
-                               that needs one. */
+                            /* Words plus action: the cross says nothing to a screen reader */
                             aria-label={`Only bans on ${citizenid} — show everyone again`}
                             title="Show the bans of everyone again"
                         >
@@ -272,9 +230,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                     />
                 )}
 
-                {/* Above the rows, always, and before anything is counted:
-                    a record nobody could open is missing from the list
-                    below, and the list below gives no sign of it. */}
+                {/* Above the rows: the list itself gives no sign a record is missing */}
                 {databaseFailed && (
                     <SourceFailure
                         title="The database ban table could not be read"
@@ -308,9 +264,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                     </div>
                 )}
 
-                {/* Left out on purpose rather than lost. Said plainly all
-                    the same, because a half list is a half list however it
-                    came about. */}
+                {/* Deliberate, but still said: a half list is a half list */}
                 {ready && applied && (
                     <p className="field__hint">
                         {applied === 'database'
@@ -347,8 +301,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                         <ul className={`lines${res.isStale ? ' is-stale' : ''}`} aria-busy={res.isStale}>
                             {rows.map((entry) => (
                                 <AllBansLine
-                                    /* Unique across both records - the
-                                       native ids are not. */
+                                    /* Unique across both records; native ids are not */
                                     key={entry.key}
                                     entry={entry}
                                     canEdit={canEdit}
@@ -392,14 +345,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
     );
 }
 
-/**
- * One of the two records could not be opened.
- *
- * The sentence leads with what is missing rather than with the fault,
- * because the danger here is not the error - it is the list underneath it
- * reading as complete. The server's reason follows, since it is the only
- * party that knows it, and the operator's hint folds away.
- */
+// What is missing comes first: the danger is the list below reading as complete
 function SourceFailure({ title, missing, rest, reason, hint }) {
     const said = typeof reason === 'string' ? reason.trim() : '';
     const detail = [
@@ -421,26 +367,15 @@ function SourceFailure({ title, missing, rest, reason, hint }) {
     );
 }
 
-/**
- * How the one-citizen filter was matched.
- *
- * Neither record stores a citizenid, so "this person" is really "these
- * identifiers". Saying the number makes the filter checkable: a citizen
- * with one identifier and a citizen with four are not being asked the same
- * question. Zero is left to the notice below, which says what it means.
- */
+// Bans match identifiers, not citizenids: naming the count makes the filter checkable;
+// zero is left to the unmatchable notice
 function filterHint(identity) {
     const held = numberOrNull(identity?.identifiers);
     if (held === null || held < 1) return 'Clear the filter for every ban on the server.';
     return `Matched on the ${held === 1 ? 'one identifier' : `${held} identifiers`} this citizen carries. Clear the filter for every ban on the server.`;
 }
 
-/**
- * Read, and nothing came back. Each version says what was actually asked,
- * so an empty list is never mistaken for an empty record: a filter hiding
- * everything is a different statement from nobody being banned, and a
- * record nobody could open is a third thing again.
- */
+// Never reads as an empty record: filtered-out, no bans and unreadable are distinct claims
 function emptyLine({ search, citizenid, activeOnly, includeWarnings, applied, failedCount }) {
     if (failedCount > 0) {
         return 'Nothing matched in the record that could be read — and the other one could not be read at all. This is not the same as nobody being banned.';

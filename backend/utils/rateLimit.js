@@ -1,30 +1,14 @@
-// backend/utils/rateLimit.js
-// One request per window, per person, per action.
-//
-// For the buttons that make the backend do real work on demand - reloading
-// the reference data rereads every catalog file from disk. The frontend
-// greys those buttons out for the same minute, but a button is a courtesy,
-// not a guard: anybody can send the request without it. This is the guard.
-//
-// In memory on purpose. A restart clearing every cooldown costs nothing,
-// and a file or a table for this would be one more thing to keep writable.
+// oncePer(): one request per window, per person, per action (in memory; a restart resets it)
+// The server-side guard behind the frontend's refresh cooldowns (BACKEND.md §4)
 
-/**
- * Who is asking. The signed-in Discord id where there is one; the address
- * otherwise, which is what is left with Discord login switched off.
- */
+/** Discord id when signed in, else the IP (login disabled) */
 function whoIs(req) {
     return req.user?.id ? `user:${req.user.id}` : `ip:${req.ip}`;
 }
 
 /**
- * Middleware allowing one request per `windowMs` for each person on the
- * action named `name`. A refused request answers 429 with Retry-After, and
- * the same number in the body so the frontend does not have to read a
- * header to say how long is left.
- *
- * Every attempt counts, including one that goes on to fail. Otherwise a
- * request that fails on purpose could be repeated without limit.
+ * One request per `windowMs` per person for action `name`; 429 + Retry-After otherwise
+ * retryAfter is repeated in the body; failed attempts count too (no free retries)
  */
 function oncePer(name, windowMs, now = Date.now) {
     const last = new Map();
@@ -46,9 +30,7 @@ function oncePer(name, windowMs, now = Date.now) {
 
         last.set(key, at);
 
-        // Entries older than the window grant nothing any more, so they are
-        // dropped as they are passed rather than kept for the life of the
-        // process.
+        // Expired entries are pruned on the way; the map stays small
         for (const [k, t] of last) {
             if (at - t >= windowMs) last.delete(k);
         }

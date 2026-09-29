@@ -1,20 +1,14 @@
--- veritas/bridge/qbox.lua
--- Qbox is a QBCore fork. It ships a qb-core compatibility layer, so the
--- shared implementation applies - but it is reached through qbx_core, and it
--- is checked first so a Qbox server is not mistaken for plain QBCore.
+-- Qbox: QBCore fork via qbx_core; detected before QBCore so it is not mistaken for it
 
 local adapter = QBFamily.build('qbox', 'Qbox (qbx_core)', 'qbx_core', 'GetCoreObject')
 
--- Qbox keeps the compatibility export on qb-core while the real core lives
--- in qbx_core. If qbx_core is running we are on Qbox, whichever export
--- happens to answer.
+-- qbx_core running = Qbox, whichever export answers (qb-core keeps a compatibility export)
 function adapter.detect()
     return GetResourceState('qbx_core') == 'started'
 end
 
 function adapter.init()
-    -- Try the native export first, then the compatibility one. Older Qbox
-    -- builds only expose GetCoreObject through qb-core.
+    -- Native export first; older Qbox builds expose GetCoreObject only via qb-core
     for _, attempt in ipairs({
         { 'qbx_core', 'GetCoreObject' },
         { 'qb-core', 'GetCoreObject' },
@@ -24,7 +18,7 @@ function adapter.init()
         end)
         if ok and type(obj) == 'table' then
             adapter.core = obj
-            -- Rebuild the closures against the object we actually got.
+            -- Rebind the closures to the object that answered
             adapter.getPlayer = function(citizenid)
                 return obj.Functions.GetPlayerByCitizenId(citizenid)
             end

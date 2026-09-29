@@ -5,28 +5,9 @@ import DiagnosticsPanel from './DiagnosticsPanel';
 import OrganisationsPanel from './OrganisationsPanel';
 
 /**
- * The second main area: everything on this server that belongs to nobody.
- *
- * The panel was built entirely around one citizen - pick a character, then
- * change something about them. Several things do not fit that shape at all.
- * A police force has a balance and a headcount whether or not anyone is
- * looking at an officer. The ban list hangs off licenses and Discord IDs,
- * some of which no character in the database belongs to. What the
- * installation is running (its framework, bridge and schema) belongs to the
- * installation. None of those is a further card in the citizen wall,
- * because a card there claims by its position that its contents belong to
- * the selected character.
- *
- * The order of the sections follows how far each one reaches, from reading
- * about the world the players live in to what the installation itself is:
- *
- *   Organisations - the bodies players belong to
- *   Accounts      - the money those bodies and people hold
- *   Bans          - who is kept out, in both of the records that keep it
- *   Diagnostics   - what this installation is, when something is wrong
- *
- * The tab bar is the same component the citizen view uses. Two bars that
- * look alike but behave differently would be worse than one shared one.
+ * Server area: what belongs to no citizen (organisations, accounts, bans, diagnostics)
+ * Not citizen-wall cards: a card there implies it belongs to the selected character
+ * Same tab bar as the citizen area: look-alike bars must not behave differently
  */
 export default function ServerArea({
     tabs,
@@ -54,10 +35,7 @@ export default function ServerArea({
             />
 
             <div
-                /* Bans stacks instead of laying out in columns: it is one
-                   wide list whose rows carry a source, a state, who they
-                   are against and what they hang off, and squeezed into a
-                   grid column they wrap into something nobody can scan. */
+                /* Bans stacks: its wide rows become unscannable in a grid column */
                 className={`modules${activeTab === 'bans' ? ' modules--stack' : ''}`}
                 role="tabpanel"
                 id={`tabpanel-${activeTab}`}

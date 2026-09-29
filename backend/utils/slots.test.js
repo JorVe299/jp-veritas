@@ -1,5 +1,4 @@
-// backend/utils/slots.test.js
-// Runs with `npm test` (node --test). No database, no fixtures.
+// Pure: no database, no fixtures
 const test = require('node:test');
 const assert = require('node:assert');
 const { applyMove } = require('./slots');

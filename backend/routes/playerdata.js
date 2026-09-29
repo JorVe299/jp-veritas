@@ -1,14 +1,11 @@
-// backend/routes/playerdata.js
-// Licences, player condition (hunger/thirst/stress/jail time) and character
-// details. All of it lives in JSON columns of the players table.
+// Licences, condition (hunger/thirst/stress/jail time) and character details (players JSON)
 const express = require('express');
 const { db, parseJSON, updatePlayerColumn, getTableColumns } = require('../utils/dbHandler');
 const { isPlayerOnline, callBridge } = require('../utils/bridge');
 
 const router = express.Router();
 
-// QBCore writes "licences" (British), some forks "licenses".
-// We read both and write back into whichever key is already there.
+// QBCore writes "licences", some forks "licenses": read both, write to the existing key
 function licenceKey(metadata) {
     if (metadata && typeof metadata.licenses === 'object' && metadata.licenses !== null) return 'licenses';
     return 'licences';
@@ -16,8 +13,7 @@ function licenceKey(metadata) {
 
 const KNOWN_LICENCES = ['driver', 'business', 'weapon', 'pilot'];
 
-// Numeric condition values an admin may sensibly set, each with its
-// permitted range.
+// Settable condition fields and their ranges
 const STATUS_FIELDS = {
     hunger: [0, 100],
     thirst: [0, 100],
@@ -80,7 +76,7 @@ router.post('/api/manage/license', async (req, res) => {
         const key = licenceKey(metadata);
         metadata[key] = { ...(metadata[key] || {}), [license]: value };
 
-        // While online the core has to set it, otherwise it overwrites us on save
+        // Online: the core must set it, else its save overwrites the DB
         if (await isPlayerOnline(citizenid)) {
             await callBridge('/update-metadata', { citizenid, key, value: metadata[key] });
             return res.json({
@@ -180,8 +176,7 @@ router.post('/api/manage/charinfo', async (req, res) => {
         const charinfo = { ...parseJSON(rows[0].charinfo), ...changes };
         await updatePlayerColumn(citizenid, 'charinfo', charinfo);
 
-        // Qbox keeps the number twice: in charinfo.phone and in the
-        // phone_number column. Changing only one lets them drift apart.
+        // Qbox stores the number twice (charinfo.phone, phone_number): update both
         if (changes.phone !== undefined) {
             const columns = await getTableColumns('players');
             if (columns.includes('phone_number')) {
@@ -189,8 +184,7 @@ router.post('/api/manage/charinfo', async (req, res) => {
             }
         }
 
-        // The core only reads charinfo on load - for a player who is signed
-        // in the change takes effect at their next login.
+        // The core reads charinfo on load only: online players see it after their next login
         const online = await isPlayerOnline(citizenid);
 
         res.json({

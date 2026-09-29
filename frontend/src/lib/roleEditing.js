@@ -1,28 +1,17 @@
-// The rules a role has to obey, written down on this side as well.
-//
-// Not a second opinion: backend/utils/roleStore.js decides, and it decides
-// again on every request. What stands here only lets the field say what is
-// wrong while it is being typed, instead of letting the server answer with
-// a 400 - or worse, accept the write and silently drop the value.
-//
-// That last case is the reason this file exists at all. The server cleans
-// the Discord lists rather than refusing them: anything that is not a
-// snowflake is thrown away without a word. Somebody who pastes a username
-// would watch it vanish and have no idea why. So the field says so first.
+// Mirror of backend/utils/roleStore.js for inline errors; the server still decides
+// The server silently drops non-snowflake Discord ids: a pasted name must be flagged here
 
-/** Same ceiling as cleanLabel() in the store. */
+/** Must match cleanLabel() in the store */
 export const MAX_LABEL = 48;
 
-/** cleanIdList() keeps at most this many ids per list. */
+/** Per-list cap of cleanIdList() in the store */
 export const MAX_IDS = 200;
 
-// A role id ends up in a session and in a JSON file, so it stays boring.
+// Stored in sessions and a JSON file: kept plain
 const ID_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/;
 
-// A Discord snowflake: digits, and between five and twenty-five of them.
 const SNOWFLAKE = /^\d{5,25}$/;
 
-/** The id the server would derive from a label, so the field can show it. */
 export function idFromLabel(label) {
     const slug = String(label || '')
         .toLowerCase()
@@ -32,7 +21,6 @@ export function idFromLabel(label) {
     return /^[a-z]/.test(slug) ? slug : `role-${slug}`.slice(0, 32);
 }
 
-/** Whitespace collapsed and cut to length, exactly as the store does it. */
 export function cleanLabel(value) {
     return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, MAX_LABEL);
 }
@@ -41,11 +29,7 @@ export const validRoleId = (id) => ID_PATTERN.test(String(id || ''));
 
 export const isSnowflake = (value) => SNOWFLAKE.test(String(value || '').trim());
 
-/**
- * What is wrong with a typed id, as a sentence - or null when nothing is.
- * Only for the optional id field: leaving it empty is fine, the server
- * derives one from the label.
- */
+/** Error sentence or null; empty is valid: the server derives the id from the label */
 export function roleIdProblem(value) {
     const id = String(value || '').trim();
     if (!id) return null;
@@ -56,10 +40,7 @@ export function roleIdProblem(value) {
     return null;
 }
 
-/**
- * What is wrong with a pasted Discord id. The sentence names the way to get
- * the right one, because the usual mistake is pasting a name.
- */
+/** Error sentence or null; names Copy ID: the usual mistake is pasting a name */
 export function snowflakeProblem(value) {
     const id = String(value || '').trim();
     if (!id) return 'Paste a Discord id first.';
@@ -71,12 +52,11 @@ export function snowflakeProblem(value) {
     }
     if (id.length < 5) return `A Discord id is at least 5 digits; this one has ${id.length}.`;
     if (id.length > 25) return `A Discord id is at most 25 digits; this one has ${id.length}.`;
-    // The checks above are for their messages; this one applies SNOWFLAKE
-    // itself, the same rule the store applies, as the backend test checks.
+    // Checks above only pick the message; SNOWFLAKE is the store's rule (a backend test checks)
     return isSnowflake(id) ? null : 'That is not a Discord id.';
 }
 
-/** Two id lists, order disregarded. */
+/** Order-insensitive */
 export function sameIds(a, b) {
     const left = Array.isArray(a) ? [...a].sort() : [];
     const right = Array.isArray(b) ? [...b].sort() : [];

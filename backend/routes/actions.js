@@ -1,25 +1,17 @@
-// backend/routes/actions.js
-// Immediate actions on connected players: kick, revive, heal, teleport,
-// notify.
-//
-// Unlike the rest of the panel there is no database path here. These actions
-// concern only the running game session - for an offline player they would
-// simply have no target. That is not a gap but an honest picture of what is
-// possible.
+// Live actions on connected players: kick, revive, heal, teleport, notify
+// No DB fallback: these act on the running session, which offline players do not have
 const express = require('express');
 const { db } = require('../utils/dbHandler');
 const { isPlayerOnline, callBridge } = require('../utils/bridge');
 
 const router = express.Router();
 
-// Plausible bounds for the GTA V map. Without them a player could be put
-// into the void below the world, from which they do not come back.
+// GTA V map bounds; below the world there is no way back
 const COORD_LIMIT = 10000;
 const Z_MIN = -500;
 const Z_MAX = 2000;
 
-// Every action goes through the same sequence: does the player exist, are
-// they connected, did the bridge agree.
+// Shared sequence: player exists, is connected, bridge agrees
 async function runLiveAction(res, citizenid, route, payload, successText) {
     if (!citizenid) {
         res.status(400).json({ error: 'citizenid is required' });
@@ -113,7 +105,7 @@ router.post('/api/manage/notify', async (req, res) => {
 });
 
 // --- Last known position --------------------------------------------------
-// Read-only and usable offline as well: says where a player logged out.
+// Read-only, works offline: where the player logged out
 router.get('/api/players/:citizenid/position', async (req, res) => {
     try {
         const [rows] = await db.execute(

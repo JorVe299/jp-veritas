@@ -15,15 +15,8 @@ const TYPES = [
 ];
 
 /**
- * Every job and gang on the server, seen as a body rather than as a field on
- * a character.
- *
- * This is why the server area exists at all. A police force has a balance, a
- * headcount and a rank structure whether or not anybody is looking at a
- * single officer - and a card in the citizen wall would claim, by its
- * position alone, that its contents belong to the selected character.
- *
- * The search runs on the server and debounced, as in the large catalogs.
+ * Every job and gang as a body of its own, not a field on a character
+ * In the server area: on the citizen wall it would read as the selected character's
  */
 export default function OrganisationsPanel() {
     const { can } = useCan();
@@ -37,9 +30,7 @@ export default function OrganisationsPanel() {
 
     const data = res.data || {};
     const organisations = Array.isArray(data.organisations) ? data.organisations : [];
-    // Both flags describe what the server was able to answer, not what it
-    // found. Guessed defaults would turn "we did not look" into "there is
-    // none", so the falsy reading is the careful one in both cases.
+    // Capability flags, not findings: a guessed true would turn "not looked" into "none"
     const moneyVisible = data.moneyVisible === true;
     const groupsAvailable = data.groupsAvailable === true;
     const totals = data.totals || null;
@@ -56,9 +47,7 @@ export default function OrganisationsPanel() {
             </header>
 
             <div className="panel__body">
-                {/* Once per card. Without accounts.view the server strips the
-                    money out of every row, so the reason belongs here rather
-                    than next to thirty missing figures. */}
+                {/* Once per card, not next to every missing figure */}
                 {!moneyVisible && res.status === 'ready' && (
                     <PermissionLine what="see what these organisations hold" />
                 )}
@@ -98,9 +87,7 @@ export default function OrganisationsPanel() {
                     </div>
                 </div>
 
-                {/* The whole point of the totals: an organisation with no
-                    account row is missing setup, and that is a different
-                    thing from one holding nothing. */}
+                {/* No account row means missing setup, not an empty balance */}
                 {moneyVisible && totals && (
                     <>
                         <div className="tally tally--wide">

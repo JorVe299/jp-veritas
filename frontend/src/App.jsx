@@ -7,85 +7,47 @@ import Workspace from './components/Workspace';
 import { useAuth } from './lib/useAuth';
 import { navigate, PORTAL_PATH, surfaceFor, usePath } from './lib/useSurface';
 import './App.css';
-// Last on purpose: where Veritas ID reaches into a class the panel also
-// uses, it has to be the one that wins.
+// Last: portal.css must win where it overrides panel classes
 import './portal.css';
 
-/**
- * Whether this account holds a role in the panel.
- *
- * `role` used to be a string for everyone who got this far. It can now be
- * null, and null is not a weaker role but no access at all: every admin
- * route answers 403 for such an account. So the question is asked once,
- * here, and the answer decides which of the two surfaces a person lands on.
- */
+// Null role is no access, not a lesser role: every admin route answers 403
 function hasPanelAccess(user) {
     return typeof user?.role === 'string' && user.role.trim() !== '';
 }
 
-/**
- * Whether the panel has anything to show this account.
- *
- * Holding a role and being able to use the panel are not the same thing.
- * A role whose capabilities have all been taken away reaches nothing: every
- * card on the panel would 403. Someone in that position who also has a
- * character is better served by Veritas ID than by an empty admin panel.
- *
- * Without a portal they stay on the panel even so, because the empty state
- * there explains what is missing, while Veritas ID could only turn them
- * away - and a dead end that explains itself beats one that does not.
- */
+// A role without capabilities reaches nothing: every card would 403
 function panelIsUsable(user) {
     if (!hasPanelAccess(user)) return false;
     return Array.isArray(user.capabilities) && user.capabilities.length > 0;
 }
 
 /**
- * The shell answers two questions: may any work happen here at all, and
- * which of the two surfaces is being asked for.
- *
- * Only once the first is answered does anything mount - before that, every
- * data request would run into a 401. While /api/auth/me is in flight,
- * neither surface shows its content: otherwise the sign-in screen would
- * flash up on every reload even though the session has long been
- * established.
+ * Shell: settles the session first, then picks the surface (panel or Veritas ID)
+ * Nothing mounts before /api/auth/me answers: data requests would 401, sign-in would flash
  */
 function App() {
     const auth = useAuth();
     const path = usePath();
 
     const handleSignIn = useCallback(() => {
-        // A real page navigation, not an XHR - Discord needs the browser.
-        // Which surface is asking comes out of the address bar at the
-        // moment of the click: there is no session yet, so the URL is the
-        // only thing that says where this person wants to end up.
+        // Surface read from the URL at click time: without a session nothing else says it
         startDiscordLogin(auth.loginUrl, surfaceFor(window.location.pathname));
     }, [auth.loginUrl]);
 
     const goPortal = useCallback(() => navigate(PORTAL_PATH), []);
     const goPanel = useCallback(() => navigate('/'), []);
 
-    // Without a Discord login configured there is no identity at all: the
-    // panel stands open to everyone, and Veritas ID has nothing to work
-    // from, since it decides whose characters these are by the account.
+    // Auth disabled means no account: Veritas ID could not tell whose characters to show
     const portalOnly = auth.authenticated
         && !auth.authDisabled
         && !panelIsUsable(auth.user)
-        // A role that grants nothing only sends someone here if there is
-        // actually something for them to see.
+        // Empty role without portal access stays on the panel: its empty state explains
         && (!hasPanelAccess(auth.user) || auth.user?.portal === true);
 
-    /* Derived, never stored. Someone with no role would see an empty panel
-       at "/" - every card on it would 403 - so they are shown Veritas ID
-       instead of an explanation of things they cannot reach. */
+    // Derived, never stored: the URL is the only copy of the path
     const portal = surfaceFor(path) === 'portal' || portalOnly;
 
-    /* ...and the address bar is brought into line with that afterwards, so
-       a reload lands in the same place. This writes to history only; the
-       path is read back out of the URL rather than kept in state, so there
-       is no second copy that could disagree - and replace rather than push,
-       because a correction nobody asked for must not become a stop on the
-       way back out. */
+    // URL follows so a reload lands here; replace: an unrequested redirect is no Back stop
     useEffect(() => {
         if (portal && surfaceFor(window.location.pathname) !== 'portal') {
             navigate(PORTAL_PATH, { replace: true });
@@ -97,15 +59,12 @@ function App() {
             return <PortalGate mode="loading" />;
         }
 
-        // A state of its own: the backend is not answering. Showing that as
-        // "not signed in" would be a claim nobody has verified.
+        // Unreachable, not signed out: that would be an unverified claim
         if (auth.phase === 'unreachable') {
             return <PortalGate mode="offline" error={auth.error} onRetry={auth.recheck} />;
         }
 
-        // No Discord on this installation. The panel can run like that;
-        // Veritas ID cannot, and says so rather than showing a sign-in
-        // button that leads nowhere.
+        // No Discord: Veritas ID cannot run, so no sign-in button that leads nowhere
         if (auth.authDisabled) {
             return <PortalGate mode="unavailable" />;
         }
@@ -126,10 +85,7 @@ function App() {
                 user={auth.user}
                 signingOut={auth.signingOut}
                 onSignOut={auth.signOut}
-                /* Only staff are offered the way over, and only staff
-                   who can actually do something there: for an account with
-                   no role that link is a door onto a 403, and for one whose
-                   role grants nothing it is a door onto an empty panel. */
+                /* Usable, not merely role-holding: an empty role would open an empty panel */
                 canOpenPanel={panelIsUsable(auth.user)}
                 onOpenPanel={goPanel}
             />
@@ -165,10 +121,7 @@ function App() {
             permissionNotice={auth.permissionNotice}
             onDismissPermissionNotice={auth.dismissPermissionNotice}
             onPermissionsChanged={auth.refresh}
-            /* The quiet way across, for the staff who are also players.
-               Hangs off the portal flag and not off the role: an account
-               can hold a role in the panel and still not be in the Discord
-               Veritas ID is open to. */
+            /* Portal flag, not role: a panel role does not imply Veritas ID access */
             onOpenPortal={auth.user?.portal === true ? goPortal : undefined}
         />
     );

@@ -18,8 +18,7 @@ const LICENCES = [
     { key: 'pilot', label: 'Pilot licence' },
 ];
 
-// The four needs share the 0-100 scale; jail time has one of its own and
-// therefore does not belong on the same slider.
+// Shared 0-100 scale; jail time has its own (JAIL_MAX)
 const GAUGES = [
     { key: 'hunger', label: 'Hunger' },
     { key: 'thirst', label: 'Thirst' },
@@ -36,41 +35,22 @@ const modeDetail = (mode) => (mode === 'live'
 const errorText = (err) => err.response?.data?.error || err.message;
 
 /**
- * Licenses, status values and character data.
- *
- * Three cards instead of one: the licenses switch immediately, the status
- * values are saved as a block, and the character data is a form with a
- * consequence of its own (the change only takes effect on the next login).
- * In one card three different saving models would have sat side by side.
- *
- * The two data-driven cards are only mounted once the metadata is there,
- * and they get a key from the load state - that way their state initializes
- * from the data without having to be synchronized afterwards in an
- * effect.
- *
- * `show` selects which of the three cards are rendered. By subject they do
- * not actually belong together: licenses and character data describe who
- * someone is, while status describes how they are doing right now. They
- * therefore sit in different sections of the module wall, but share this
- * one data source.
+ * Licences, condition, character details: three cards, three save models, one data source
+ * Metadata cards mount once loaded, keyed per citizen: state starts from data, no sync effect
+ * `show` picks the cards: they sit in different module-wall sections
  */
 export default function PlayerDataManager({ selectedPlayer, onApplied, show = ['licences', 'condition', 'charinfo'] }) {
     const citizenid = selectedPlayer?.citizenid;
     const wants = (part) => show.includes(part);
 
-    /* The special case among the modules: three cards, three permissions.
-       Licenses and status both read /metadata and need metadata.view for
-       that - without it they are not mounted at all, otherwise their load
-       call would run into a 403. The character data loads nothing extra:
-       it already sits in the selected citizen. That is why its card stays
-       even without metadata.view. */
+    // Without metadata.view the /metadata cards stay unmounted (403); charinfo needs no fetch
     const { can } = useCan();
     const canViewMeta = can('metadata.view');
     const canEditLicences = can('licenses.edit');
     const canEditStatus = can('status.edit');
     const canEditCharinfo = can('charinfo.edit');
 
-    // Without the read permission nothing loads: no citizenid, no call.
+    // null citizenid: no request
     const res = usePlayerResource(fetchPlayerMetadata, canViewMeta ? citizenid : null);
     const data = res.data || {};
     const ready = res.status === 'ready';
@@ -145,9 +125,7 @@ export default function PlayerDataManager({ selectedPlayer, onApplied, show = ['
     );
 }
 
-// Loading, errors and "does not exist in this schema" look the same in all
-// three cards and therefore stand here only once.
-// `what` is always a plural so that the sentences below work out.
+// `what` must be plural for the sentences below
 function LoadState({ res, what }) {
     if (res.status === 'loading') return <p className="field__hint">Loading {what.toLowerCase()}…</p>;
 
@@ -174,9 +152,7 @@ function LoadState({ res, what }) {
     return null;
 }
 
-/* -------------------------------------------------------------------------
-   Licenses: four toggles that write individually.
-   ------------------------------------------------------------------------- */
+// --- Licences -------------------------------------------------------------
 
 function LicenceBoard({ citizenid, licences, canEdit, onReport }) {
     const [values, setValues] = useState(() => {
@@ -258,9 +234,7 @@ function LicenceBoard({ citizenid, licences, canEdit, onReport }) {
     );
 }
 
-/* -------------------------------------------------------------------------
-   Status: four sliders on 0-100 plus jail time.
-   ------------------------------------------------------------------------- */
+// --- Status ---------------------------------------------------------------
 
 function StatusBoard({ citizenid, meta, canEdit, onReport }) {
     const status = meta.status || {};
@@ -271,9 +245,7 @@ function StatusBoard({ citizenid, meta, canEdit, onReport }) {
         return initial;
     };
 
-    // The baseline is carried along after saving instead of reloading the
-    // card: a remount would take away the feedback that has only just
-    // confirmed the operation.
+    // Baseline moves on save instead of a reload: a remount would drop the success feedback
     const [base, setBase] = useState(start);
     const [values, setValues] = useState(start);
     const [saving, setSaving] = useState(false);
@@ -299,8 +271,7 @@ function StatusBoard({ citizenid, meta, canEdit, onReport }) {
         setSaving(true);
         setFeedback(null);
         try {
-            // Send only what actually moved: the backend takes each field
-            // on its own.
+            // Only changed fields: the backend applies each on its own
             const changes = {};
             changed.forEach((key) => { changes[key] = Number(values[key]); });
 
@@ -384,8 +355,7 @@ function StatusBoard({ citizenid, meta, canEdit, onReport }) {
     );
 }
 
-// Slider and number field show the same value: the slider is for estimating,
-// the field for setting it exactly.
+// Slider to estimate, number field to set exactly
 function Gauge({ id, label, value, onChange, max, disabled }) {
     return (
         <div className="field">
@@ -431,10 +401,8 @@ function gaugeLabel(key) {
     return GAUGES.find((g) => g.key === key)?.label ?? key;
 }
 
-/* -------------------------------------------------------------------------
-   Character data. The source is the selected citizen, not /metadata -
-   which is why the key={citizenid} from App.jsx is enough here.
-   ------------------------------------------------------------------------- */
+// --- Character details ----------------------------------------------------
+// Source is the selected citizen, not /metadata: the parent's per-citizen key resets it
 
 function CharinfoBoard({ citizenid, charinfo, canEdit, onApplied }) {
     const [firstname, setFirstname] = useState(charinfo.firstname ?? '');
@@ -467,8 +435,7 @@ function CharinfoBoard({ citizenid, charinfo, canEdit, onApplied }) {
             setFeedback({
                 tone: answer.data?.hint ? 'warn' : 'success',
                 title: answer.data?.message || 'Character details saved',
-                // The backend's hint is the actual message here: the change
-                // only takes effect on the next login.
+                // The hint carries the point: the change applies on next login
                 detail: [modeDetail(mode), answer.data?.hint].filter(Boolean).join(' '),
             });
 

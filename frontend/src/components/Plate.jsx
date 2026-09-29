@@ -1,8 +1,7 @@
 import { useId } from 'react';
 import { getPlate } from '../lib/plate';
 
-// The palm outline sits in the document once as a <symbol>. Every tile
-// references it via <use> instead of repeating the same path 15 times.
+// Palm <symbol>, once per document: plates reference it via <use> instead of repeating the path
 export function PlateSprite() {
     return (
         <svg className="sprite" aria-hidden="true" focusable="false">
@@ -20,11 +19,8 @@ export function PlateSprite() {
 }
 
 /**
- * The generated key image of a citizen.
- *
- * `shape` picks the crop: 'poster' for the tiles, 'wide' for the header
- * area. The widescreen one is generated in its own right instead of cropping
- * the portrait - otherwise only a middle strip of the composition would stay.
+ * A citizen's key image, generated from the citizenid: the same art wherever it is shown
+ * `shape` 'wide' is generated in its own right; cropping the poster would keep a middle strip
  */
 export default function Plate({ citizenid, shape = 'poster', className = '' }) {
     const plate = getPlate(citizenid, shape);
@@ -57,9 +53,7 @@ export default function Plate({ citizenid, shape = 'poster', className = '' }) {
                     <stop offset="55%" stopColor={sky.light} stopOpacity={overcast ? '0.14' : '0.22'} />
                     <stop offset="100%" stopColor={sky.light} stopOpacity="0" />
                 </radialGradient>
-                {/* Haze needs soft edges. As a plain rectangle it turns into
-                    a bar with a hard top and bottom edge in the widescreen
-                    crop, where it is scaled up about sixfold. */}
+                {/* Gradient haze: a flat rect shows hard edges at ~6x in the wide crop */}
                 <linearGradient id={bandId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={sky.haze} stopOpacity="0" />
                     <stop offset="50%" stopColor={sky.haze} stopOpacity="1" />
@@ -69,14 +63,11 @@ export default function Plate({ citizenid, shape = 'poster', className = '' }) {
 
             <rect width={width} height={height} fill={`url(#${skyId})`} />
 
-            {/* Light source: first the soft halo, then the hard disc.
-                An overcast sky keeps the halo and loses the disc. */}
             <circle cx={light.x} cy={light.y} r={light.r * light.glow} fill={`url(#${glowId})`} />
             {!overcast && (
                 <circle cx={light.x} cy={light.y} r={light.r} fill={sky.light} opacity="0.92" />
             )}
 
-            {/* Haze bands above the horizon */}
             {bands.map((b, i) => (
                 <rect
                     key={i}
@@ -89,10 +80,8 @@ export default function Plate({ citizenid, shape = 'poster', className = '' }) {
                 />
             ))}
 
-            {/* Two ridges: the rear one paler, which gives the depth */}
             <path d={ridgeBack} fill={sky.land} opacity="0.58" />
 
-            {/* Coast: water with a trail of light, between the ridges */}
             {coast && (
                 <g>
                     <rect
@@ -117,7 +106,6 @@ export default function Plate({ citizenid, shape = 'poster', className = '' }) {
                 </g>
             )}
 
-            {/* Skyline: a built-up edge of blocks in front of the horizon */}
             {towers.length > 0 && (
                 <g fill={sky.land} opacity="0.88">
                     {towers.map((t, i) => (

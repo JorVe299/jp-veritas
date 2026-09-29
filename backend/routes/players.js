@@ -1,5 +1,4 @@
-// backend/routes/players.js
-// Player list and single lookup.
+// Player list and single lookup
 const express = require('express');
 const { db } = require('../utils/dbHandler');
 const { fetchOnlinePlayers } = require('../utils/bridge');
@@ -7,10 +6,8 @@ const { profile } = require('../utils/framework');
 
 const router = express.Router();
 
-// Checks whether the players the bridge reports as online exist in our
-// database at all. If they do not, panel and game server are reading from
-// different databases - and the panel then shows "offline" forever without
-// an error appearing anywhere.
+// Online players unknown to this DB: panel and game server read different databases
+// (otherwise everyone shows as offline, with no error anywhere)
 async function checkDatabaseMatchesServer(onlineIDs) {
     const ids = Object.keys(onlineIDs);
     if (ids.length === 0) return null; // nobody online -> nothing to check
@@ -38,9 +35,7 @@ async function checkDatabaseMatchesServer(onlineIDs) {
     };
 }
 
-// Shapes a database row into the form the frontend expects. What a row
-// looks like depends on the framework, so the profile does that part and
-// only the online state is added here.
+// Row shape comes from the framework profile; only the online state is added here
 function shapePlayer(row, onlineIDs, fw) {
     const base = fw.shape(row);
     return {
@@ -51,22 +46,18 @@ function shapePlayer(row, onlineIDs, fw) {
 }
 
 router.get('/api/players', async (req, res) => {
-    // Forced to integers and clamped: LIMIT/OFFSET cannot be passed
-    // reliably as prepared-statement parameters, so they are validated
-    // here and inserted directly
+    // LIMIT/OFFSET are not reliably bindable: clamped integers, inlined
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
     const search = req.query.search || '';
     const offset = (page - 1) * limit;
 
     try {
-        // 1. Fetch the online list from the bridge (for the status dot)
+        // 1. Online list from the bridge (status dot)
         const bridge = await fetchOnlinePlayers();
         const onlineIDs = bridge.online;
 
-        // 2. Build the SQL query. Table, columns and the search itself
-        // come from the framework profile - on ESX this reads `users` and
-        // flat name columns instead of `players` and a charinfo JSON.
+        // 2. Query from the framework profile (ESX: users + flat name columns)
         const fw = await profile();
         let query;
         let params;
@@ -88,11 +79,10 @@ router.get('/api/players', async (req, res) => {
         const [rows] = await db.execute(query, params);
         const players = rows.map(row => shapePlayer(row, onlineIDs, fw));
 
-        // Sanity check: do the database and the game server belong together?
+        // Do the DB and the game server belong together?
         const dbMismatch = bridge.reachable ? await checkDatabaseMatchesServer(onlineIDs) : null;
 
-        // Send the bridge state along so the frontend can tell "offline"
-        // from "the bridge is not answering"
+        // Bridge state lets the frontend tell "offline" from "bridge not answering"
         res.json({
             players,
             bridge: {
@@ -109,8 +99,7 @@ router.get('/api/players', async (req, res) => {
     }
 });
 
-// A single player - useful for reloading one record after a change
-// instead of the whole list
+// Single player: reload one record after a change
 router.get('/api/players/:citizenid', async (req, res) => {
     try {
         const bridge = await fetchOnlinePlayers();

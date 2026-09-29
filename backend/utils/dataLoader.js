@@ -1,17 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 
-// Target: the local data folder inside the backend
+// Runtime cache (gitignored)
 const LOCAL_DATA_PATH = path.join(__dirname, '../data');
 
-// Source: the path from .env
 const FIVEM_SOURCE_PATH = process.env.FIVEM_JSON_PATH;
 
 const FILES = ['jobs.json', 'items.json', 'vehicles.json', 'gangs.json'];
 const CACHE = { jobs: {}, items: {}, vehicles: {}, gangs: {} };
 
 function syncAndLoadData() {
-    // 1. Try to copy the data from the FiveM server (sync)
+    // 1. Copy fresh files from the bridge's folder, if configured
     if (FIVEM_SOURCE_PATH && fs.existsSync(FIVEM_SOURCE_PATH)) {
         console.log('[Data] Checking for FiveM updates...');
         
@@ -21,7 +20,6 @@ function syncAndLoadData() {
                 const destFile = path.join(LOCAL_DATA_PATH, file);
 
                 if (fs.existsSync(sourceFile)) {
-                    // Copy the file from FiveM -> backend
                     fs.copyFileSync(sourceFile, destFile);
                     console.log(`   -> Synced ${file}`);
                 }
@@ -33,9 +31,7 @@ function syncAndLoadData() {
         console.log('[Data] No FIVEM_JSON_PATH defined or path invalid. Using local cache only.');
     }
 
-    // 2. Load the data from the local cache (backend folder)
-    // Important: try/catch per file - otherwise one broken file takes all
-    // the others down with it and the cache stays completely empty
+    // 2. Load the local cache; try/catch per file, so one broken file spares the rest
     FILES.forEach(file => {
         const key = file.replace('.json', ''); // jobs.json -> jobs
         const filePath = path.join(LOCAL_DATA_PATH, file);
@@ -61,7 +57,7 @@ function syncAndLoadData() {
     console.log(`[Data] Loaded. Jobs: ${Object.keys(CACHE.jobs).length}, Gangs: ${Object.keys(CACHE.gangs).length}, Items: ${Object.keys(CACHE.items).length}, Vehicles: ${Object.keys(CACHE.vehicles).length}`);
 }
 
-// Initial start
+// data/ is gitignored: create it on first start
 if (!fs.existsSync(LOCAL_DATA_PATH)){
     fs.mkdirSync(LOCAL_DATA_PATH);
 }

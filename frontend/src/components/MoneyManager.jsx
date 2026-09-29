@@ -11,11 +11,8 @@ const ACCOUNTS = [
     { id: 'bank', label: 'Bank', icon: 'bank' },
 ];
 
-// Like JobManager, this module gets a key={citizenid} from App.jsx so that
-// amount and selection do not linger when the citizen changes.
+// Workspace keys this by citizenid: amount and selection reset with the citizen
 export default function MoneyManager({ selectedPlayer, onApplied }) {
-    // The balances are shown even without money.edit - they are part of the
-    // information about the citizen. Only booking needs the permission.
     const { can } = useCan();
     const canEdit = can('money.edit');
 
@@ -34,8 +31,7 @@ export default function MoneyManager({ selectedPlayer, onApplied }) {
 
     const accountLabel = ACCOUNTS.find((a) => a.id === account)?.label ?? account;
 
-    // As soon as the admin changes something, the old feedback is no longer
-    // the answer to what the form now says.
+    // Feedback answered the previous form state: clear it on any edit
     const clearFeedback = () => setFeedback(null);
 
     const handleSubmit = async (e) => {
@@ -47,8 +43,7 @@ export default function MoneyManager({ selectedPlayer, onApplied }) {
         try {
             const res = await updatePlayerMoney(selectedPlayer.citizenid, delta, account);
 
-            // For offline bookings the backend sends the new balance along;
-            // for live ones we work it out ourselves.
+            // Offline answers carry the new balance; for live ones it is computed here
             const money = res.data.money
                 ? { ...selectedPlayer.money, ...res.data.money }
                 : { ...selectedPlayer.money, [account]: nextBalance };
@@ -195,8 +190,7 @@ export default function MoneyManager({ selectedPlayer, onApplied }) {
     );
 }
 
-// The monospace face carries measured values here, not mood: as long as no
-// amount is there, the text is a hint and is set in the normal face.
+// Mono only for measured values; the empty-state hint uses the normal face
 function previewClass(isValid, delta) {
     if (!isValid) return 'preview__value preview__value--empty';
     return `preview__value u-mono ${delta > 0 ? 'preview__value--up' : 'preview__value--down'}`;

@@ -8,17 +8,9 @@ import { usePortalAccount } from '../lib/usePortal';
 import { characterIdFor, characterPath, navigate, PORTAL_PATH, usePath } from '../lib/useSurface';
 
 /**
- * Veritas ID: the whole of the player-facing surface.
- *
- * Two screens - the account with its characters, and one character - and
- * the address bar decides which. /id is the list, /id/<citizenid> is the
- * character, and both are real URLs a player can bookmark or be sent in a
- * Discord message, because the backend serves index.html for any path that
- * is not /api.
- *
- * Nothing here writes. The bar says so, the screens have no controls that
- * suggest otherwise, and the only requests this surface makes are four
- * GETs the server scopes to the signed-in account.
+ * Veritas ID: /id lists the characters, /id/<citizenid> shows one
+ * Both are real URLs: the backend serves index.html for any non-/api path
+ * Read-only: four GETs, scoped by the server to the signed-in account
  */
 export default function PortalScreen({
     user,
@@ -33,22 +25,14 @@ export default function PortalScreen({
     const characters = Array.isArray(account.data?.characters) ? account.data.characters : [];
     const wanted = characterIdFor(path);
 
-    // With exactly one character there is nothing to choose, so the choice
-    // is not offered: the character stands where the picker would be. This
-    // is derived from the answer rather than redirected to - a redirect
-    // would put a step in the history that only ever bounces.
+    // A lone character stands in for the picker; derived, not redirected: no bounce in history
     const only = characters.length === 1 ? (characters[0]?.citizenid ?? null) : null;
     const activeId = wanted || only;
 
-    // What the list already knows about this character, so the heading is
-    // right while the detail request is still running. Missing when the
-    // link points at something this account does not have - the detail
-    // request then answers 404 and says so.
+    // Heading while the detail loads; null for an id not on this account (detail then 404s)
     const summary = characters.find((entry) => entry?.citizenid === activeId) || null;
 
-    // A way back is offered where there is somewhere to go back to. For the
-    // one-character account that entered by itself there is not, and for a
-    // link that led nowhere there is.
+    // Back only where somewhere else exists: not for a lone character, yes for a dead link
     const showBack = Boolean(wanted) && wanted !== only;
 
     const goHome = useCallback(() => {
@@ -63,17 +47,12 @@ export default function PortalScreen({
 
     return (
         <div className="id">
-            {/* The palm outline the generated plates reference by <use>.
-                It has to stand in the document that draws them, and this
-                surface draws its own now. */}
+            {/* Plates reference this sprite via <use>: it must be in the same document */}
             <PlateSprite />
 
             <PortalBar
                 user={user}
-                /* Whether the address bar is at the list, not whether a
-                   character is on screen: the single-character account is
-                   shown its character while standing at /id, and the
-                   wordmark there leads nowhere else. */
+                /* By URL, not by view: a lone character is shown at /id */
                 atHome={!wanted}
                 onGoHome={goHome}
                 canOpenPanel={canOpenPanel}
@@ -92,11 +71,7 @@ export default function PortalScreen({
                     </div>
                 )}
 
-                {/* The account request is the one everything else hangs off:
-                    it is what establishes whose characters these are. When
-                    it does not answer, nothing below it is shown - a
-                    character loaded next to "we do not know who you are"
-                    would be the wrong kind of confidence. */}
+                {/* Account failed: nothing else renders beside an unknown owner */}
                 {account.status === 'failed' && (
                     <PortalNotice
                         code={account.code}
@@ -109,9 +84,7 @@ export default function PortalScreen({
                 {account.status === 'ready' && (
                     activeId ? (
                         <PortalCharacter
-                            /* Remount rather than update: a different
-                               character must start from nothing, not from
-                               the last one's data under a new name. */
+                            /* Remount: never the last character's data under a new name */
                             key={activeId}
                             citizenid={activeId}
                             summary={summary}

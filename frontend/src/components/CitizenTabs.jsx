@@ -1,28 +1,10 @@
 import { useRef } from 'react';
 import Icon from './Icon';
 
-/**
- * The section bar above the module wall.
- *
- * Reason: without it, up to thirteen cards stood stacked at once - job,
- * money, inventory, vehicles, licenses, status, character data,
- * memberships, accounts, live actions, position, bans. Changing one thing
- * meant scrolling past all the others. Now only one section stands there at
- * a time, and which one it is survives a change of citizen - correcting ten
- * balances in a row keeps you in "Money" instead of clicking your way back
- * there every time.
- *
- * Only sections with visible content are offered: an empty section would be
- * a dead end that explains nothing.
- *
- * The server area uses the same bar and passes its own `label`. Two bars
- * that looked alike but walked differently under the arrow keys would be
- * worse than one shared one.
- */
+/** Section tab bar with arrow-key navigation; shared by the citizen and server areas */
 export default function CitizenTabs({ tabs, activeId, onSelect, label = 'Citizen sections' }) {
     const listRef = useRef(null);
 
-    // Arrow keys walk through the bar, as expected of a tab bar.
     const handleKeyDown = (event) => {
         const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
         if (step === 0) return;
@@ -31,7 +13,7 @@ export default function CitizenTabs({ tabs, activeId, onSelect, label = 'Citizen
         const index = tabs.findIndex((tab) => tab.id === activeId);
         const next = tabs[(index + step + tabs.length) % tabs.length];
         onSelect(next.id);
-        // Carry the focus along, otherwise it stays on the old tab.
+        // Roving tabindex: focus must follow the selection
         listRef.current
             ?.querySelector(`[data-tab="${next.id}"]`)
             ?.focus();
@@ -64,9 +46,7 @@ export default function CitizenTabs({ tabs, activeId, onSelect, label = 'Citizen
                             <Icon name={tab.icon} size={16} className="tab__icon" />
                             <span className="tab__label">{tab.label}</span>
 
-                            {/* The dot states only something verified: this
-                                citizen is on the server right now, so the
-                                actions in this section take effect at once. */}
+                            {/* Verified presence only: actions here apply at once */}
                             {tab.live && <span className="tab__live" aria-hidden="true" />}
                             {tab.live && <span className="u-sr">— citizen is on the server</span>}
                         </button>

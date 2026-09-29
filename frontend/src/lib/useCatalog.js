@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchMetaItems, fetchMetaVehicles } from '../api';
 
-// The two catalogs are too large to fetch in one sweep: around 300 items
-// and around 900 vehicles. So the filtering happens on the server, debounced
-// like the search above the wall - otherwise every keystroke would fire off
-// a query of its own.
+// Server-side search, debounced: otherwise every keystroke fires a query
 const DEBOUNCE_MS = 400;
 export const CATALOG_LIMIT = 20;
 
@@ -23,19 +20,12 @@ const INITIAL = {
     query: null, // null = no answer has arrived yet
 };
 
-/**
- * Searches one of the reference data catalogs.
- *
- * Like useRoster, the hook keeps data, loading state and the query they
- * belong to together in a single object: "the result is stale" is derived
- * from that instead of being stored alongside it.
- */
+/** kind: 'items' | 'vehicles'; isStale is derived from the answered query, never stored */
 export function useCatalog(kind, search) {
     const [result, setResult] = useState(INITIAL);
 
     useEffect(() => {
-        // Guards against race conditions: while typing fast, a slower older
-        // answer must not overwrite the newer one.
+        // A slower, older answer must not overwrite a newer one
         let cancelled = false;
 
         const timer = setTimeout(async () => {

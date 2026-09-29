@@ -11,22 +11,9 @@ const OPS = [
 ];
 
 /**
- * A bank account as a row - once in the citizen's card, once in the
- * server-wide overview. The same row in both places, because an account is
- * the same thing in both, and otherwise two ways of operating the same
- * action would creep in.
- *
- * Company accounts (police, mechanic, ...) are expressly marked and require
- * a second press before booking: what hangs off them is not one person's
- * money but that of a whole business.
- *
- * The row changes nothing about its own display. What holds is what the
- * server's answer says - it is handed upwards via onChanged.
- *
- * canEdit comes from outside and is not justified here: the card, or the
- * sheet the row sits in, says it once for all rows. Twenty accounts with
- * twenty identically worded notices would be the same sentence twenty
- * times over.
+ * Bank account row, shared by the citizen card and the server-wide overview
+ * Company accounts need a second press to book or freeze
+ * No per-row notice when !canEdit: the parent states it once
  */
 export default function AccountLine({ account, canEdit = false, onChanged, onReport }) {
     const [editing, setEditing] = useState(false);
@@ -63,7 +50,6 @@ export default function AccountLine({ account, canEdit = false, onChanged, onRep
     const apply = async () => {
         if (!valid || !canEdit) return;
 
-        // Company account: ask first, then book.
         if (business && !confirming) {
             setConfirming(true);
             setFeedback(null);

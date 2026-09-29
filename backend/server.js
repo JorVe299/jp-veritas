@@ -1,11 +1,5 @@
-// Explicitly beside this file, not wherever the process happens to have
-// been started. Without the path, dotenv resolves against the working
-// directory - so a systemd unit or a pm2 entry with a different
-// WorkingDirectory finds no .env, and the panel comes up with no database
-// settings and, worse, with Discord login switched off because the
-// DISCORD_* keys are simply absent. It says so in the log, but a panel
-// that quietly opens itself to anyone who can reach the port is not
-// something to leave depending on how it was launched.
+// SECURITY: explicit path; dotenv resolves against the cwd, and a service started elsewhere
+// would come up without .env: no DB settings and Discord login off (BACKEND.md §5)
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const path = require('path');
 const fs = require('fs');
@@ -19,10 +13,8 @@ const perms = require('./utils/permissions');
 
 const app = express();
 
-// PANEL_ORIGIN is only set in dev and names the Vite server. In production
-// the same backend serves the panel - same origin, no CORS needed.
-// credentials: true, because otherwise the browser will not send the
-// session cookie; '*' would be invalid alongside it anyway.
+// CORS for the Vite dev server only; production is same-origin
+// credentials: the session cookie must be sent (rules out origin '*')
 const PANEL_ORIGIN = process.env.PANEL_ORIGIN || '';
 if (PANEL_ORIGIN) {
     app.use(cors({ origin: PANEL_ORIGIN, credentials: true }));
@@ -30,23 +22,19 @@ if (PANEL_ORIGIN) {
 app.use(express.json());
 app.use(cookieParser());
 
-// Load the game data at startup (before the routes that read the cache)
+// Before the routes that read the cache
 loadGameData();
 
 // --- Sign-in --------------------------------------------------------------
-// The auth routes deliberately come before the middleware: they have to be
-// reachable without a session.
+// Auth routes before requireAuth: reachable without a session
 app.use(require('./routes/auth').router);
 app.use(auth.requireAuth);
 
-// Permissions apply right after sign-in and before every data route.
-// A route with no entry in the table is denied, not let through.
+// SECURITY: enforce() before every data route; a route without a rule is denied
 app.use(perms.enforce);
 
 // --- Routes ---------------------------------------------------------------
-// Everything below requires a valid session, provided Discord auth is
-// configured. Each module carries its own full /api/... paths so that the
-// file itself shows which URL a route serves.
+// Session required (when login is configured); each module declares full /api/... paths
 app.use(require('./routes/me').router);           // Veritas ID - the citizen portal
 app.use(require('./routes/players').router);      // player list, single lookup
 app.use(require('./routes/manage').router);       // money, job
@@ -63,28 +51,23 @@ app.use(require('./routes/permissions').router);  // roles and permissions
 app.use(require('./routes/system').router);       // diagnostics, schema, refresh
 
 // --- Serving the frontend -------------------------------------------------
-// After `npm run build` in frontend/ there is a dist/ folder. Express serves
-// it too, so panel and API share one port: the relative /api paths work
-// without a proxy, and there is only one port to secure.
-// Must come after the API routes so that nothing is shadowed.
+// frontend/dist on the API's port: no proxy, one port to secure; after the API routes
 const FRONTEND_DIST = path.join(__dirname, '../frontend/dist');
 const hasFrontendBuild = fs.existsSync(path.join(FRONTEND_DIST, 'index.html'));
 
 if (hasFrontendBuild) {
     app.use(express.static(FRONTEND_DIST));
 
-    // SPA fallback: anything that is not an API route gets index.html.
-    // Deliberately middleware rather than a wildcard route - Express 5
-    // requires named wildcards ('/*splat'), this works on any version.
+    // SPA fallback as middleware: Express 5 needs named wildcards ('/*splat') for a route
     app.use((req, res, next) => {
         if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
         res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
     });
 }
 
-// --- Start ---------------------------------------------------------------
+// --- Start ----------------------------------------------------------------
 
-const PORT = process.env.PORT || 3001; // Backend Port
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
     console.log(`Bridge expected at ${FIVEM_API_URL}`);
@@ -101,8 +84,7 @@ app.listen(PORT, () => {
         console.log(`[Perms] ${mapped}`);
     }
 
-    // Misconfigurations must not drown in the log: an open
-    // /api/manage/money route is not a detail.
+    // Framed so misconfigurations stand out in the log
     const problems = auth.configProblems();
     if (problems.length > 0) {
         console.warn('');
@@ -120,16 +102,10 @@ app.listen(PORT, () => {
     }
     console.log('[Diag] GET /api/system/schema checks whether the database fits the modules');
 
-    // Veritas ID tells a player only that the ban record "could not be
-    // read" - it must not print server paths at them. Whoever runs the
-    // server needs the other half, and needs it without having to sign in
-    // and click, so it goes here where the rest of the startup state is.
+    // txAdmin store details go to the operator here; the portal only says "could not be read"
     require('./utils/txadmin').describe([]).then(tx => {
         if (tx.available) {
-            // The split matters: the portal shows bans, not warnings, so a
-            // store holding one warning and no bans looks identical to a
-            // working setup from the outside. And the identifier kinds say
-            // what a ban can possibly be matched on at all.
+            // Portal shows bans only, hence the split; identifier kinds = what a ban can match on
             const s = tx.store;
             console.log(`[txAdmin] Ban record readable - ${s.actions} action(s): ${s.bans} ban(s), ${s.warns} warning(s)`);
             console.log(`          keyed by [${s.identifierKinds.join(', ') || 'nothing'}]`);

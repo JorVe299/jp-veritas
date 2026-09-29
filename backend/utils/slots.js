@@ -1,14 +1,10 @@
-// backend/utils/slots.js
-// The pure slot arithmetic of the inventory, deliberately without a
-// database and without Express: moving, stacking, swapping and splitting
-// are the places where a mistake silently duplicates or swallows items.
-// Kept separate so it can be tested without production data.
+// Pure inventory slot arithmetic: move, stack, swap, split
+// No DB, no Express: tested in isolation, since mistakes here duplicate or swallow items
 
-// Moves `amount` units from slot `from` to slot `to`.
-// Returns either { ok: true, items, partial } or
-// { ok: false, status, error } - the caller turns that into a response.
-//
-// `items` is never mutated; the result is a new list.
+/**
+ * Moves `amount` units from slot `from` to `to`; `items` is never mutated
+ * @returns {{ok: true, items, partial, amount, name}|{ok: false, status, error}}
+ */
 function applyMove(items, from, to, requestedAmount) {
     const next = items.map(it => ({ ...it }));
 
@@ -47,8 +43,7 @@ function applyMove(items, from, to, requestedAmount) {
         source.amount -= amount;
         if (source.amount <= 0) next.splice(next.indexOf(source), 1);
     } else {
-        // Different items (or unique ones): only a complete swap makes
-        // sense here. A partial stack would have nowhere to land.
+        // Different or unique items: full swap only; a partial stack has nowhere to land
         if (partial) {
             return {
                 ok: false,

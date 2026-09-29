@@ -1,13 +1,7 @@
-// backend/utils/sessionSync.test.js
-//
-// A role taken away in Discord has to stop working within a minute, not
-// when the cookie runs out. These pin down what the live check decides, and
-// the two holes found alongside it: a path spelled '/API/...' walking past
-// the login, and the inventory route minting cash for somebody who may not
-// change cash.
+// Live role check: a role removed in Discord stops working within a minute
+// Also guards the '/API/...' login bypass and cash minted through the inventory route
 
-// Set before anything reads them: auth.js takes its configuration from the
-// environment at load time. Each test file runs in its own process.
+// Set before require: auth.js reads the environment at load (one process per test file)
 process.env.DISCORD_CLIENT_ID = 'test-client';
 process.env.DISCORD_CLIENT_SECRET = 'test-secret';
 process.env.DISCORD_REDIRECT_URI = 'http://localhost/api/auth/callback';
@@ -42,7 +36,7 @@ function session(extra = {}) {
     };
 }
 
-// Discord and the database, as the tests want them to answer.
+// Discord and DB stand-ins with scripted answers
 function deps(over = {}) {
     return {
         guildId: 'guild-1',
@@ -78,7 +72,7 @@ test('a tampered seal opens to nothing rather than to something else', () => {
     assert.equal(auth.unsealTokens(undefined), null);
 });
 
-// --- What the live check decides -----------------------------------------
+// --- What the live check decides ------------------------------------------
 
 test('an unchanged role is confirmed, and the session is not extended', async () => {
     const out = await auth.syncSession(session(), deps());
@@ -171,7 +165,7 @@ test('an authorization removed in Discord ends the session', async () => {
 });
 
 test('a session without Discord tokens cannot be checked, so it ends', async () => {
-    // Keeping it instead would let it run on unchecked for good.
+    // Kept, it would run unchecked for good
     const out = await auth.syncSession(session({ dt: undefined }), deps());
     assert.equal(out.kind, 'ended');
 });
@@ -240,8 +234,7 @@ test('an odd spelling of an API path matches no rule and is denied even for the 
 });
 
 test('a session checked within the minute is not sent to Discord again', async () => {
-    // No guild is configured in this file and no Discord is reachable: a
-    // check that ran anyway would re-issue the cookie. It must not.
+    // No guild and no Discord here: a check that ran anyway would re-issue the cookie
     const res = await request(appWith(dataRouter), 'GET', '/api/players', { cookie: freshCookie('owner') });
     assert.equal(res.status, 200);
     assert.equal(res.setCookie, null);

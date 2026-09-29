@@ -1,9 +1,6 @@
 import { useId } from 'react';
 
-// The wordmark stays "Veritas"; the symbol is new.
-// Motif: a tile in the aspect ratio of the wall, with a V cut out of it as
-// a notch. The right leg runs out past the edge of the tile and turns from
-// a notch into a solid form there.
+/** Wall-ratio tile with a V notch; the right leg runs past the edge as a solid stroke */
 export default function Mark({ size = 26, className = '' }) {
     const uid = useId().replace(/:/g, '');
     const maskId = `mark-${uid}`;
