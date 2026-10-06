@@ -24,6 +24,7 @@ Bridge = {
 ---@field revive fun(player: table, src: number): boolean
 ---@field heal fun(player: table, src: number, withArmor: boolean): boolean
 ---@field notify fun(src: number, message: string, kind: string): boolean
+---@field deleteCharacter fun(id: string): boolean hands off to the core; may finish asynchronously
 ---@field dumpShared fun(): table<string, table> file name -> data, e.g. ['jobs.json']
 
 ---@param adapter VeritasAdapter

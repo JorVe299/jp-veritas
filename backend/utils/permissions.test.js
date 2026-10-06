@@ -51,6 +51,14 @@ test('a supporter may not touch money or accounts', () => {
     }
 });
 
+test('deleting a character is granted to nobody but the owner by default', () => {
+    for (const [role, caps] of Object.entries(perms.DEFAULTS)) {
+        if (role === 'owner') continue;
+        assert.equal(caps.includes('players.delete'), false, `${role} should not delete characters by default`);
+    }
+    assert.equal(perms.requiredFor('DELETE', '/api/manage/character/ABC123'), 'players.delete');
+});
+
 // Route coverage guard: a new route without a rule fails here, not in production (BACKEND.md §4)
 test('every registered route has a permission rule', () => {
     const dir = path.join(__dirname, '../routes');

@@ -7,6 +7,7 @@ const CAPABILITIES = [
     { id: 'money.edit', group: 'Players', label: 'Change cash and bank balance' },
     { id: 'job.edit', group: 'Players', label: 'Set job and grade' },
     { id: 'charinfo.edit', group: 'Players', label: 'Rename and change phone number' },
+    { id: 'players.delete', group: 'Players', label: 'Delete characters for good' },
 
     { id: 'inventory.view', group: 'Inventory', label: 'See the inventory' },
     { id: 'inventory.edit', group: 'Inventory', label: 'Add, remove and move items' },
@@ -45,8 +46,8 @@ const SELF_PREFIX = '/api/me';
 // Initial grants: supporter = day-to-day help, no money, accounts or memberships
 const DEFAULTS = {
     owner: CAPABILITY_IDS.slice(),
-    // All but permissions.edit (not in CAPABILITY_IDS)
-    administrator: CAPABILITY_IDS.slice(),
+    // All but permissions.edit (not in CAPABILITY_IDS) and the irreversible character delete
+    administrator: CAPABILITY_IDS.filter(id => id !== 'players.delete'),
     supporter: [
         'players.view',
         'inventory.view', 'inventory.edit',
@@ -143,6 +144,7 @@ const RULES = [
     ['POST', /^\/api\/manage\/money$/, 'money.edit'],
     ['POST', /^\/api\/manage\/job$/, 'job.edit'],
     ['POST', /^\/api\/manage\/charinfo$/, 'charinfo.edit'],
+    ['DELETE', /^\/api\/manage\/character\/[^/]+$/, 'players.delete'],
     ['POST', /^\/api\/manage\/inventory$/, 'inventory.edit'],
     ['POST', /^\/api\/manage\/vehicle$/, 'vehicles.edit'],
     ['POST', /^\/api\/manage\/vehicle\/[^/]+\/properties$/, 'vehicles.edit'],

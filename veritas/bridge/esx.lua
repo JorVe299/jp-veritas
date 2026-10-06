@@ -110,6 +110,11 @@ function adapter.notify(src, message, kind)
     return true
 end
 
+-- No core delete to hand off to; esx_multicharacter deletes from its own client flow
+function adapter.deleteCharacter(_)
+    return false
+end
+
 function adapter.dumpShared()
     if not ESX then return {} end
 

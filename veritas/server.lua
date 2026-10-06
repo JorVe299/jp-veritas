@@ -180,6 +180,27 @@ Veritas.route('POST', '/notify-player', function(body, res)
     end)
 end)
 
+-- SECURITY: irreversible; token required even with RequireTokenEverywhere off
+Veritas.route('POST', '/delete-character', function(body, res)
+    local adapter, err = Bridge.require()
+    if not adapter then return Veritas.fail(res, err) end
+
+    local citizenid = body.citizenid
+    if type(citizenid) ~= 'string' or citizenid == '' then
+        return Veritas.fail(res, 'citizenid is missing')
+    end
+
+    -- A character in use is saved back on logout
+    if adapter.getPlayer(citizenid) then
+        return Veritas.fail(res, 'The character is in use on the server')
+    end
+
+    if type(adapter.deleteCharacter) ~= 'function' or not adapter.deleteCharacter(citizenid) then
+        return Veritas.fail(res, 'This framework cannot delete characters through the bridge')
+    end
+    Veritas.ok(res, { msg = 'Deletion started' })
+end, { needsToken = true })
+
 -- --- Status ---------------------------------------------------------------
 -- Read by the backend at startup: framework and inventory as detected, not assumed
 

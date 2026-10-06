@@ -9,7 +9,7 @@ Config.Framework = 'auto'
 -- Generate: openssl rand -hex 32
 Config.Token = ''
 
--- true: every route needs the token; false leaves the built-in routes open (setup only)
+-- true: every route needs the token; false opens the built-in ones (setup only); deletes always do
 Config.RequireTokenEverywhere = false
 
 -- Extra JSON dumps on resource start (file name -> function returning a table)

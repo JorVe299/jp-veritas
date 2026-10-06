@@ -41,6 +41,7 @@ app.use(require('./routes/manage').router);       // money, job
 app.use(require('./routes/vehicles').router);     // vehicles
 app.use(require('./routes/inventory').router);    // inventory
 app.use(require('./routes/playerdata').router);   // licences, condition, character details
+app.use(require('./routes/characters').router);   // deleting a character
 app.use(require('./routes/groups').router);       // jobs and gangs as memberships
 app.use(require('./routes/accounts').router);     // bank accounts
 app.use(require('./routes/bans').router);         // bans

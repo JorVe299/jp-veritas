@@ -31,6 +31,7 @@ function adapter.setMetadata(_, _, _) return false end
 function adapter.revive(_, _) return false end
 function adapter.heal(_, _, _) return false end
 function adapter.notify(_, _, _) return false end
+function adapter.deleteCharacter(_) return false end
 
 function adapter.dumpShared()
     -- { ['file.json'] = table }: written as JSON, read by the backend for the pickers

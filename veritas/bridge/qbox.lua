@@ -29,6 +29,17 @@ function adapter.init()
                 end
                 return out
             end
+            -- Native export reads the server's characterDataTables; compat table as fallback
+            adapter.deleteCharacter = function(citizenid)
+                local ok = pcall(function()
+                    exports.qbx_core:DeleteCharacter(citizenid)
+                end)
+                if ok then return true end
+                local legacy = type(obj.Player) == 'table' and obj.Player.ForceDeleteCharacter
+                if type(legacy) ~= 'function' then return false end
+                legacy(citizenid)
+                return true
+            end
             adapter.dumpShared = function()
                 if not obj.Shared then return {} end
                 return {

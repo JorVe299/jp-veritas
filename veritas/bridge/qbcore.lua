@@ -87,6 +87,14 @@ local function build(id, label, resourceName, exportName)
         return true
     end
 
+    -- The core's own admin delete: its table list, its transaction
+    function adapter.deleteCharacter(citizenid)
+        if not core or type(core.Player) ~= 'table' then return false end
+        if type(core.Player.ForceDeleteCharacter) ~= 'function' then return false end
+        core.Player.ForceDeleteCharacter(citizenid)
+        return true
+    end
+
     function adapter.dumpShared()
         if not core or not core.Shared then return {} end
         return {

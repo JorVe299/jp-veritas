@@ -122,6 +122,8 @@ export const fetchPlayerMetadata = (citizenid) => api.get(`/players/${seg(citize
 export const updatePlayerLicense = (citizenid, license, value) => api.post('/manage/license', { citizenid, license, value });
 export const updatePlayerStatus = (citizenid, changes) => api.post('/manage/status', { citizenid, changes });
 export const updatePlayerCharinfo = (citizenid, charinfo) => api.post('/manage/charinfo', { citizenid, ...charinfo });
+// Irreversible; 409 while connected; 503/504: nothing deleted, or not confirmed
+export const deleteCharacter = (citizenid) => api.delete(`/manage/character/${seg(citizenid)}`);
 
 // --- Bans -----------------------------------------------------------------
 // Bans follow license and Discord ID, not the citizenid: access is blocked, not a character

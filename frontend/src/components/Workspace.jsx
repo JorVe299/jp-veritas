@@ -3,6 +3,7 @@ import { fetchGangs, fetchJobs } from '../api';
 import AccountManager from './AccountManager';
 import BanManager from './BanManager';
 import Billboard from './Billboard';
+import CharacterDeleteManager from './CharacterDeleteManager';
 import CitizenTabs from './CitizenTabs';
 import CitizenWall from './CitizenWall';
 import GroupManager from './GroupManager';
@@ -71,6 +72,9 @@ export default function Workspace({
     // Lifted here: set from the Enforcement tab, cleared from the server ban list
     const [bansCitizenid, setBansCitizenid] = useState('');
 
+    // Outlives the deleted citizen's cards; cleared by the next selection
+    const [deletedNote, setDeletedNote] = useState(null);
+
     // Keyed on user: a session reload updates every card's permissions, no re-login
     const permissions = useMemo(
         () => buildPermissions(user, authDisabled),
@@ -118,8 +122,19 @@ export default function Workspace({
     const handleSelect = useCallback((player) => {
         setSelectedPlayer(player);
         setWriteLog([]);
+        setDeletedNote(null);
         stageRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
+
+    const handleDeleted = useCallback((note) => {
+        setSelectedPlayer(null);
+        setWriteLog([]);
+        setDeletedNote(note);
+        setRosterVersion((v) => v + 1);
+        stageRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, []);
+
+    const refreshRoster = useCallback(() => setRosterVersion((v) => v + 1), []);
 
     const handleApplied = useCallback((patch, entry) => {
         setSelectedPlayer((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -154,7 +169,7 @@ export default function Workspace({
 
         list.push({ id: 'session', label: 'Session', icon: 'bolt', live: onlineNow });
 
-        if (can('bans.view')) {
+        if (can('bans.view') || can('players.delete')) {
             list.push({ id: 'enforcement', label: 'Enforcement', icon: 'ban' });
         }
 
@@ -363,6 +378,15 @@ export default function Workspace({
                             />
                         )}
 
+                        {deletedNote && !selectedPlayer && (
+                            <StatusNote
+                                className="note--wide"
+                                tone={deletedNote.tone}
+                                title={deletedNote.title}
+                                detail={deletedNote.detail}
+                            />
+                        )}
+
                         {canViewPlayers && selectedPlayer && (
                             /* Gated on view, not edit: locked controls explain themselves */
                             <>
@@ -461,15 +485,29 @@ export default function Workspace({
                                         </>
                                     )}
 
-                                    {activeTab === 'enforcement' && can('bans.view') && (
-                                        <BanManager
-                                            key={`ban-${selectedPlayer.citizenid}`}
-                                            selectedPlayer={selectedPlayer}
-                                            onApplied={handleApplied}
-                                            onShowServerBans={
-                                                serverBansReachable ? showBansForCitizen : undefined
-                                            }
-                                        />
+                                    {activeTab === 'enforcement' && (
+                                        <>
+                                            {can('bans.view') && (
+                                                <BanManager
+                                                    key={`ban-${selectedPlayer.citizenid}`}
+                                                    selectedPlayer={selectedPlayer}
+                                                    onApplied={handleApplied}
+                                                    onShowServerBans={
+                                                        serverBansReachable ? showBansForCitizen : undefined
+                                                    }
+                                                />
+                                            )}
+                                            {can('players.delete') && (
+                                                <CharacterDeleteManager
+                                                    key={`del-${selectedPlayer.citizenid}`}
+                                                    selectedPlayer={selectedPlayer}
+                                                    online={onlineNow}
+                                                    bridgeDown={bridgeDown}
+                                                    onDeleted={handleDeleted}
+                                                    onStale={refreshRoster}
+                                                />
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </>

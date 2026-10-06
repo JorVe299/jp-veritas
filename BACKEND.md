@@ -263,6 +263,17 @@ back-off; grant revoked, or no role and no character left → the session
 ends. A re-issue keeps the original `exp`, so the check never extends a
 session. The frontend polls `/api/auth/me` every minute while visible.
 
+**A character is deleted by its framework, never by SQL here.** QBCore and
+Qbox each keep their own list of the tables a character spans (Qbox makes it
+configurable), so `routes/characters.js` hands the delete to the core through
+the bridge and then polls `players` until the row is gone; no confirmation within
+five seconds answers 504, not success. It refuses while the character is
+connected, because the core saves a connected character back on logout, and
+while the bridge is unreachable, because then nobody knows whether it is
+connected. ESX has no core delete and answers 501. `players.delete` is not in
+the administrator's defaults: a fresh install leaves it with the owner until
+it is granted on purpose.
+
 **Manual refresh buttons wait a minute.** Every "refresh" / "try again"
 button in the frontend goes through `lib/useCooldown.js` and is disabled for
 60 s after a press. That is a courtesy, not a guard: routes where a request
@@ -293,6 +304,9 @@ Keys that have caused trouble:
 - `BRIDGE_TOKEN` — only checked once `Config.RequireTokenEverywhere = true`
   in the bridge's `config.lua`. While that is false a token protects nothing:
   every built-in bridge route answers whoever can reach the FiveM HTTP port.
+- `BRIDGE_TOKEN` again: deleting a character needs it whatever
+  `RequireTokenEverywhere` says. Without `Config.Token` set on both sides the
+  delete answers 502 and names the missing token.
 - `DISCORD_ADMIN_IDS` / `DISCORD_ADMIN_ROLE_IDS` — no longer read. An old
   `.env` that maps the owner only through them lets nobody in; rename them to
   `DISCORD_OWNER_IDS` / `DISCORD_ROLE_OWNER`.
@@ -312,7 +326,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 160 tests
+cd backend  && npm test         # node --test, currently 167 tests
 cd frontend && npx eslint . && npx vite build
 ```
 
