@@ -94,26 +94,14 @@ function FrameworkCard() {
                                 label="Token in the backend"
                                 value={yesNo(data.backendHasToken, 'Configured', 'Not configured')}
                             />
+                            {/* Absent adapters are the normal case: found ones only */}
+                            {adapterNames.length > 0 && (
+                                <Row
+                                    label="Adapters found"
+                                    value={adapterNames.filter((name) => adapters[name]).join(', ') || 'None'}
+                                />
+                            )}
                         </dl>
-
-                        {adapterNames.length > 0 && (
-                            <div className="field">
-                                <span className="field__label">Adapters the bridge found</span>
-                                <div className="line__actions">
-                                    {adapterNames.map((name) => (
-                                        <span
-                                            key={name}
-                                            className={`pill pill--fit${adapters[name] ? ' pill--live' : ' pill--off'}`}
-                                            title={`${name} — ${adapters[name] ? 'present' : 'absent'}`}
-                                        >
-                                            <span className="u-clip">
-                                                {`${name} — ${adapters[name] ? 'present' : 'absent'}`}
-                                            </span>
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         {tokenMismatch && (
                             <StatusNote

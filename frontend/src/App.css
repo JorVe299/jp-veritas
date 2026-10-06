@@ -102,28 +102,36 @@
 /* --- Bridge state ------------------------------------------------------ */
 /* Offline ("nobody there") and unknown ("could not ask") stay visually distinct */
 
+/* Quiet by default: the hue sits on the dot only, the words stay achromatic */
 .bridge {
     display: inline-flex;
     align-items: center;
     gap: var(--s-2);
     flex: none;
-    padding: var(--s-2) var(--s-3);
-    border: 1px solid var(--c-border-strong);
-    border-radius: var(--r-pill);
+    padding: var(--s-2) 0;
+    font-size: var(--fs-sm);
     color: var(--c-text-muted);
     white-space: nowrap;
 }
 
-.bridge--up {
-    color: var(--c-live);
-    border-color: var(--c-live-line);
-    background: var(--c-live-soft);
+.bridge__dot {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 50%;
+    background: var(--c-text-faint);
 }
 
+.bridge--up .bridge__dot {
+    background: var(--c-live);
+}
+
+/* Unverified is the one state worth noticing: amber dot and words */
 .bridge--down {
     color: var(--c-unknown);
-    border-color: var(--c-unknown-line);
-    background: var(--c-unknown-soft);
+}
+
+.bridge--down .bridge__dot {
+    background: var(--c-unknown);
 }
 
 /* Before the first answer: neutral, claiming neither a connection nor its absence */
@@ -317,6 +325,10 @@
     height: 0.4375rem;
     border-radius: 50%;
     background: currentColor;
+}
+
+.pill__dot--live {
+    background: var(--c-live);
 }
 
 .pill--live {

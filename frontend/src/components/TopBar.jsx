@@ -90,14 +90,14 @@ export default function TopBar({
                 className={`bridge${bridgeDown ? ' bridge--down' : unknown ? ' bridge--idle' : ' bridge--up'}`}
                 title={bridge?.error || undefined}
             >
-                <Icon name={bridgeDown ? 'linkOff' : 'link'} size={16} />
-                <span className="bridge__text u-caps">
+                <span className="bridge__dot" aria-hidden="true" />
+                <span className="bridge__text">
                     {status === 'loading' && !bridge
                         ? 'Checking link'
                         : bridgeDown
                             ? 'Link down · status unverified'
                             : bridge
-                                ? `Live link · ${bridge.onlineCount ?? 0} on server`
+                                ? `Link up · ${bridge.onlineCount ?? 0} on server`
                                 /* No players.view: the bridge is never read; claim nothing */
                                 : 'Link status unknown'}
                 </span>

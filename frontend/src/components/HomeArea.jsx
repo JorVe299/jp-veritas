@@ -48,8 +48,9 @@ export default function HomeArea({
 
                     {/* Only checked facts: nothing here would survive a failed check */}
                     <div className="home__facts">
-                        <span className={`pill pill--lg${bridgeDown ? ' pill--unknown' : bridgeKnown ? ' pill--live' : ''}`}>
-                            <Icon name={bridgeDown ? 'linkOff' : 'link'} size={15} />
+                        {/* Same as the top bar: green only on the dot, amber when unverified */}
+                        <span className={`pill pill--lg${bridgeDown ? ' pill--unknown' : ''}`}>
+                            <span className={`pill__dot${bridgeKnown ? ' pill__dot--live' : ''}`} />
                             {rosterStatus === 'loading' && !bridge
                                 ? 'Checking the game server'
                                 : bridgeDown
