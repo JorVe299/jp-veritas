@@ -122,7 +122,23 @@
 }
 
 .bridge--up .bridge__dot {
+    position: relative;
     background: var(--c-live);
+}
+
+/* Heartbeat only while the link answers: a still dot reads as no signal */
+.bridge--up .bridge__dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--c-live);
+    animation: bridge-beat 3.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes bridge-beat {
+    0% { transform: scale(1); opacity: 0.5; }
+    60%, 100% { transform: scale(2.6); opacity: 0; }
 }
 
 /* Unverified is the one state worth noticing: amber dot and words */
