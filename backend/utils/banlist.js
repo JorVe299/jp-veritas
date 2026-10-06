@@ -4,6 +4,7 @@
 
 const { db, tableExists } = require('./dbHandler');
 const { asIdentifier } = require('./identity');
+const { terms, matches } = require('./search');
 
 const TABLE = 'bans';
 
@@ -192,14 +193,13 @@ function sortBans(rows) {
  * Free-text match over the visible fields
  * citizenid is usually still unresolved here; the route resolves citizenid terms separately
  */
-function matchesQuery(row, needle) {
-    if (!needle) return true;
-    const hay = [
+/** query: raw text; see utils/search.js for how it is read */
+function matchesQuery(row, query) {
+    return matches([
         row.name, row.reason, row.issuedBy, row.citizenid,
         row.nativeId, row.source,
         ...(row.identifiers || []),
-    ].filter(Boolean).join(' ').toLowerCase();
-    return hay.includes(needle);
+    ], terms(query));
 }
 
 /** Exact set intersection on normalised identifiers: a near match is the wrong person */

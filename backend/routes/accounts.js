@@ -3,6 +3,7 @@
 const express = require('express');
 const { db, parseJSON, tableExists } = require('../utils/dbHandler');
 const { getJobs } = require('../utils/dataLoader');
+const { terms, matches, sqlMatch } = require('../utils/search');
 
 const router = express.Router();
 const TABLE = 'bank_accounts_new';
@@ -49,17 +50,25 @@ router.get('/api/accounts', async (req, res) => {
     try {
         if (!await ensureTable(res)) return;
 
+        const jobs = getJobs();
+        const words = terms(search);
+
         let rows;
-        if (search) {
+        if (words.length > 0) {
+            // Company labels live in the job catalog, not the table: matched here, sent as ids
+            const byLabel = Object.entries(jobs)
+                .filter(([name, job]) => matches([name, job?.label], words))
+                .map(([name]) => name);
+            const match = sqlMatch(['id'], words);
+            const labelSql = byLabel.length > 0 ? ` OR id IN (${byLabel.map(() => '?').join(',')})` : '';
             [rows] = await db.execute(
-                `SELECT * FROM ${TABLE} WHERE id LIKE ? ORDER BY amount DESC LIMIT ${limit}`,
-                [`%${search}%`]
+                `SELECT * FROM ${TABLE} WHERE ${match.sql}${labelSql} ORDER BY amount DESC LIMIT ${limit}`,
+                [...match.params, ...byLabel]
             );
         } else {
             [rows] = await db.execute(`SELECT * FROM ${TABLE} ORDER BY amount DESC LIMIT ${limit}`);
         }
 
-        const jobs = getJobs();
         const accounts = rows.map(r => shapeAccount(r, jobs));
         res.json({
             accounts,

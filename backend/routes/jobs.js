@@ -4,6 +4,7 @@ const express = require('express');
 const { db, parseJSON, tableExists } = require('../utils/dbHandler');
 const { getJobs, getGangs } = require('../utils/dataLoader');
 const { profile } = require('../utils/framework');
+const { terms, matches } = require('../utils/search');
 const perms = require('../utils/permissions');
 
 const router = express.Router();
@@ -60,7 +61,7 @@ async function balances() {
 // Money only with accounts.view; without it the page shows less instead of failing
 router.get('/api/jobs', async (req, res) => {
     const type = ['job', 'gang', 'all'].includes(req.query.type) ? req.query.type : 'all';
-    const search = String(req.query.search || '').toLowerCase().trim();
+    const words = terms(req.query.search);
 
     try {
         const fw = await profile();
@@ -100,10 +101,7 @@ router.get('/api/jobs', async (req, res) => {
         if (type === 'all' || type === 'job') rows = rows.concat(build(getJobs(), 'job'));
         if (type === 'all' || type === 'gang') rows = rows.concat(build(getGangs(), 'gang'));
 
-        if (search) {
-            rows = rows.filter(r => r.name.toLowerCase().includes(search)
-                || String(r.label).toLowerCase().includes(search));
-        }
+        if (words.length > 0) rows = rows.filter(r => matches([r.name, r.label], words));
 
         rows.sort((a, b) => (b.account?.amount ?? -1) - (a.account?.amount ?? -1)
             || a.label.localeCompare(b.label));

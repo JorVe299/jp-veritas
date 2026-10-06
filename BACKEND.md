@@ -191,6 +191,7 @@ commentPolicy.test.js  Repo-wide guard for the comment policy (§1).
 | `bridge.js` | HTTP to the FiveM resource. |
 | `dbHandler.js` | The MySQL pool, plus column/table discovery. |
 | `framework.js` | Which framework this schema is (`qb` / `esx`). |
+| `search.js` | How every free-text search reads a query: case-blind, words in any order, spacing ignored. |
 | `rateLimit.js` | `oncePer(name, ms)`: one request per window per person, 429 + `Retry-After` otherwise. |
 
 ---
@@ -326,7 +327,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 167 tests
+cd backend  && npm test         # node --test, currently 176 tests
 cd frontend && npx eslint . && npx vite build
 ```
 

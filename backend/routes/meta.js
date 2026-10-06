@@ -1,22 +1,18 @@
 // Reference data for the dropdowns (jobs, gangs, items, vehicles) from the dataLoader cache
 const express = require('express');
 const { getJobs, getItems, getVehicles, getGangs } = require('../utils/dataLoader');
+const { terms, matches } = require('../utils/search');
 
 const router = express.Router();
 
 // Items and vehicles: hundreds of entries; pickers get a filtered subset
 function searchCatalog(catalog, { search, limit }) {
-    const term = String(search || '').toLowerCase().trim();
+    const words = terms(search);
     const max = Math.min(Math.max(parseInt(limit) || 50, 1), 500);
 
     const entries = Object.entries(catalog);
-    const matched = term
-        ? entries.filter(([key, value]) => {
-            const label = String(value?.label || value?.name || '').toLowerCase();
-            const brand = String(value?.brand || '').toLowerCase();
-            return key.toLowerCase().includes(term) || label.includes(term) || brand.includes(term);
-        })
-        : entries;
+    const matched = entries.filter(([key, value]) =>
+        matches([key, value?.label || value?.name, value?.brand], words));
 
     return {
         total: entries.length,

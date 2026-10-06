@@ -10,11 +10,16 @@ const PROFILES = {
         idColumn: 'citizenid',
         selectFields: 'citizenid, charinfo, job, money',
 
-        // Searched columns, as SQL
-        searchSql: `citizenid LIKE ? OR
-                    JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.firstname')) LIKE ? OR
-                    JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.lastname')) LIKE ?`,
-        searchParams: 3,
+        // Searched expressions (utils/search.js); names also matched as one spaceless string
+        searchColumns: [
+            'citizenid',
+            "JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.firstname'))",
+            "JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.lastname'))",
+        ],
+        nameColumns: [
+            "JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.firstname'))",
+            "JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.lastname'))",
+        ],
 
         shape(row) {
             const char = parseJSON(row.charinfo);
@@ -38,8 +43,8 @@ const PROFILES = {
         idColumn: 'identifier',
         selectFields: 'identifier, firstname, lastname, job, job_grade, accounts',
 
-        searchSql: 'identifier LIKE ? OR firstname LIKE ? OR lastname LIKE ?',
-        searchParams: 3,
+        searchColumns: ['identifier', 'firstname', 'lastname'],
+        nameColumns: ['firstname', 'lastname'],
 
         shape(row) {
             // ESX accounts JSON (money, bank, black_money) -> the panel's cash/bank names

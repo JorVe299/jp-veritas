@@ -3,6 +3,7 @@ const express = require('express');
 const { db } = require('../utils/dbHandler');
 const { fetchOnlinePlayers } = require('../utils/bridge');
 const { profile } = require('../utils/framework');
+const { terms, sqlMatch } = require('../utils/search');
 
 const router = express.Router();
 
@@ -62,15 +63,16 @@ router.get('/api/players', async (req, res) => {
         let query;
         let params;
 
-        if (search) {
+        const words = terms(search);
+        if (words.length > 0) {
+            const match = sqlMatch(fw.searchColumns, words, fw.nameColumns);
             query = `
                 SELECT ${fw.selectFields}
                 FROM ${fw.table}
-                WHERE ${fw.searchSql}
+                WHERE ${match.sql}
                 LIMIT ${limit} OFFSET ${offset}
             `;
-            const searchTerm = `%${search}%`;
-            params = Array(fw.searchParams).fill(searchTerm);
+            params = match.params;
         } else {
             query = `SELECT ${fw.selectFields} FROM ${fw.table} LIMIT ${limit} OFFSET ${offset}`;
             params = [];
