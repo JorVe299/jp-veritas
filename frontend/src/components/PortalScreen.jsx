@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import PortalBans from './PortalBans';
 import PortalBar from './PortalBar';
 import { PlateSprite } from './Plate';
 import PortalCharacter from './PortalCharacter';
@@ -28,6 +29,9 @@ export default function PortalScreen({
     // A lone character stands in for the picker; derived, not redirected: no bounce in history
     const only = characters.length === 1 ? (characters[0]?.citizenid ?? null) : null;
     const activeId = wanted || only;
+
+    // Roster carries the ban record; a lone character replaces the roster, so it carries it instead
+    const standsIn = Boolean(only) && activeId === only;
 
     // Heading while the detail loads; null for an id not on this account (detail then 404s)
     const summary = characters.find((entry) => entry?.citizenid === activeId) || null;
@@ -83,13 +87,18 @@ export default function PortalScreen({
 
                 {account.status === 'ready' && (
                     activeId ? (
-                        <PortalCharacter
-                            /* Remount: never the last character's data under a new name */
-                            key={activeId}
-                            citizenid={activeId}
-                            summary={summary}
-                            onBack={showBack ? goHome : null}
-                        />
+                        <>
+                            <PortalCharacter
+                                /* Remount: never the last character's data under a new name */
+                                key={activeId}
+                                citizenid={activeId}
+                                summary={summary}
+                                onBack={showBack ? goHome : null}
+                            />
+
+                            {/* Outside the character: not held back by a slow or failed detail */}
+                            {standsIn && <PortalBans />}
+                        </>
                     ) : (
                         <PortalRoster account={account.data} onOpen={openCharacter} />
                     )
