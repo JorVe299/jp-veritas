@@ -37,14 +37,13 @@ export default function SessionMenu({ user, roleLabel, signingOut, onSignOut }) 
                 </span>
             )}
 
-            <span className="session__name" title={fullName}>{name}</span>
-
             {/* Role up front: limits are known before a control turns up disabled */}
-            {roleLabel && (
-                <span className="pill pill--fit session__role" title={roleLabel}>
-                    <span className="u-clip">{roleLabel}</span>
-                </span>
-            )}
+            <span className="session__who">
+                <span className="session__name" title={fullName}>{name}</span>
+                {roleLabel && (
+                    <span className="session__role" title={roleLabel}>{roleLabel}</span>
+                )}
+            </span>
 
             <button
                 type="button"

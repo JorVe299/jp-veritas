@@ -1678,14 +1678,29 @@
     color: var(--c-text-muted);
 }
 
-.session__name {
+.session__who {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
     max-width: 10rem;
+    line-height: 1.25;
+}
+
+.session__name,
+.session__role {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.session__name {
     font-size: var(--fs-sm);
     font-weight: 600;
+}
+
+.session__role {
+    font-size: var(--fs-micro);
+    color: var(--c-text-faint);
 }
 
 /* --- Warning bar: the panel runs unprotected --------------------------- */
@@ -1734,7 +1749,7 @@
     }
 
     /* Shared first row: the name gives way first; picture and sign-out stay */
-    .session__name {
+    .session__who {
         max-width: 7rem;
     }
 
@@ -1774,7 +1789,7 @@
     }
 
     /* No room for bridge, name and sign-out: the picture stays as the identifier */
-    .session__name {
+    .session__who {
         display: none;
     }
 
@@ -2460,12 +2475,6 @@
 }
 
 /* --- Role and access in the top bar ------------------------------------ */
-
-/* Owner-named label: gives way before the bar does; the full label is in its title */
-.session__role {
-    flex: none;
-    max-width: 10rem;
-}
 
 .topbar__perms {
     flex: none;
