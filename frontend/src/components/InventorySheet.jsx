@@ -13,8 +13,8 @@ const SLOT_COMPACT_FROM = 10000;
 const errorText = (err) => err.response?.data?.error || err.message;
 
 const modeDetail = (mode) => (mode === 'live'
-    ? 'Applied live on the server.'
-    : 'The citizen is not connected, so the change went to the database.');
+    ? 'Applied live.'
+    : 'Saved to the database.');
 
 function kg(grams) {
     const n = Number(grams) || 0;
@@ -246,7 +246,7 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                             <StatusNote
                                 tone="warn"
                                 title="Slots cannot be rearranged right now"
-                                detail="The player is online and the server owns the live inventory. Adding and removing still work."
+                                detail="The player is online. Adding and removing still work."
                             />
                         )}
 
@@ -485,8 +485,7 @@ function CatalogAdd({ disabled, onAdd, onDragItem, onDragEnd }) {
                 {disabled ? 'Working…' : 'Add to inventory'}
             </button>
             <span className="field__hint">
-                Lands on the first free slot. Drag the tile above instead to
-                choose the slot yourself.
+                Lands on the first free slot.
             </span>
         </div>
     );

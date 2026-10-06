@@ -57,7 +57,7 @@ export default function RoleCreate({ roles, maxRoles, busy, onCreate }) {
                 </button>
                 <span className="field__hint">
                     {full
-                        ? `This panel holds the most roles it can (${maxRoles}). Remove one before adding another.`
+                        ? `Limit of ${maxRoles} roles reached.`
                         : `${roles.length} of ${maxRoles} roles.`}
                 </span>
             </div>
@@ -66,12 +66,7 @@ export default function RoleCreate({ roles, maxRoles, busy, onCreate }) {
 
     return (
         <div className="roster__new">
-            <p className="field__hint">
-                A new role grants nothing until somebody is mapped to it. Name it here,
-                tick what it may do in the grid below, then open it and add the Discord
-                accounts or the Discord role that should hold it — otherwise the team
-                will be wondering why they still cannot sign in.
-            </p>
+            <p className="field__hint">Grants nothing until Discord accounts or a role are mapped to it.</p>
 
             <div className="roster__fields">
                 <label className="field">

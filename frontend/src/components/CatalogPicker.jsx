@@ -88,7 +88,7 @@ export default function CatalogPicker({
                     {!waiting && (
                         <span className="field__hint">
                             {catalog.truncated
-                                ? `${catalog.matched} matches, showing the first ${CATALOG_LIMIT} — narrow the search.`
+                                ? `First ${CATALOG_LIMIT} of ${catalog.matched} matches`
                                 : `${catalog.matched} of ${catalog.total} entries.`}
                         </span>
                     )}

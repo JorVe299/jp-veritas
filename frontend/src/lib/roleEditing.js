@@ -46,9 +46,7 @@ export function snowflakeProblem(value) {
     if (!id) return 'Paste a Discord id first.';
 
     if (!/^\d+$/.test(id)) {
-        return 'A Discord id is digits only — this is a name, not an id. '
-            + 'In Discord turn on Developer Mode under Advanced, then right-click '
-            + 'the account or the role and choose Copy ID.';
+        return 'Digits only. In Discord: Developer Mode on, then right-click › Copy ID.';
     }
     if (id.length < 5) return `A Discord id is at least 5 digits; this one has ${id.length}.`;
     if (id.length > 25) return `A Discord id is at most 25 digits; this one has ${id.length}.`;

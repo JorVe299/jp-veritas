@@ -257,10 +257,7 @@ export default function PermissionsSheet({ onClose, onSaved }) {
                         <StatusNote
                             tone="warn"
                             title="Only the owner can change roles or permissions"
-                            detail={'You can read all of it, so you can see which right a role is '
-                                + 'missing and who ranks above whom — creating, renaming, '
-                                + 'reordering and deleting are refused by the server, so those '
-                                + 'controls are not here.'}
+                            detail="Read-only for your role."
                         />
                     )}
 
@@ -277,11 +274,7 @@ export default function PermissionsSheet({ onClose, onSaved }) {
 
                             <section className="roster__grid">
                                 <h3 className="roster__title u-caps">What each role may do</h3>
-                                <p className="field__hint">
-                                    Ticks are collected and written in one go — a role is
-                                    half-re-permissioned for as long as it takes to work down
-                                    the rows, and nobody should be holding that halfway state.
-                                </p>
+                                <p className="field__hint">Ticks are saved together.</p>
 
                                 <CapabilityMatrix
                                     roles={roles}
@@ -296,9 +289,7 @@ export default function PermissionsSheet({ onClose, onSaved }) {
                             {/* Stated here: the table leaves this right out */}
                             {data?.ownerOnly && (
                                 <p className="field__hint">
-                                    {`Granting permissions itself (${data.ownerOnly}) is not in this table. `}
-                                    It belongs to the owner alone, so nobody can hand it out — or
-                                    lose it by accident. No role made here can be given it either.
+                                    {`${data.ownerOnly} is owner-only and not grantable.`}
                                 </p>
                             )}
 
@@ -325,7 +316,7 @@ export default function PermissionsSheet({ onClose, onSaved }) {
                         className="btn btn--ghost"
                         onClick={resetToDefaults}
                         disabled={!canEdit || saving || state.status !== 'ready'}
-                        title="Only the roles shipped with the panel have a default. Roles made here keep what they hold."
+                        title="Built-in roles only"
                     >
                         Reset to defaults
                     </button>

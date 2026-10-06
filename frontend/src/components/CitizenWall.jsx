@@ -37,8 +37,7 @@ export default function CitizenWall({
                     title="No connection to the FiveM server — online status is unknown"
                     detail={
                         <>
-                            Everyone below is listed without a verified status. They are not
-                            necessarily offline.
+                            Not necessarily offline.
                             {bridge.error && <> Reported: {bridge.error}</>}
                         </>
                     }
@@ -52,9 +51,8 @@ export default function CitizenWall({
                     title="This database does not match the game server"
                     detail={
                         <>
-                            Reported online: {dbMismatch.onlineButUnknown.join(', ')} — none of those
-                            citizen IDs exist in “{dbMismatch.configuredDatabase}”. That is why
-                            everyone looks offline. Check DB_NAME in .env against
+                            Online IDs {dbMismatch.onlineButUnknown.join(', ')} are not in
+                            “{dbMismatch.configuredDatabase}”. Check DB_NAME in .env against
                             mysql_connection_string in server.cfg.
                         </>
                     }
@@ -298,7 +296,7 @@ function EmptyWall({ search, page }) {
                 <Icon name="search" size={26} className="empty__icon" />
                 <p className="empty__title">Nothing matched “{search}”</p>
                 <p className="empty__text">
-                    Check the spelling, or search by citizen ID instead of name.
+                    Try the citizen ID instead.
                 </p>
             </div>
         );
@@ -308,8 +306,7 @@ function EmptyWall({ search, page }) {
         return (
             <div className="empty">
                 <Icon name="empty" size={26} className="empty__icon" />
-                <p className="empty__title">This page is empty</p>
-                <p className="empty__text">There are no further records. Go back a page.</p>
+                <p className="empty__title">No further records</p>
             </div>
         );
     }
@@ -317,8 +314,7 @@ function EmptyWall({ search, page }) {
     return (
         <div className="empty">
             <Icon name="empty" size={26} className="empty__icon" />
-            <p className="empty__title">No records yet</p>
-            <p className="empty__text">The database contains no characters.</p>
+            <p className="empty__title">No characters in the database</p>
         </div>
     );
 }

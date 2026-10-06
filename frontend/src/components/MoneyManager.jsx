@@ -54,8 +54,8 @@ export default function MoneyManager({ selectedPlayer, onApplied }) {
                 tone: 'success',
                 title: `${formatDelta(delta)} posted to ${accountLabel.toLowerCase()}`,
                 detail: `${mode === 'live'
-                    ? 'Applied live on the server.'
-                    : 'This citizen is not connected, so the change was written to the database.'
+                    ? 'Applied live.'
+                    : 'Saved to the database.'
                     } New balance: ${formatCurrency(money[account])}.`,
             });
 
@@ -168,7 +168,6 @@ export default function MoneyManager({ selectedPlayer, onApplied }) {
                         <StatusNote
                             tone="warn"
                             title="This will overdraw the account"
-                            detail={`${accountLabel} would sit at ${formatCurrency(nextBalance)} afterwards.`}
                         />
                     )}
 
@@ -179,7 +178,7 @@ export default function MoneyManager({ selectedPlayer, onApplied }) {
 
                 <footer className="panel__foot">
                     <span className="panel__footinfo">
-                        {isValid ? `${formatDelta(delta)} to ${accountLabel.toLowerCase()}` : 'No amount'}
+                        {isValid ? accountLabel : 'No amount'}
                     </span>
                     <button type="submit" className="btn btn--primary" disabled={!canSubmit}>
                         {saving ? 'Posting…' : 'Post transaction'}

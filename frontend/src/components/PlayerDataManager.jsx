@@ -29,8 +29,8 @@ const GAUGES = [
 const JAIL_MAX = 10000;
 
 const modeDetail = (mode) => (mode === 'live'
-    ? 'Applied live on the server.'
-    : 'The citizen is not connected, so the change went to the database.');
+    ? 'Applied live.'
+    : 'Saved to the database.');
 
 const errorText = (err) => err.response?.data?.error || err.message;
 

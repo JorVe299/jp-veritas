@@ -72,8 +72,6 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
                         />
                     )}
 
-                    {res.status === 'loading' && <p className="field__hint">Loading inventory…</p>}
-
                     {res.status === 'ready' && (
                         <div className="invsum">
                             {data.hint && <p className="field__hint">{data.hint}</p>}
@@ -101,11 +99,9 @@ export default function InventoryManager({ selectedPlayer, onApplied }) {
                             )}
 
                             {items.length === 0 ? (
-                                <p className="field__hint">
-                                    {data.format === 'empty'
-                                        ? 'No inventory is stored for this citizen.'
-                                        : 'The inventory is empty.'}
-                                </p>
+                                data.format === 'empty' && (
+                                    <p className="field__hint">No inventory stored.</p>
+                                )
                             ) : (
                                 <div className="invsum__peek">
                                     {peek.map((it) => (

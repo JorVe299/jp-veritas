@@ -61,8 +61,8 @@ export default function JobManager({ selectedPlayer, jobs, jobsError, onApplied 
                 tone: 'success',
                 title: `Job set to ${label} — ${gradeName}`,
                 detail: mode === 'live'
-                    ? 'Applied live on the server.'
-                    : 'This citizen is not connected, so the change was written to the database.',
+                    ? 'Applied live.'
+                    : 'Saved to the database.',
             });
 
             // Patch updates the billboard and the wall at once

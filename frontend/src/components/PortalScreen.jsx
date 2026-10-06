@@ -107,9 +107,7 @@ export default function PortalScreen({
 
             <footer className="idfoot">
                 <p className="idfoot__text">
-                    Veritas ID shows what this server has on record for your characters.
-                    Nothing on this page can be changed from here — if something looks
-                    wrong, take it to the server staff.
+                    Read-only. If something looks wrong, ask the server staff.
                 </p>
             </footer>
         </div>

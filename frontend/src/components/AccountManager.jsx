@@ -57,14 +57,6 @@ export default function AccountManager({ selectedPlayer, onApplied, onShowAllAcc
                     />
                 )}
 
-                {res.status === 'loading' && <p className="field__hint">Loading accounts…</p>}
-
-                {res.status === 'ready' && accounts.length === 0 && (
-                    <p className="field__hint">
-                        No account is stored for this citizen, and they are authorized on none.
-                    </p>
-                )}
-
                 {accounts.length > 0 && (
                     <ul className={`lines${accounts.length > 3 ? ' lines--scroll' : ''}`}>
                         {accounts.map((account) => (

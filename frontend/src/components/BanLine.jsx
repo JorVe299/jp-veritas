@@ -55,7 +55,7 @@ export default function BanLine({ ban, canEdit, onFeedback, onChanged, onReport 
 
             {confirming && (
                 <p className="line__meta">
-                    Lifting deletes this record. The account can connect again right away.
+                    Deletes the record; they can connect again at once.
                 </p>
             )}
 

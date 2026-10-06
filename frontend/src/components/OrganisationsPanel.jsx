@@ -101,20 +101,12 @@ export default function OrganisationsPanel() {
                             </div>
                         </div>
 
-                        {Number(totals.withoutAccount) > 0 && (
-                            <p className="field__hint">
-                                “No account” means no account row exists for that organisation.
-                                That is not a balance of zero — those are the ones whose banking
-                                has never been set up.
-                            </p>
-                        )}
                     </>
                 )}
 
                 {!groupsAvailable && res.status === 'ready' && (
                     <p className="field__hint">
-                        This schema has no player_groups table, so no membership numbers exist.
-                        Only the job written on each character is counted here.
+                        No player_groups table: only character jobs are counted.
                     </p>
                 )}
 
@@ -140,10 +132,6 @@ export default function OrganisationsPanel() {
                         title="The organisations could not be loaded"
                         detail={[res.error, res.hint].filter(Boolean).join(' ')}
                     />
-                )}
-
-                {res.waiting && res.status === 'loading' && (
-                    <p className="field__hint">Loading jobs and gangs…</p>
                 )}
 
                 {res.status === 'ready' && organisations.length === 0 && (

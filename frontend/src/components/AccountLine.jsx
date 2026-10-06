@@ -172,7 +172,7 @@ export default function AccountLine({ account, canEdit = false, onChanged, onRep
 
                     {wouldGoNegative && (
                         <p className="line__meta">
-                            The server refuses a negative balance and will answer with an error.
+                            Negative balances are refused.
                         </p>
                     )}
 
@@ -187,8 +187,8 @@ export default function AccountLine({ account, canEdit = false, onChanged, onRep
             {freezing && (
                 <p className="line__meta">
                     {frozen
-                        ? 'Unfreezing lets the business move money again.'
-                        : 'Freezing stops every transfer on a company account until it is lifted.'}
+                        ? 'Transfers resume.'
+                        : 'Stops every transfer until lifted.'}
                 </p>
             )}
 

@@ -374,7 +374,7 @@ export default function Workspace({
                                 title={permissions.roleLabel
                                     ? `Your role (${permissions.roleLabel}) cannot see the citizen list`
                                     : 'You are not allowed to see the citizen list'}
-                                detail="Everything on this page starts with a citizen, so there is nothing to show here. An owner can grant players.view under Roles and permissions."
+                                detail="An owner can grant players.view."
                             />
                         )}
 

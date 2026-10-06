@@ -90,9 +90,7 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
             setFeedback(successNote(
                 answer,
                 `${span} recorded`,
-                kicked
-                    ? 'The citizen was on the server and has been removed from it.'
-                    : 'The citizen was not connected, so nothing was interrupted.',
+                kicked ? 'Kicked from the server.' : undefined,
             ));
             report(kicked ? 'live' : 'offline', span);
             setReason('');
@@ -135,12 +133,6 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                     />
                 )}
 
-                {res.status === 'loading' && <p className="field__hint">Loading the ban record…</p>}
-
-                {res.status === 'ready' && bans.length === 0 && (
-                    <p className="field__hint">Nothing on record for this citizen.</p>
-                )}
-
                 {bans.length > 0 && (
                     <ul className={`lines${bans.length > 3 ? ' lines--scroll' : ''}`}>
                         {bans.map((ban) => (
@@ -156,23 +148,17 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                     </ul>
                 )}
 
+                {/* This card reads database bans only; the server list adds txAdmin's */}
                 {onShowServerBans && citizenid && (
-                    <>
-                        <div className="acts">
-                            <button
-                                type="button"
-                                className="btn btn--ghost btn--sm"
-                                onClick={onShowServerBans}
-                            >
-                                Open the server ban list for this citizen
-                            </button>
-                        </div>
-                        <p className="field__hint">
-                            Leaves this citizen&rsquo;s page for the Bans section of the Server
-                            area, filtered to them — both ban records at once, including
-                            txAdmin&rsquo;s, which this card does not read.
-                        </p>
-                    </>
+                    <div className="acts">
+                        <button
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            onClick={onShowServerBans}
+                        >
+                            Server ban list, incl. txAdmin
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -182,7 +168,7 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                         <StatusNote
                             tone="warn"
                             title="This character carries no license and no Discord ID"
-                            detail="A ban is matched by one of those two, so there is nothing to ban here. Have the citizen connect once, then try again."
+                            detail="Bans match on those. Have the citizen connect once."
                         />
                     )}
 
@@ -200,7 +186,7 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                             disabled={saving || blocked}
                         />
                         <span className="field__hint">
-                            {`Between ${REASON_MIN} and ${REASON_MAX} characters — the citizen is shown this text. ${trimmedReason.length}/${REASON_MAX}`}
+                            {`Shown to the citizen · ${trimmedReason.length}/${REASON_MAX}`}
                         </span>
                     </div>
 
@@ -243,20 +229,11 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                                 onChange={(e) => change(setDays)(e.target.value)}
                                 disabled={saving || blocked}
                             />
-                            <span className="field__hint">
-                                {daysValid && lifts
-                                    ? `Lifts on ${lifts}.`
-                                    : `1 to ${MAX_DAYS} days.`}
-                            </span>
                         </div>
                     )}
 
                     {confirming && (
-                        <p className="field__hint">
-                            {permanent
-                                ? 'This bans the account for good. If the citizen is on the server they are removed from it right away.'
-                                : `This bans the account for ${dayCount} day${dayCount === 1 ? '' : 's'}. If the citizen is on the server they are removed from it right away.`}
-                        </p>
+                        <p className="field__hint">A connected citizen is kicked at once.</p>
                     )}
 
                     {feedback && (
@@ -266,7 +243,7 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
 
                 <footer className="panel__foot">
                     <span className="panel__footinfo">
-                        {permanent ? 'No end date' : (lifts ? `Until ${lifts}` : 'Set a number of days')}
+                        {permanent ? 'No end date' : (lifts ? `Until ${lifts}` : `1 to ${MAX_DAYS} days`)}
                     </span>
 
                     {confirming ? (

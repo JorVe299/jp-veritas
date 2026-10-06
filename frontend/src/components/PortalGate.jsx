@@ -101,10 +101,7 @@ export default function PortalGate({ mode, notice = null, noticeReason = null, e
                     <div className="idgate__block">
                         <h1 className="idgate__title">Your characters on this server</h1>
                         <p className="idgate__text">
-                            Sign in with the Discord account you play on and Veritas ID shows
-                            you what the server has on record for your characters — their
-                            papers, their job, their money, what they are carrying and what
-                            they drive. Looking only: nothing here can be changed.
+                            Sign in with the Discord account you play on. Read-only.
                         </p>
                         <button type="button" className="btn btn--primary idgate__action" onClick={onSignIn}>
                             Sign in with Discord
@@ -117,9 +114,7 @@ export default function PortalGate({ mode, notice = null, noticeReason = null, e
                     <div className="idgate__block">
                         <h1 className="idgate__title">Veritas ID is not answering</h1>
                         <p className="idgate__text">
-                            The server did not answer when asked whether you are signed in. It
-                            may be restarting. Nothing is known about your session until it
-                            does, so nothing is shown.
+                            The server did not answer. It may be restarting.
                         </p>
                         <StatusNote tone="error" title="Session check failed" detail={error} />
                         <button
@@ -137,10 +132,7 @@ export default function PortalGate({ mode, notice = null, noticeReason = null, e
                     <div className="idgate__block">
                         <h1 className="idgate__title">Veritas ID is not set up here</h1>
                         <p className="idgate__text">
-                            This installation has no Discord sign-in configured. Veritas ID
-                            works out which characters are yours from your Discord account, so
-                            without one there is nobody it could show. Ask whoever runs the
-                            server to set it up.
+                            No Discord sign-in is configured. Ask the server staff.
                         </p>
                     </div>
                 )}

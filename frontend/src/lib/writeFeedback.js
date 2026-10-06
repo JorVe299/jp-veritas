@@ -9,8 +9,8 @@ export function modeOf(answer) {
 }
 
 export function modeDetail(mode) {
-    if (mode === 'live') return 'Applied live on the server.';
-    if (mode === 'offline') return 'The citizen is not connected, so the change went to the database.';
+    if (mode === 'live') return 'Applied live.';
+    if (mode === 'offline') return 'Saved to the database.';
     return '';
 }
 

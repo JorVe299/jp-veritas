@@ -33,9 +33,7 @@ export default function CapabilityMatrix({
             {offerFolding && (
                 <div className="matrix__folds">
                     <span className="matrix__foldlabel">
-                        {`Showing ${shown.length} of ${roles.length} columns.`}
-                        {' '}
-                        Folding one away only clears the screen — nothing is changed by it.
+                        {`Showing ${shown.length} of ${roles.length} columns`}
                     </span>
                     <div className="matrix__foldrow">
                         {roles.map((role) => {
@@ -60,7 +58,7 @@ export default function CapabilityMatrix({
 
             {shown.length === 0 ? (
                 <p className="field__hint">
-                    Every column is folded away. Bring a role back to see what it may do.
+                    Every column is folded away.
                 </p>
             ) : (
                 <table className="matrix">

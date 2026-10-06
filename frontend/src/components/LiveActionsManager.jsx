@@ -39,9 +39,6 @@ const LIMITS = {
     z: { min: -500, max: 2000 },
 };
 
-const OFFLINE_LINE = 'Live actions reach the running game, so they need the citizen to be on '
-    + 'the server. The buttons stay disabled until they connect.';
-
 /**
  * Live actions and position, as two cards: only the position means something offline
  * Offline: buttons stay disabled with a reason; hidden, they would seem not to exist
@@ -148,9 +145,6 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
                 <div className="panel__body">
                     {!canAct && <PermissionLine what="act on players in the running game" />}
 
-                    {/* Can stand beside the PermissionLine: not allowed is not unable */}
-                    {!online && <p className="field__hint">{OFFLINE_LINE}</p>}
-
                     <div className="field">
                         <span className="field__label" id="live-armor-label">Heal restores</span>
                         <div className="segment" role="group" aria-labelledby="live-armor-label">
@@ -249,7 +243,7 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
                             disabled={locked}
                         />
                         <span className="field__hint">
-                            {`${REASON_MIN} to ${REASON_MAX} characters — the citizen is shown this text as they leave.`}
+                            Shown to the citizen as they leave.
                         </span>
                     </div>
 
@@ -303,8 +297,6 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
                         />
                     )}
 
-                    {res.status === 'loading' && <p className="field__hint">Reading the position…</p>}
-
                     {res.status === 'ready' && (
                         <>
                             <div className="preview">
@@ -324,7 +316,6 @@ export default function LiveActionsManager({ selectedPlayer, onApplied }) {
                                 </p>
                             )}
 
-                            {!online && <p className="field__hint">{OFFLINE_LINE}</p>}
                         </>
                     )}
 
@@ -419,9 +410,6 @@ function TeleportForm({ start, disabled, working, onSubmit }) {
                         </button>
                     ))}
                 </div>
-                <span className="field__hint">
-                    Picking a place fills the coordinates below — nothing is sent yet.
-                </span>
             </div>
 
             <div className="coords">
@@ -472,11 +460,9 @@ function TeleportForm({ start, disabled, working, onSubmit }) {
                 </div>
             </div>
 
-            <span className="field__hint">
-                {outOfRange
-                    ? 'X and Y run from −10000 to 10000, Z from −500 to 2000.'
-                    : 'Ground level in the city sits around Z 30.'}
-            </span>
+            {outOfRange && (
+                <span className="field__hint">X and Y from −10000 to 10000, Z from −500 to 2000.</span>
+            )}
 
             <div className="acts">
                 <button

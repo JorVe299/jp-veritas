@@ -20,11 +20,6 @@ export default function ServerArea({
         <>
             <header className="areahead">
                 <h1 className="areahead__title u-display">Server</h1>
-                <p className="areahead__lede">
-                    The things here belong to the server rather than to any one citizen —
-                    the organisations players work for, the money those hold, everyone kept
-                    out, and what this installation is actually running.
-                </p>
             </header>
 
             <CitizenTabs

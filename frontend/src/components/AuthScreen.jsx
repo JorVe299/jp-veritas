@@ -101,10 +101,6 @@ export default function AuthScreen({ mode, notice = null, noticeReason = null, e
                 {mode === 'signin' && (
                     <div className="gate__block">
                         <h1 className="gate__title u-display">Sign in to continue</h1>
-                        <p className="gate__text">
-                            Veritas manages jobs, balances, inventories and vehicles for every
-                            citizen on this server. Access is granted through Discord.
-                        </p>
                         <button type="button" className="btn btn--primary gate__action" onClick={onSignIn}>
                             Sign in with Discord
                         </button>
@@ -115,10 +111,7 @@ export default function AuthScreen({ mode, notice = null, noticeReason = null, e
                 {mode === 'offline' && (
                     <div className="gate__block">
                         <h1 className="gate__title u-display">Panel unreachable</h1>
-                        <p className="gate__text">
-                            The panel backend did not answer when asked whether you are signed in.
-                            It may be restarting. Nothing is known about your session until it does.
-                        </p>
+                        <p className="gate__text">The backend did not answer. It may be restarting.</p>
                         <StatusNote tone="error" title="Session check failed" detail={error} />
                         <button
                             type="button"

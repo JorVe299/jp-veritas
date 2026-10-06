@@ -502,14 +502,6 @@
     text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
 }
 
-.home__sub {
-    margin-top: var(--s-3);
-    max-width: 62ch;
-    color: var(--c-text-muted);
-    font-size: var(--fs-md);
-    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.65);
-}
-
 .home__facts {
     display: flex;
     flex-wrap: wrap;
@@ -628,10 +620,6 @@
 
     .home__brand {
         gap: var(--s-3);
-    }
-
-    .home__sub {
-        font-size: var(--fs-base);
     }
 
     .dests {
@@ -2523,11 +2511,6 @@
 
 .areahead__title {
     font-size: var(--fs-xl);
-}
-
-.areahead__lede {
-    max-width: 62ch;
-    color: var(--c-text-muted);
 }
 
 /* One column for the Bans list: squeezed into a grid column its wide rows cannot be scanned */

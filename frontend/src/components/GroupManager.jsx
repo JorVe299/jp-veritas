@@ -114,12 +114,6 @@ export default function GroupManager({ selectedPlayer, gangs, gangsError, onAppl
                     />
                 )}
 
-                {res.status === 'loading' && <p className="field__hint">Loading gangs…</p>}
-
-                {res.status === 'ready' && memberships.length === 0 && (
-                    <p className="field__hint">This citizen is in no gang.</p>
-                )}
-
                 {memberships.length > 0 && (
                     <ul className={`lines${memberships.length > 4 ? ' lines--scroll' : ''}`}>
                         {memberships.map((group) => (
@@ -278,11 +272,10 @@ function GangRow({ citizenid, group, canEdit, onFeedback, onChanged, onReport })
                 </span>
                 {!known && (
                     <span>
-                        No longer in the server data — the row stays in the database until
-                        someone removes it.
+                        No longer in the server data
                     </span>
                 )}
-                {confirming && <span>Removing takes the citizen out of this gang for good.</span>}
+                {confirming && <span>Removes the citizen from this gang.</span>}
             </div>
 
             <div className="line__actions">

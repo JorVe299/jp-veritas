@@ -87,15 +87,13 @@ export default function RoleRow({
 
                 {role.locked && (
                     <span>
-                        The owner cannot be re-permissioned or removed: it holds every
-                        right, which is what stops a panel from locking its own owner
-                        out. Its name can be changed.
+                        Holds every right; only its name can change.
                     </span>
                 )}
 
                 {!role.locked && mappingKnown && (
                     mapped === 0
-                        ? <span>Nobody is mapped to it, so it grants nothing to anyone yet.</span>
+                        ? <span>Nobody mapped yet.</span>
                         : (
                             <span>
                                 {`${plural(role.discordUserIds.length, 'account')}, `}
@@ -105,18 +103,13 @@ export default function RoleRow({
                 )}
 
                 {!mappingKnown && (
-                    <span>Who holds this role is shown to the owner only.</span>
+                    <span>Holders visible to the owner only.</span>
                 )}
 
                 {confirming && (
                     <span className="role__warn">
-                        {`Removing ${role.label} takes effect at once and reaches backwards: `}
-                        everyone who holds it loses access immediately, including sessions
-                        that are already open — nobody is signed out, they simply may
-                        nothing any more.
+                        Everyone holding it loses access at once, open sessions included.
                         {mapped > 0 ? ` ${plural(mapped, 'Discord mapping')} go with it.` : ''}
-                        {' '}
-                        What it was allowed to do goes with it too.
                     </span>
                 )}
             </div>
@@ -207,7 +200,7 @@ export default function RoleRow({
                         <span className="field__hint">
                             {trimmed.length === 0
                                 ? 'A role needs a name.'
-                                : `The id (${role.id}) stays as it is — it sits in sessions that are already signed in.`}
+                                : `ID stays ${role.id}`}
                         </span>
                     </label>
 
@@ -215,38 +208,28 @@ export default function RoleRow({
                         <>
                             <IdList
                                 title="Discord accounts"
-                                hint="Individual accounts that hold this role."
+                                hint="Individual accounts"
                                 ids={users}
                                 disabled={held}
                                 onChange={setUsers}
                             />
                             <IdList
                                 title="Discord roles"
-                                hint="Everyone carrying this role on the Discord server holds it."
+                                hint="Everyone with this Discord role"
                                 ids={groups}
                                 disabled={held}
                                 onChange={setGroups}
                             />
 
-                            <p className="field__hint">
-                                This mapping is what actually grants the role. Without an entry
-                                here it is a set of rights that nobody holds.
-                            </p>
-
                             {role.builtIn && (
                                 <p className="field__hint">
-                                    A role shipped with the panel can also be mapped in the
-                                    server&apos;s .env file. Those entries are not listed here and
-                                    cannot be changed from here, so this may not be everyone who
-                                    holds it. They keep working — and they are the way back in if
-                                    this list is ever wrong.
+                                    Mappings in the .env file also apply and are not listed here.
                                 </p>
                             )}
                         </>
                     ) : (
                         <p className="field__hint">
-                            The Discord mapping is sent to nobody but the owner, so it cannot
-                            be shown here.
+                            Discord mapping visible to the owner only.
                         </p>
                     )}
 

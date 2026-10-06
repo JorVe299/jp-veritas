@@ -80,10 +80,6 @@ function FrameworkCard() {
                     />
                 )}
 
-                {res.waiting && res.status === 'loading' && (
-                    <p className="field__hint">Asking the bridge what it is attached to…</p>
-                )}
-
                 {res.status === 'ready' && (
                     <>
                         <dl className="kv">
@@ -123,7 +119,7 @@ function FrameworkCard() {
                             <StatusNote
                                 tone="warn"
                                 title="Backend and bridge disagree about the token"
-                                detail="One end has a token configured and the other does not, so once the bridge requires the token, every call from the panel is rejected. This is the usual reason the bridge answers 401. Set BRIDGE_TOKEN in the backend and the same value as Config.Token in the veritas resource."
+                                detail="Set BRIDGE_TOKEN in the backend and the same value as Config.Token in the bridge."
                             />
                         )}
                     </>
@@ -170,7 +166,7 @@ function BridgeCard() {
                 <Icon name="link" size={18} className="panel__icon" />
                 <div>
                     <h2 className="panel__title" id="bridge-panel-title">The link</h2>
-                    <p className="panel__hint">{bridgeHint(res, data)}</p>
+                    <p className="panel__hint">{bridgeHint(res)}</p>
                 </div>
             </header>
 
@@ -191,10 +187,6 @@ function BridgeCard() {
                     />
                 )}
 
-                {res.waiting && res.status === 'loading' && (
-                    <p className="field__hint">Timing the link…</p>
-                )}
-
                 {res.status === 'ready' && (
                     <>
                         <dl className="kv">
@@ -213,7 +205,7 @@ function BridgeCard() {
                             />
                         ) : (
                             <p className="field__hint">
-                                {`The characters the game server reports are present in ${dbCheck.database || 'this database'} — panel and game server are looking at the same place.`}
+                                {`Same database as the game server (${dbCheck.database || 'this database'}).`}
                             </p>
                         ))}
 
@@ -226,8 +218,7 @@ function BridgeCard() {
 
                         {ids.length === 0 && data.reachable && (
                             <p className="field__hint">
-                                The link answers and reports nobody on the server. That is a
-                                verified empty server, not an unknown one.
+                                Nobody on the server.
                             </p>
                         )}
                     </>
@@ -249,17 +240,12 @@ function BridgeCard() {
     );
 }
 
-function bridgeHint(res, data) {
+// Latency and count stay in the rows below: not repeated here
+function bridgeHint(res) {
     if (res.waiting && res.status === 'loading') return 'Checking the link';
     if (res.status === 'unreachable') return 'No answer';
     if (res.status === 'error') return 'Link state unknown';
-
-    const parts = [
-        msText(data.latencyMs) ? `Answered in ${msText(data.latencyMs)}` : null,
-        countText(data.onlineCount) ? `${countText(data.onlineCount)} on the server` : null,
-    ].filter(Boolean);
-
-    return parts.length > 0 ? parts.join(' · ') : 'The link answered';
+    return 'Link answered';
 }
 
 function mismatchText(check) {
@@ -267,9 +253,8 @@ function mismatchText(check) {
         return `The database could not be asked: ${check.dbError}`;
     }
     const parts = [
-        'The game server reports characters that this database does not hold.',
-        check.database ? `The panel is reading ${check.database}.` : null,
-        'That usually means the backend points at a different database than the game server does.',
+        'Online characters are missing here.',
+        check.database ? `The panel reads ${check.database}; the game server likely another.` : null,
     ];
     return parts.filter(Boolean).join(' ');
 }
@@ -305,10 +290,6 @@ function SchemaCard() {
                     />
                 )}
 
-                {res.waiting && res.status === 'loading' && (
-                    <p className="field__hint">Reading the schema…</p>
-                )}
-
                 {res.status === 'ready' && (
                     <>
                         <dl className="kv">
@@ -316,7 +297,7 @@ function SchemaCard() {
                             <Row label="Tables in total" value={countText(allTables.length)} />
                         </dl>
 
-                        {problems.length > 0 ? (
+                        {problems.length > 0 && (
                             <StatusNote
                                 tone="warn"
                                 title={problems.length === 1
@@ -324,10 +305,6 @@ function SchemaCard() {
                                     : `${problems.length} things the modules need are missing`}
                                 detail={problems.join(' · ')}
                             />
-                        ) : (
-                            <p className="field__hint">
-                                Every table and column the management modules rely on is present.
-                            </p>
                         )}
 
                         {tableNames.length > 0 && (
@@ -472,11 +449,7 @@ function ReferenceDataCard({ canEdit }) {
             <div className="panel__body">
                 {!canEdit && <PermissionLine what="reload the reference data" />}
 
-                <p className="field__hint">
-                    The job, item and vehicle lists are read once when the backend starts.
-                    After editing those files on disk, this picks up the new version without
-                    restarting the backend. Nothing in the game database is touched.
-                </p>
+                <p className="field__hint">Re-reads the files without a backend restart.</p>
 
                 {feedback && (
                     <StatusNote tone={feedback.tone} title={feedback.title} detail={feedback.detail} />

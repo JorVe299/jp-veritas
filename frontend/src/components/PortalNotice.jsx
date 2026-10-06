@@ -26,7 +26,7 @@ function wordsFor(code, error, hint) {
             return {
                 tone: 'warn',
                 title: error || 'No such character on your account',
-                detail: 'Nothing on your account matches this link. Go back to your characters and pick one from the list.',
+                detail: 'Pick one from your characters.',
             };
 
         // Unsupported framework: the server's words only, nothing added
@@ -44,8 +44,8 @@ function wordsFor(code, error, hint) {
                 tone: 'error',
                 title: 'Veritas ID is not answering',
                 detail: error
-                    ? `Nothing was loaded, so nothing below is known. Reported: ${error}`
-                    : 'Nothing was loaded, so nothing below is known.',
+                    ? `Nothing was loaded. Reported: ${error}`
+                    : 'Nothing was loaded.',
             };
 
         default:

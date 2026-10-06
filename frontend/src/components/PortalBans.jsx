@@ -185,8 +185,8 @@ function Unreadable({ data, onRetry, wait }) {
                 title="The ban record could not be read"
                 detail={
                     reason
-                        ? `This page cannot say whether anything is on record for this account. Reported: ${reason}`
-                        : 'This page cannot say whether anything is on record for this account, and the server did not say why.'
+                        ? `Whether anything is on record is unknown. Reported: ${reason}`
+                        : 'Whether anything is on record is unknown.'
                 }
             />
 
@@ -208,7 +208,7 @@ function Unreadable({ data, onRetry, wait }) {
 function Hint({ text }) {
     return (
         <details className="reveal idbans__more">
-            <summary className="reveal__summary">Details for whoever runs this server</summary>
+            <summary className="reveal__summary">Details for server staff</summary>
             <p className="reveal__body idbans__hint">{text}</p>
         </details>
     );
@@ -224,8 +224,7 @@ function Record({ bans, counted, activeCount, showsAuthor, partial }) {
         <>
             <p className="idbans__lead">
                 <strong className="idbans__verdict">{verdict(activeCount, partial)}</strong>{' '}
-                A ban is recorded against this account rather than against one character,
-                so it covers every character on it.
+                Bans cover every character on this account.
             </p>
 
             {split ? (

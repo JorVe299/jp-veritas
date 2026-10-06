@@ -45,8 +45,7 @@ export default function PortalVehicles({ citizenid }) {
 
                 {unsupported && (
                     <p className="idnone">
-                        This server does not keep owned vehicles in a table Veritas ID can
-                        read, so none can be listed. That is not the same as owning none.
+                        Vehicles cannot be read on this server.
                     </p>
                 )}
 

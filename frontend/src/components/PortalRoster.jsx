@@ -59,7 +59,7 @@ export default function PortalRoster({ account, onOpen }) {
                 <section className="idblank">
                     <h2 className="idblank__title">Nothing on this account yet</h2>
                     <p className="idblank__text">
-                        {hint || 'No character has been recorded for this account. Play one on the server and it will show up here.'}
+                        {hint || 'Play on the server and your character shows up here.'}
                     </p>
                 </section>
             ) : (

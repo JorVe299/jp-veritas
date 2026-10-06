@@ -33,7 +33,7 @@ export default function CharacterDeleteManager({ selectedPlayer, online, bridgeD
             onDeleted?.({
                 tone: 'success',
                 title: answer.data?.message || 'Character deleted',
-                detail: `${name} (${citizenid}) and everything the framework kept for them are gone.`,
+                detail: `${name} (${citizenid})`,
             });
         } catch (err) {
             const status = err.response?.status;
@@ -55,29 +55,20 @@ export default function CharacterDeleteManager({ selectedPlayer, online, bridgeD
                 <Icon name="trash" size={18} className="panel__icon" />
                 <div>
                     <h2 className="panel__title" id="delete-panel-title">Delete character</h2>
-                    <p className="panel__hint">Removes this character for good</p>
+                    <p className="panel__hint">Cannot be undone</p>
                 </div>
             </header>
 
             <div className="panel__body">
                 <p className="field__hint">
-                    The character goes, and with it everything the framework keeps for it: vehicles,
-                    outfits, its bank account and the rest. The player&apos;s game and Discord
-                    accounts stay, and so do their bans. This cannot be undone.
+                    Removes the character with its vehicles, outfits and bank account. Account and
+                    bans stay.
                 </p>
 
-                {online && (
-                    <p className="field__hint">
-                        The citizen is on the server with this character. Kick them first, or the
-                        game would save the character back when they leave.
-                    </p>
-                )}
+                {online && <p className="field__hint">On the server: kick first.</p>}
 
                 {!online && bridgeDown && (
-                    <p className="field__hint">
-                        The game server cannot be reached, so whether this character is in use is
-                        unverified. Deleting runs through the game server and waits until it answers.
-                    </p>
+                    <p className="field__hint">Game server unreachable: status unverified.</p>
                 )}
 
                 {confirming && (
@@ -96,9 +87,6 @@ export default function CharacterDeleteManager({ selectedPlayer, online, bridgeD
                             onChange={(e) => setTyped(e.target.value)}
                             disabled={busy}
                         />
-                        <span className="field__hint">
-                            <span className="u-mono">{citizenid}</span> — {name}
-                        </span>
                     </div>
                 )}
 
@@ -108,9 +96,6 @@ export default function CharacterDeleteManager({ selectedPlayer, online, bridgeD
             </div>
 
             <footer className="panel__foot">
-                <span className="panel__footinfo">
-                    {blocked ? 'Nothing here can run right now' : 'Cannot be undone'}
-                </span>
                 {confirming ? (
                     <>
                         <button type="button" className="btn btn--ghost" onClick={cancel} disabled={busy}>

@@ -39,12 +39,6 @@ export default function AccountsPanel() {
             <div className="panel__body">
                 {!canEdit && <PermissionLine what="change balances or freeze accounts" />}
 
-                <p className="field__hint">
-                    Every account on this server. The company accounts hang off no
-                    character at all — without this list there is nowhere in the panel
-                    they could be reached.
-                </p>
-
                 <div className="field">
                     <label className="field__label" htmlFor="accs-search">Search</label>
                     <input
@@ -107,7 +101,7 @@ export default function AccountsPanel() {
 
                 {res.status === 'ready' && more && (
                     <p className="field__hint">
-                        {`Showing the first ${accounts.length} of ${count} — narrow the search.`}
+                        {`First ${accounts.length} of ${count}`}
                     </p>
                 )}
             </div>

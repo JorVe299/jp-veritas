@@ -18,8 +18,8 @@ const STATES = [
 const stateEntry = (value) => STATES.find((s) => s.value === Number(value));
 
 const modeDetail = (mode) => (mode === 'live'
-    ? 'Applied live on the server.'
-    : 'The citizen is not connected, so the change went to the database.');
+    ? 'Applied live.'
+    : 'Saved to the database.');
 
 const errorText = (err) => err.response?.data?.error || err.message;
 
@@ -72,12 +72,6 @@ export default function VehicleManager({ selectedPlayer, onApplied }) {
                             title="The vehicles could not be loaded"
                             detail={res.error}
                         />
-                    )}
-
-                    {res.status === 'loading' && <p className="field__hint">Loading vehicles…</p>}
-
-                    {res.status === 'ready' && vehicles.length === 0 && (
-                        <p className="field__hint">No vehicle is registered to this citizen.</p>
                     )}
 
                     {vehicles.length > 0 && (

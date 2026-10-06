@@ -24,11 +24,7 @@ export default function Billboard({ player, bridgeDown, writeLog, onClear }) {
                     <h1 className="billboard__lede u-display">
                         Every citizen on this server, online or not.
                     </h1>
-                    <p className="billboard__sub">
-                        Pick a citizen below to change their job, rank or balances. Changes
-                        apply live when they are connected, and go straight to the database
-                        when they are not.
-                    </p>
+                    <p className="billboard__sub">Pick a citizen below.</p>
                 </div>
             </section>
         );

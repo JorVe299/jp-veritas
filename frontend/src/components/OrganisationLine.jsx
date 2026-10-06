@@ -92,9 +92,7 @@ export default function OrganisationLine({
             {/* Only a net difference is known here: no claim about who is missing where */}
             {diverges && (
                 <p className="line__meta line__meta--flag">
-                    These two do not match. The character record and the membership
-                    list do not describe the same people here — open the members to
-                    see who stands on one side only.
+                    Character records and membership list disagree.
                 </p>
             )}
 
@@ -127,9 +125,7 @@ export default function OrganisationLine({
                                 </ul>
                             ) : (
                                 <p className="field__hint">
-                                    No account row exists for this organisation. That is not a
-                                    balance of zero — there is nothing here to adjust until the
-                                    game server creates the account.
+                                    No account set up yet.
                                 </p>
                             )}
                         </section>
@@ -147,7 +143,7 @@ export default function OrganisationLine({
                 <StatusNote
                     tone="warn"
                     title="This row carries no account information"
-                    detail="The server did not send an account field for this organisation, so nothing is claimed about its balance."
+                    detail="Balance unknown."
                 />
             )}
         </li>
@@ -238,7 +234,7 @@ function MemberList({ res, groupsAvailable }) {
                     <p className="field__hint">
                         {groupsAvailable
                             ? 'The server returned no membership list for this organisation.'
-                            : 'This schema has no player_groups table, so memberships are not stored at all. Only the job set on each character is counted.'}
+                            : 'No player_groups table: only character jobs are counted.'}
                     </p>
                 ) : members.length === 0 ? (
                     <p className="field__hint">Nobody holds a membership here.</p>
@@ -267,7 +263,7 @@ function MemberList({ res, groupsAvailable }) {
 
             {data.truncated && (
                 <p className="field__hint">
-                    {`Only the first ${MEMBER_LIMIT} are listed — this organisation has more.`}
+                    {`First ${MEMBER_LIMIT} shown`}
                 </p>
             )}
         </div>

@@ -42,8 +42,7 @@ export default function RoleRoster({
                 setFeedback({
                     tone: 'warn',
                     title: body.message || done,
-                    detail: 'It went through, but the list could not be read again. '
-                        + 'Close the sheet and open it once more to see where things stand.',
+                    detail: 'Saved, but the list could not be reloaded. Reopen the sheet.',
                 });
             }
             return true;
@@ -76,16 +75,8 @@ export default function RoleRoster({
             <div className="roster__head">
                 <h3 className="roster__title u-caps">Roles</h3>
                 <p className="field__hint">
-                    {canEdit
-                        ? 'This list is the ranking, and the ranking decides what people can '
-                            + 'do: somebody who matches two of these roles in Discord holds the '
-                            + 'one nearer the top, and only that one. Move a role and you have '
-                            + 'changed who wins — the owner stays first and cannot be moved. '
-                            + 'Everything in this list is saved the moment it is pressed; only '
-                            + 'the grid below is collected and saved in one go.'
-                        : 'This list is the ranking: somebody who matches two of these roles '
-                            + 'in Discord holds the one nearer the top, and only that one. '
-                            + 'Changing it is the owner’s alone.'}
+                    Matching two roles: the higher one wins.
+                    {canEdit && ' Changes here save at once.'}
                 </p>
             </div>
 

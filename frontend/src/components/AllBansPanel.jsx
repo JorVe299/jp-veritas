@@ -94,17 +94,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                 {!canEdit && <PermissionLine what="lift bans" />}
 
                 <p className="field__hint">
-                    Both ban records in one list: the <strong>bans</strong> table in the
-                    server&rsquo;s database, which this panel writes, and txAdmin&rsquo;s own record,
-                    a file beside the server that this panel can only read. A ban blocks a license,
-                    a Discord ID or an IP — not a character — so entries with no character in this
-                    database behind them are findable here and nowhere else in the panel.
-                </p>
-
-                <p className="field__hint">
-                    Every row says which record it comes from. Only a <strong>Database</strong> row
-                    can be lifted here; a <strong>txAdmin</strong> row is managed in txAdmin and
-                    carries no control.
+                    Database and txAdmin bans. Only database bans can be lifted here.
                 </p>
 
                 {/* Pill states and clears the filter: a narrowed list never goes unmarked */}
@@ -125,7 +115,9 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                             </span>
                             <Icon name="cross" size={13} className="pill__x" />
                         </button>
-                        <span className="field__hint">{filterHint(identity)}</span>
+                        {filterHint(identity) && (
+                            <span className="field__hint">{filterHint(identity)}</span>
+                        )}
                     </div>
                 )}
 
@@ -185,10 +177,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                                 Include warnings
                             </button>
                         </div>
-                        <span className="field__hint">
-                            A warning is a note on record, not a ban — it keeps nobody out. Only
-                            txAdmin records them.
-                        </span>
+                        <span className="field__hint">Notes, not bans; txAdmin only.</span>
                     </div>
 
                     <div className="field">
@@ -264,25 +253,12 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                     </div>
                 )}
 
-                {/* Deliberate, but still said: a half list is a half list */}
-                {ready && applied && (
-                    <p className="field__hint">
-                        {applied === 'database'
-                            ? 'The record filter is set to the database table. txAdmin’s record is not being read, so anyone it holds is missing from this list.'
-                            : 'The record filter is set to txAdmin. The database table is not being read, so anyone it holds is missing from this list.'}
-                    </p>
-                )}
-
                 {unmatchable && (
                     <StatusNote
                         tone="info"
                         title="This citizen carries no license, Discord ID or IP on record"
-                        detail="A ban is matched by exactly those, so filtering the list to this person can only ever come back empty. That is a fact about the character record, not about whether anyone is banned."
+                        detail="Bans match on those, so this filter stays empty."
                     />
-                )}
-
-                {res.waiting && res.status === 'loading' && (
-                    <p className="field__hint">Reading both ban records…</p>
                 )}
 
                 {ready && rows.length === 0 && !unmatchable && (
@@ -349,7 +325,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
 function SourceFailure({ title, missing, rest, reason, hint }) {
     const said = typeof reason === 'string' ? reason.trim() : '';
     const detail = [
-        `This list is missing ${missing}. It is not an empty record — nobody managed to open it.`,
+        `Missing below: ${missing}.`,
         rest,
         said ? `Reported: ${said}` : null,
     ].filter(Boolean).join(' ');
@@ -359,7 +335,7 @@ function SourceFailure({ title, missing, rest, reason, hint }) {
             <StatusNote tone="warn" title={title} detail={detail} />
             {typeof hint === 'string' && hint.trim() && (
                 <details className="reveal">
-                    <summary className="reveal__summary">Details for whoever runs this server</summary>
+                    <summary className="reveal__summary">Technical details</summary>
                     <p className="reveal__body field__hint">{hint.trim()}</p>
                 </details>
             )}
@@ -371,14 +347,14 @@ function SourceFailure({ title, missing, rest, reason, hint }) {
 // zero is left to the unmatchable notice
 function filterHint(identity) {
     const held = numberOrNull(identity?.identifiers);
-    if (held === null || held < 1) return 'Clear the filter for every ban on the server.';
-    return `Matched on the ${held === 1 ? 'one identifier' : `${held} identifiers`} this citizen carries. Clear the filter for every ban on the server.`;
+    if (held === null || held < 1) return null;
+    return `Matched on ${held === 1 ? '1 identifier' : `${held} identifiers`}`;
 }
 
 // Never reads as an empty record: filtered-out, no bans and unreadable are distinct claims
 function emptyLine({ search, citizenid, activeOnly, includeWarnings, applied, failedCount }) {
     if (failedCount > 0) {
-        return 'Nothing matched in the record that could be read — and the other one could not be read at all. This is not the same as nobody being banned.';
+        return 'No match in the readable record; the other could not be read.';
     }
 
     const subject = includeWarnings ? 'ban or warning' : 'ban';
@@ -393,14 +369,14 @@ function emptyLine({ search, citizenid, activeOnly, includeWarnings, applied, fa
     }
     if (citizenid) {
         if (activeOnly) {
-            return `No ${subject}${where} is in force against this citizen. Entries that are over are hidden by the filter.`;
+            return `No ${subject}${where} is in force against this citizen.`;
         }
         return where
             ? `There is no ${subject}${where} against this citizen.`
             : `Neither record holds a ${subject} against this citizen.`;
     }
     if (activeOnly) {
-        return `No ${subject}${where} is in force right now. Entries that are over are hidden by the filter.`;
+        return `No ${subject}${where} is in force right now.`;
     }
     return where
         ? `There is no ${subject}${where}.`

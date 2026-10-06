@@ -45,12 +45,6 @@ export default function HomeArea({
                     <p className="home__lede">
                         Every citizen on this server, online or not.
                     </p>
-                    <p className="home__sub">
-                        Change a job, a balance, an inventory or a licence — live on the
-                        running server when the citizen is connected, straight in the
-                        database when they are not. The panel always tells you which of
-                        the two happened.
-                    </p>
 
                     {/* Only checked facts: nothing here would survive a failed check */}
                     <div className="home__facts">
@@ -81,13 +75,7 @@ export default function HomeArea({
                     className="note--wide"
                     tone="warn"
                     title="No connection to the FiveM server — nobody can be listed as online"
-                    detail={
-                        <>
-                            The database is readable, so the citizen list works. Only who is
-                            connected cannot be established.
-                            {bridge?.error && <> Reported: {bridge.error}</>}
-                        </>
-                    }
+                    detail={bridge?.error ? `Reported: ${bridge.error}` : undefined}
                 />
             )}
 
@@ -107,8 +95,7 @@ export default function HomeArea({
 
             {canViewPlayers && !bridgeDown && hidden > 0 && (
                 <p className="home__gap">
-                    {hidden} more {hidden === 1 ? 'citizen is' : 'citizens are'} on the server
-                    but not on the first page of records — search for them by name or citizen ID.
+                    {hidden} more on the server, not on this page.
                 </p>
             )}
 
