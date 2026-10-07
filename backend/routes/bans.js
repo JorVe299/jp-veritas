@@ -62,7 +62,7 @@ router.get('/api/bans/all', async (req, res) => {
     const citizenid = String(req.query.citizenid || '').trim();
     const activeOnly = req.query.active === 'true';
     const wantWarnings = req.query.include === 'warnings';
-    const onlySource = ['database', 'txadmin'].includes(req.query.source) ? req.query.source : null;
+    const onlySource = ['database', 'txadmin', 'history'].includes(req.query.source) ? req.query.source : null;
 
     try {
         // Citizen filter: resolve to identifiers
@@ -77,21 +77,23 @@ router.get('/api/bans/all', async (req, res) => {
         // Database record
         const database = { available: false, count: 0 };
         let rows = [];
-        if (onlySource !== 'txadmin' && await tableExists(TABLE)) {
-            const [raw] = await db.execute(
-                `SELECT * FROM ${TABLE} ORDER BY id DESC LIMIT ${MERGE_CEILING}`
-            );
-            rows = raw.map(shapeBan).map(banlist.fromDatabase);
-            database.available = true;
-            database.count = rows.length;
-        } else if (onlySource !== 'txadmin') {
-            database.reason = `Table '${TABLE}' does not exist in this database`;
+        if (!onlySource || onlySource === 'database') {
+            if (await tableExists(TABLE)) {
+                const [raw] = await db.execute(
+                    `SELECT * FROM ${TABLE} ORDER BY id DESC LIMIT ${MERGE_CEILING}`
+                );
+                rows = raw.map(shapeBan).map(banlist.fromDatabase);
+                database.available = true;
+                database.count = rows.length;
+            } else {
+                database.reason = `Table '${TABLE}' does not exist in this database`;
+            }
         }
 
         // txAdmin record; availability reported separately, never silently dropped from the list
         const txState = { available: false, count: 0 };
         let txRows = [];
-        if (onlySource !== 'database') {
+        if (!onlySource || onlySource === 'txadmin') {
             const result = await txadmin.allActions({
                 types: wantWarnings ? ['ban', 'warn'] : ['ban'],
                 limit: MERGE_CEILING,
@@ -107,8 +109,22 @@ router.get('/api/bans/all', async (req, res) => {
             }
         }
 
+        // Panel history: only what is over; an entry whose row still exists is listed above
+        const history = { available: false, count: 0 };
+        let pastRows = [];
+        if (!onlySource || onlySource === 'history') {
+            try {
+                const entries = await banLog.withState(banLog.log.all());
+                pastRows = entries.filter(e => e.state !== 'active').map(banLog.asMergedRow);
+                history.available = true;
+                history.count = pastRows.length;
+            } catch (e) {
+                history.reason = e.message;
+            }
+        }
+
         // Merge and filter
-        let merged = [...rows, ...txRows];
+        let merged = [...rows, ...txRows, ...pastRows];
         if (identifierSet) merged = merged.filter(r => banlist.belongsTo(r, identifierSet));
         if (activeOnly) merged = merged.filter(r => r.active);
 
@@ -160,7 +176,7 @@ router.get('/api/bans/all', async (req, res) => {
             page,
             limit,
             pages: Math.max(Math.ceil(count / limit), 1),
-            sources: { database, txadmin: txState },
+            sources: { database, txadmin: txState, history },
             filter: {
                 citizenid: citizenid || null,
                 q: rawQuery || null,

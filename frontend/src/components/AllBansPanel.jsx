@@ -43,8 +43,11 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
     const sources = data.sources || {};
     // From the answer, not the control: describe the list shown, not the request in flight
     const applied = data.filter?.source || null;
-    const databaseAsked = applied !== 'txadmin';
-    const txadminAsked = applied !== 'database';
+    const databaseAsked = !applied || applied === 'database';
+    const txadminAsked = !applied || applied === 'txadmin';
+    // History holds only what is over: unreadable, it hides no ban in force, so not counted
+    const historyFailed = ready && (!applied || applied === 'history')
+        && sources.history?.available === false;
 
     // available:false counts only for an asked source; the filter leaves the other out
     const databaseFailed = ready && databaseAsked && sources.database?.available === false;
@@ -94,7 +97,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                 {!canEdit && <PermissionLine what="lift bans" />}
 
                 <p className="field__hint">
-                    Database and txAdmin bans. Only database bans can be lifted here.
+                    Database and txAdmin bans, plus past panel bans. Only database bans can be lifted.
                 </p>
 
                 {/* Pill states and clears the filter: a narrowed list never goes unmarked */}
@@ -189,7 +192,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                                 aria-pressed={source === ''}
                                 onClick={() => change(setSource)('')}
                             >
-                                Both
+                                All
                             </button>
                             <button
                                 type="button"
@@ -206,6 +209,14 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                                 onClick={() => change(setSource)('txadmin')}
                             >
                                 txAdmin
+                            </button>
+                            <button
+                                type="button"
+                                className="segment__btn"
+                                aria-pressed={source === 'history'}
+                                onClick={() => change(setSource)('history')}
+                            >
+                                History
                             </button>
                         </div>
                     </div>
@@ -237,6 +248,14 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                         rest={databaseAsked ? 'What stands below is the database table alone.' : null}
                         reason={sources.txadmin?.reason}
                         hint={sources.txadmin?.hint}
+                    />
+                )}
+
+                {historyFailed && (
+                    <StatusNote
+                        tone="warn"
+                        title="The ban history could not be read"
+                        detail={sources.history?.reason}
                     />
                 )}
 
@@ -281,6 +300,7 @@ export default function AllBansPanel({ citizenid = '', onClearCitizen }) {
                                     key={entry.key}
                                     entry={entry}
                                     canEdit={canEdit}
+                                    canDeleteHistory={can('banlog.delete')}
                                     onFeedback={setFeedback}
                                     onChanged={reload}
                                 />
@@ -362,7 +382,9 @@ function emptyLine({ search, citizenid, activeOnly, includeWarnings, applied, fa
         ? ' in the database table'
         : applied === 'txadmin'
             ? ' in the txAdmin record'
-            : '';
+            : applied === 'history'
+                ? ' in the ban history'
+                : '';
 
     if (search) {
         return `No ${subject}${where} matches “${search}”${citizenid ? ' for this citizen' : ''}${activeOnly ? ' and is in force' : ''}.`;

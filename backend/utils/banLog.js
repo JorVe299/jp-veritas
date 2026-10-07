@@ -168,6 +168,9 @@ function asMergedRow(entry) {
         permanent: entry.permanent,
         revoked: entry.state === 'lifted',
         revokedAt: entry.liftedAt,
+        revokedBy: entry.liftedBy,
+        // Delete handle for banlog.delete; nativeId is the long-gone bans row
+        historyId: entry.id,
         expired: entry.state === 'ended',
         active: false,
         identifiers: entry.identifiers,

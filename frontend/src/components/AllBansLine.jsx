@@ -1,16 +1,20 @@
 import { useState } from 'react';
-import { liftBan } from '../api';
+import { deleteBanHistory, liftBan } from '../api';
 import { DASH } from '../lib/portalText';
 import { failureNote, successNote } from '../lib/writeFeedback';
 import { formatDateTime } from '../utils/format';
 
-/** Row of the merged ban list (database table + txAdmin); !canEdit is explained by the panel */
-export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
+// Source in words on every row: only database rows can be lifted, only history rows deleted
+const SOURCE_LABELS = { database: 'Database', txadmin: 'txAdmin', history: 'History' };
+
+/** Row of the merged ban list (table, txAdmin, panel history); !canEdit explained by the panel */
+export default function AllBansLine({ entry, canEdit, canDeleteHistory = false, onFeedback, onChanged }) {
     const [confirming, setConfirming] = useState(false);
     const [busy, setBusy] = useState(false);
 
     const warning = entry?.type === 'warn';
     const fromDatabase = entry?.source === 'database';
+    const fromHistory = entry?.source === 'history';
     const state = stateOf(entry, warning);
 
     const identifiers = groupIdentifiers(entry?.identifiers);
@@ -29,10 +33,26 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
         issuedBy ? { key: 'by', text: `By ${issuedBy}` } : null,
         { key: 'issued', text: issuedLine(entry, fromDatabase) },
         state.term ? { key: 'term', text: state.term } : null,
+        fromHistory && text(entry?.revokedBy) ? { key: 'liftedby', text: `Lifted by ${text(entry.revokedBy)}` } : null,
         reference
-            ? { key: 'ref', label: fromDatabase ? 'Row' : 'Action', text: reference, mono: true }
+            ? { key: 'ref', label: fromDatabase || fromHistory ? 'Row' : 'Action', text: reference, mono: true }
             : null,
     ].filter(Boolean);
+
+    const handleDeleteHistory = async () => {
+        setBusy(true);
+        onFeedback(null);
+        try {
+            await deleteBanHistory(entry.historyId);
+            onFeedback({ tone: 'success', title: 'History entry deleted' });
+            onChanged();
+        } catch (err) {
+            setConfirming(false);
+            onFeedback(failureNote('The entry could not be deleted', err));
+        } finally {
+            setBusy(false);
+        }
+    };
 
     // Deletes the row: two presses via the button label, no confirm() dialog
     const handleLift = async () => {
@@ -55,9 +75,8 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
             <div className="line__top">
                 <span className="line__name">{reason || 'No reason recorded'}</span>
                 <span className="line__badges">
-                    {/* Source in words on every row: only database rows can be lifted here */}
                     <span className="pill pill--off line__src">
-                        {fromDatabase ? 'Database' : 'txAdmin'}
+                        {SOURCE_LABELS[entry?.source] ?? 'Unknown'}
                     </span>
                     <span className={`pill ${state.pill}`}>{state.badge}</span>
                 </span>
@@ -101,6 +120,39 @@ export default function AllBansLine({ entry, canEdit, onFeedback, onChanged }) {
                         ))}
                     </div>
                 </details>
+            )}
+
+            {fromHistory && canDeleteHistory && entry?.historyId && (
+                <div className="line__actions">
+                    {confirming ? (
+                        <>
+                            <button
+                                type="button"
+                                className="btn btn--danger btn--sm"
+                                onClick={handleDeleteHistory}
+                                disabled={busy}
+                            >
+                                {busy ? 'Deleting…' : 'Delete entry'}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                onClick={() => setConfirming(false)}
+                                disabled={busy}
+                            >
+                                Keep
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            onClick={() => { setConfirming(true); onFeedback(null); }}
+                        >
+                            Delete
+                        </button>
+                    )}
+                </div>
             )}
 
             {/* txAdmin rows (canLift false) get no control, not even a disabled one */}

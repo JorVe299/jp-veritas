@@ -286,8 +286,9 @@ exists, `lifted`, `ended` past its end, `removed` when the row went some
 other way. Entries go only through `DELETE /api/manage/ban-history/:id`
 (`banlog.delete`). A file that cannot be parsed is an error, never an empty
 history, or the next ban would overwrite it. A refused history write leaves
-the ban standing and says so in the answer. Veritas ID lists entries that are
-no longer in force under their own source, `history`.
+the ban standing and says so in the answer. Veritas ID and the server-wide list (`/api/bans/all`,
+filter `source=history`) show entries that are no longer in force under their
+own source, `history`.
 
 **Manual refresh buttons wait a minute.** Every "refresh" / "try again"
 button in the frontend goes through `lib/useCooldown.js` and is disabled for

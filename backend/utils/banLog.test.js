@@ -101,4 +101,5 @@ test('as a merged row a history entry is never in force and cannot be lifted', (
     assert.equal(merged.revoked, true);
     assert.equal(merged.canLift, false);
     assert.equal(merged.source, 'history');
+    assert.equal(merged.historyId, 'x', 'the server list deletes by this');
 });
