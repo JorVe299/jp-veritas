@@ -174,7 +174,8 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
         <div className="sheet" role="dialog" aria-modal="true" aria-label={`Inventory of ${playerName}`}>
             <button className="sheet__backdrop" type="button" aria-label="Close inventory" onClick={onClose} />
 
-            <div className="sheet__panel">
+            {/* Workspace: every area keeps its place and scrolls on its own */}
+            <div className="sheet__panel ws">
                 <header className="sheet__head">
                     <Icon name="box" size={20} className="panel__icon" />
                     <div className="sheet__heading">
@@ -185,13 +186,34 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                                 : 'Loading…'}
                         </p>
                     </div>
+
+                    <div className="weigh ws__weight">
+                        <div className="weigh__head">
+                            <span>Weight</span>
+                            <span className="weigh__value u-mono">{kg(used)} / {kg(max)}</span>
+                        </div>
+                        <div
+                            className="weigh__bar"
+                            role="progressbar"
+                            aria-valuenow={Math.round(pct)}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label="Inventory weight"
+                        >
+                            <div
+                                className={`weigh__fill${used > max && max > 0 ? ' weigh__fill--over' : ''}`}
+                                style={{ width: `${pct}%` }}
+                            />
+                        </div>
+                    </div>
+
                     <button ref={closeRef} type="button" className="btn btn--ghost btn--sm" onClick={onClose}>
                         Close
                     </button>
                 </header>
 
-                <div className="sheet__body">
-                    <div>
+                <div className="ws__body">
+                    <div className="ws__canvas">
                         {state.status === 'loading' && <p className="field__hint">Loading inventory…</p>}
 
                         {state.status === 'error' && (
@@ -221,90 +243,97 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                         )}
                     </div>
 
-                    <aside className="sheet__side">
-                        <div className="weigh">
-                            <div className="weigh__head">
-                                <span>Weight</span>
-                                <span className="weigh__value u-mono">{kg(used)} / {kg(max)}</span>
-                            </div>
-                            <div
-                                className="weigh__bar"
-                                role="progressbar"
-                                aria-valuenow={Math.round(pct)}
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                                aria-label="Inventory weight"
-                            >
-                                <div
-                                    className={`weigh__fill${used > max && max > 0 ? ' weigh__fill--over' : ''}`}
-                                    style={{ width: `${pct}%` }}
+                    <aside className="ws__inspector" aria-label="Item tools">
+                        <div className="ws__scroll">
+                            {/* Once, at the top: the reason nothing below works */}
+                            {!canEdit && <PermissionLine what="add, remove or move items" />}
+
+                            {canEdit && serverLocked && (
+                                <StatusNote
+                                    tone="warn"
+                                    title="Slots cannot be rearranged right now"
+                                    detail="The player is online. Adding and removing still work."
                                 />
+                            )}
+
+                            <section className="ws__section" aria-labelledby="ws-selected">
+                                <h3 className="ws__title u-caps" id="ws-selected">Selected</h3>
+                                {selectedItem ? (
+                                    <SlotDetail
+                                        /* Remount per slot: the amount starts from that item */
+                                        key={selectedItem.slot}
+                                        item={selectedItem}
+                                        busy={busy}
+                                        canEdit={canEdit}
+                                        onSet={(amount) => mutate(
+                                            { action: 'set', item: selectedItem.name, amount, slot: selectedItem.slot },
+                                            `${selectedItem.label} set to ${amount}x`,
+                                        )}
+                                        onRemove={() => mutate(
+                                            { action: 'remove', item: selectedItem.name, amount: selectedItem.amount, slot: selectedItem.slot },
+                                            `${selectedItem.amount}x ${selectedItem.label} removed`,
+                                        ).then(() => setSelected(null))}
+                                    />
+                                ) : (
+                                    <p className="field__hint">Click a slot.</p>
+                                )}
+                            </section>
+
+                            {canEdit && (
+                                <section className="ws__section" aria-labelledby="ws-add">
+                                    <h3 className="ws__title u-caps" id="ws-add">Add item</h3>
+                                    <CatalogAdd
+                                        disabled={busy}
+                                        onAdd={(name, amount, label) => mutate(
+                                            { action: 'add', item: name, amount },
+                                            `${amount}x ${label} added`,
+                                        )}
+                                        onDragItem={setDragging}
+                                        onDragEnd={endDrag}
+                                    />
+                                </section>
+                            )}
+                        </div>
+
+                        {/* Docked: reachable from any tile without scrolling the inspector */}
+                        <div className="ws__dock">
+                            <div
+                                className={`trash${dropTarget === 'trash' ? ' trash--armed' : ''}`}
+                                onDragOver={(e) => allowDrop(e, 'trash')}
+                                onDragLeave={() => setDropTarget((t) => (t === 'trash' ? null : t))}
+                                onDrop={dropOnTrash}
+                            >
+                                <Icon name="trash" size={18} />
+                                <span>
+                                    {canEdit
+                                        ? 'Drop a tile here to remove it'
+                                        : 'Removing items needs inventory.edit'}
+                                </span>
                             </div>
                         </div>
-
-                        {/* Once, at the top: the reason nothing below works */}
-                        {!canEdit && <PermissionLine what="add, remove or move items" />}
-
-                        {canEdit && serverLocked && (
-                            <StatusNote
-                                tone="warn"
-                                title="Slots cannot be rearranged right now"
-                                detail="The player is online. Adding and removing still work."
-                            />
-                        )}
-
-                        {selectedItem && (
-                            <SlotDetail
-                                item={selectedItem}
-                                busy={busy}
-                                canEdit={canEdit}
-                                onSet={(amount) => mutate(
-                                    { action: 'set', item: selectedItem.name, amount, slot: selectedItem.slot },
-                                    `${selectedItem.label} set to ${amount}x`,
-                                )}
-                                onRemove={() => mutate(
-                                    { action: 'remove', item: selectedItem.name, amount: selectedItem.amount, slot: selectedItem.slot },
-                                    `${selectedItem.amount}x ${selectedItem.label} removed`,
-                                ).then(() => setSelected(null))}
-                            />
-                        )}
-
-                        {canEdit && (
-                            <CatalogAdd
-                                disabled={busy}
-                                onAdd={(name, amount, label) => mutate(
-                                    { action: 'add', item: name, amount },
-                                    `${amount}x ${label} added`,
-                                )}
-                                onDragItem={setDragging}
-                                onDragEnd={endDrag}
-                            />
-                        )}
-
-                        {/* Shown read-only too, as part of the grid; no tile can reach it */}
-                        <div
-                            className={`trash${dropTarget === 'trash' ? ' trash--armed' : ''}`}
-                            onDragOver={(e) => allowDrop(e, 'trash')}
-                            onDragLeave={() => setDropTarget((t) => (t === 'trash' ? null : t))}
-                            onDrop={dropOnTrash}
-                        >
-                            <Icon name="cross" size={18} />
-                            <span>
-                                {canEdit
-                                    ? 'Drop a tile here to remove it'
-                                    : 'Removing items needs inventory.edit'}
-                            </span>
-                        </div>
-
-                        {feedback && (
-                            <StatusNote tone={feedback.tone} title={feedback.title} detail={feedback.detail} />
-                        )}
                     </aside>
                 </div>
+
+                {/* Status bar: the last answer stays here, out of the way of the grid */}
+                <footer className={`ws__status${feedback ? ` ws__status--${feedback.tone}` : ''}`} role="status">
+                    {feedback ? (
+                        <>
+                            <Icon name={STATUS_ICONS[feedback.tone] ?? 'info'} size={15} />
+                            <span className="ws__statustitle">{feedback.title}</span>
+                            {feedback.detail && <span className="ws__statusdetail">{feedback.detail}</span>}
+                        </>
+                    ) : (
+                        <span className="ws__statusdetail">
+                            {canReorder ? 'Drag tiles to move, swap or merge' : 'Ready'}
+                        </span>
+                    )}
+                </footer>
             </div>
         </div>
     );
 }
+
+const STATUS_ICONS = { success: 'check', error: 'cross', warn: 'warn', info: 'info' };
 
 // --- Slot, detail, catalog ------------------------------------------------
 
