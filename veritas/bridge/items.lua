@@ -16,6 +16,27 @@ local function inventory()
     return kind
 end
 
+-- ox_inventory's own list: weapons and ammo included, which core item tables may lack
+-- Plain fields only: item entries carry functions json.encode cannot write
+function Items.catalog()
+    if inventory() ~= 'ox_inventory' then return nil end
+    local ok, list = pcall(function() return exports.ox_inventory:Items() end)
+    if not ok or type(list) ~= 'table' then return nil end
+
+    local out = {}
+    for name, item in pairs(list) do
+        out[name] = {
+            name = name,
+            label = item.label,
+            weight = item.weight,
+            unique = item.stack == false or item.weapon == true,
+            weapon = item.weapon == true or nil,
+            description = item.description,
+        }
+    end
+    return out
+end
+
 function Items.add(player, src, name, count, slot)
     if inventory() == 'ox_inventory' then
         return exports.ox_inventory:AddItem(src, name, count) ~= false

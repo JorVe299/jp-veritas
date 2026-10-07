@@ -262,6 +262,7 @@ AddEventHandler('onResourceStart', function(resource)
 
     -- Shared tables as JSON for the backend
     local dumps = adapter.dumpShared()
+    dumps['items.json'] = Items.catalog() or dumps['items.json']
     for name, fn in pairs(Config.ExtraDumps or {}) do
         local ok, extra = pcall(fn)
         if ok then dumps[name] = extra end

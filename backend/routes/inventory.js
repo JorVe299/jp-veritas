@@ -29,6 +29,12 @@ function detectFormat(raw) {
     return 'empty';
 }
 
+// ox_inventory keeps weapons upper-case (WEAPON_STUNGUN), items lower-case; cores differ
+function catalogEntry(catalog, name) {
+    const key = String(name ?? '');
+    return catalog[key] ?? catalog[key.toLowerCase()] ?? catalog[key.toUpperCase()] ?? null;
+}
+
 function normalize(raw) {
     const format = detectFormat(raw);
     const catalog = getItems();
@@ -53,7 +59,7 @@ function normalize(raw) {
     const items = entries
         .filter(it => it.name && it.amount > 0)
         .map(it => {
-            const meta = catalog[it.name];
+            const meta = catalogEntry(catalog, it.name);
             const weight = Number.isFinite(Number(meta?.weight)) ? Number(meta.weight) : 0;
             return {
                 ...it,
@@ -237,10 +243,15 @@ router.post('/api/manage/inventory', async (req, res) => {
         return res.status(400).json({ error: 'amount must be a whole number >= 0' });
     }
 
-    // Validate against items.json; an empty catalog lets it through (resource never ran)
+    // Only what is handed out is checked: removing what a player holds never needs the catalog
+    // Empty catalog lets it through (resource never ran)
     const catalog = getItems();
-    if (Object.keys(catalog).length > 0 && !catalog[item]) {
-        return res.status(404).json({ error: `Item '${item}' is not listed in items.json` });
+    const grows = action === 'add' || (action === 'set' && qty > 0);
+    if (grows && Object.keys(catalog).length > 0 && !catalogEntry(catalog, item)) {
+        return res.status(404).json({
+            error: `Item '${item}' is not in the item catalog`,
+            hint: 'Restart the veritas resource so it exports the current item list, then press Reload reference data.',
+        });
     }
 
     try {
@@ -260,7 +271,7 @@ router.post('/api/manage/inventory', async (req, res) => {
 
         const raw = parseJSON(rows[0].inventory);
         const { format, items } = normalize(raw);
-        const isUnique = catalog[item]?.unique === true;
+        const isUnique = catalogEntry(catalog, item)?.unique === true;
 
         if (action === 'add') {
             const target = slot != null ? items.find(i => i.slot === Number(slot)) : null;

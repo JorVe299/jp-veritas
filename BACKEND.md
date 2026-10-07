@@ -327,7 +327,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 176 tests
+cd backend  && npm test         # node --test, currently 180 tests
 cd frontend && npx eslint . && npx vite build
 ```
 
@@ -389,6 +389,13 @@ one the form offers would otherwise overflow the column, and strict-mode MySQL
 refuses the insert. Writing and reading both live in `utils/banlist.js`
 (`expiryFor` beside `shapeBan`). The write path once referred to a constant
 that had moved there, and every permanent ban answered 500.
+
+**ox_inventory weapons are upper-case.** Items are `water`, weapons
+`WEAPON_STUNGUN`, and a core's own item table may hold them lower-case or not
+at all. So with ox_inventory running the bridge exports `items.json` from
+`exports.ox_inventory:Items()`, the inventory route looks names up
+case-blind, and the catalog only gates handing something out: removing what a
+player already holds never needs it. That check once refused to delete a taser.
 
 **`player_vehicles.mods` is not mods.** It holds the ox_lib vehicle property
 table, which is what qbx_garages reads. Writing `'{}'` there produces
