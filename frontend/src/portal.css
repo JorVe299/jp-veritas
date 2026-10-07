@@ -405,11 +405,87 @@
 
 /* Key art like the panel's billboard: the same long scrim and grain keep text legible */
 .idhead {
-    position: relative;
-    isolation: isolate;
     overflow: hidden;
     border-radius: var(--r-panel);
     border: 1px solid var(--c-border);
+    background: var(--c-surface);
+}
+
+/* The plate's own box: the drawer below must not sit on the picture */
+.idhead__top {
+    position: relative;
+    isolation: isolate;
+}
+
+/* Covers the whole card: the card is the control, the chevron only marks it */
+.idhead__toggle {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: var(--s-2);
+    padding: var(--s-5);
+    border: 0;
+    background: none;
+    color: var(--c-text-faint);
+    cursor: pointer;
+    transition: color 0.14s ease;
+}
+
+.idhead__toggle:hover,
+.idhead__toggle[aria-expanded="true"] {
+    color: var(--c-text);
+}
+
+.idhead__toggle:focus-visible {
+    outline-offset: -2px;
+}
+
+.idhead__chevron {
+    transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.idhead.is-open .idhead__chevron {
+    transform: rotate(180deg);
+}
+
+/* Back link above the card-wide toggle, or it could never be pressed */
+.idhead .idback {
+    position: relative;
+    z-index: 1;
+}
+
+/* Grid track 0fr to 1fr: the same reveal as the poster tile, no max-height guess */
+.idhead__drawer {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.idhead.is-open .idhead__drawer {
+    grid-template-rows: 1fr;
+}
+
+.idhead__drawerinner {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.idhead__drawerinner > * {
+    margin: 0;
+    border-top: 1px solid var(--c-border);
+}
+
+/* Inside the card already: the record drops its own frame */
+.idhead__drawerinner > .idpanel {
+    border-width: 1px 0 0;
+    border-radius: 0;
+    background: none;
+}
+
+.idhead__drawerinner > .idbans__quiet {
+    padding: var(--s-4) var(--s-5);
 }
 
 .idhead__art {

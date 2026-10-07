@@ -1,6 +1,8 @@
+import { useId, useState } from 'react';
 import Amount from './Amount';
 import Icon from './Icon';
 import Plate from './Plate';
+import PortalBans from './PortalBans';
 import PortalInventory from './PortalInventory';
 import PortalNotice from './PortalNotice';
 import PortalVehicles from './PortalVehicles';
@@ -53,37 +55,60 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
     const gang = gangLine(record?.gang);
     const balances = moneyRows(record?.money);
 
+    const [bansOpen, setBansOpen] = useState(false);
+    const drawerId = useId();
+
     return (
         <>
-            <header className="idhead">
-                <div className="idhead__art" aria-hidden="true">
-                    <Plate citizenid={citizenid} shape="wide" />
-                    <span className="idhead__grain" />
-                    <span className="idhead__scrim" />
-                </div>
-
-                <div className="idhead__inner">
-                    {onBack && (
-                        <button type="button" className="idback" onClick={onBack}>
-                            <Icon name="chevronLeft" size={16} />
-                            All characters
-                        </button>
-                    )}
-
-                    <div className="idhead__line">
-                        <h1 className="idhead__name">{heading}</h1>
-                        {onDuty && <span className="pill pill--live"><span className="pill__dot" />On duty</span>}
+            {/* Card toggles the account's ban record; fetched up front, so it opens full */}
+            <header className={`idhead${bansOpen ? ' is-open' : ''}`}>
+                <div className="idhead__top">
+                    <div className="idhead__art" aria-hidden="true">
+                        <Plate citizenid={citizenid} shape="wide" />
+                        <span className="idhead__grain" />
+                        <span className="idhead__scrim" />
                     </div>
 
-                    <p className="idhead__meta">
-                        <span className="u-mono">{shown(citizenid)}</span>
-                        {record && (
-                            <>
-                                <span className="idrow__sep" aria-hidden="true">·</span>
-                                Last seen {formatDateTime(record.lastSeen)}
-                            </>
+                    <div className="idhead__inner">
+                        {onBack && (
+                            <button type="button" className="idback" onClick={onBack}>
+                                <Icon name="chevronLeft" size={16} />
+                                All characters
+                            </button>
                         )}
-                    </p>
+
+                        <div className="idhead__line">
+                            <h1 className="idhead__name">{heading}</h1>
+                            {onDuty && <span className="pill pill--live"><span className="pill__dot" />On duty</span>}
+                        </div>
+
+                        <p className="idhead__meta">
+                            <span className="u-mono">{shown(citizenid)}</span>
+                            {record && (
+                                <>
+                                    <span className="idrow__sep" aria-hidden="true">·</span>
+                                    Last seen {formatDateTime(record.lastSeen)}
+                                </>
+                            )}
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        className="idhead__toggle"
+                        aria-expanded={bansOpen}
+                        aria-controls={drawerId}
+                        onClick={() => setBansOpen((open) => !open)}
+                    >
+                        <span className="idhead__togglelabel u-caps">Ban record</span>
+                        <Icon name="chevronDown" size={20} className="idhead__chevron" />
+                    </button>
+                </div>
+
+                <div className="idhead__drawer" id={drawerId} inert={!bansOpen}>
+                    <div className="idhead__drawerinner">
+                        <PortalBans />
+                    </div>
                 </div>
             </header>
 
