@@ -2018,7 +2018,7 @@
 }
 
 /* --- Inventory workspace ----------------------------------------------- */
-/* Fixed frame, own scroll per area: canvas left, inspector right, status bar below */
+/* As ox_inventory: weight over five columns of slots; the tools beside it never scroll */
 
 .sheet__panel.ws {
     width: min(100rem, 100%);
@@ -2026,46 +2026,59 @@
     max-height: none;
 }
 
-.ws__weight {
-    width: 15rem;
-    flex: none;
+/* Tile size fixes the canvas width; the rest of the row belongs to the tools */
+.ws {
+    --ws-tile: 7.5rem;
 }
 
 .ws__body {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 24rem;
+    grid-template-columns: auto minmax(0, 1fr);
 }
 
+/* Weight stays put above the slots; only the slots scroll */
 .ws__canvas {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
     min-height: 0;
-    overflow-y: auto;
     padding: var(--s-5);
     background: var(--c-bg);
+    border-right: 1px solid var(--c-border);
+}
+
+.ws__slots {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    /* Room for the scrollbar, so it never covers the fifth column */
+    padding-right: var(--s-2);
+    scrollbar-gutter: stable;
 }
 
 .ws__inspector {
     display: flex;
     flex-direction: column;
+    gap: var(--s-4);
     min-height: 0;
-    border-left: 1px solid var(--c-border);
+    padding: var(--s-5);
 }
 
-.ws__scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
+/* Selected and Add item side by side: both in view while working, no tool scroll */
+.ws__groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--s-5);
-    padding: var(--s-4);
+    align-items: start;
 }
 
 .ws__section {
     display: flex;
     flex-direction: column;
     gap: var(--s-2);
+    min-width: 0;
 }
 
 .ws__title {
@@ -2073,8 +2086,7 @@
 }
 
 .ws__dock {
-    padding: var(--s-4);
-    border-top: 1px solid var(--c-border);
+    margin-top: auto;
 }
 
 /* One line; the hue sits on the icon only, as in StatusNote */
@@ -2116,27 +2128,39 @@
     white-space: nowrap;
 }
 
-/* Workspace tiles: as wide as the canvas allows, never under 7.5rem */
+/* Five per row, as in the game; the larger tile is the whole point of the workspace */
 .ws .grid {
-    grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
-    gap: var(--s-3);
+    grid-template-columns: repeat(5, var(--ws-tile));
+    gap: var(--s-2);
 }
 
 .ws .slot {
-    padding: var(--s-3);
+    padding: var(--s-2);
 }
 
 .ws .slot__num,
-.ws .slot__count {
-    font-size: var(--fs-sm);
-}
-
+.ws .slot__count,
 .ws .slot__label {
     font-size: var(--fs-sm);
 }
 
 .ws .slot__fallback {
     font-size: min(var(--fs-md), 40cqi);
+}
+
+/* Narrower screens: smaller tiles, tools stacked; the tools may scroll only here */
+@media (max-width: 1280px) {
+    .ws {
+        --ws-tile: 6.25rem;
+    }
+
+    .ws__groups {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ws__inspector {
+        overflow-y: auto;
+    }
 }
 
 /* --- The grid ---------------------------------------------------------- */
@@ -2331,27 +2355,21 @@
         overflow-y: auto;
     }
 
-    .ws__canvas,
-    .ws__scroll {
+    .ws__canvas {
+        border-right: 0;
+    }
+
+    .ws__slots,
+    .ws__inspector {
         overflow: visible;
     }
 
     .ws__inspector {
-        border-left: 0;
         border-top: 1px solid var(--c-border);
     }
 
-    .ws .sheet__head {
-        flex-wrap: wrap;
-    }
-
-    .ws__weight {
-        order: 1;
-        width: 100%;
-    }
-
     .ws .grid {
-        grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 }
 

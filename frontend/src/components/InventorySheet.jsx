@@ -187,26 +187,6 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                         </p>
                     </div>
 
-                    <div className="weigh ws__weight">
-                        <div className="weigh__head">
-                            <span>Weight</span>
-                            <span className="weigh__value u-mono">{kg(used)} / {kg(max)}</span>
-                        </div>
-                        <div
-                            className="weigh__bar"
-                            role="progressbar"
-                            aria-valuenow={Math.round(pct)}
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-label="Inventory weight"
-                        >
-                            <div
-                                className={`weigh__fill${used > max && max > 0 ? ' weigh__fill--over' : ''}`}
-                                style={{ width: `${pct}%` }}
-                            />
-                        </div>
-                    </div>
-
                     <button ref={closeRef} type="button" className="btn btn--ghost btn--sm" onClick={onClose}>
                         Close
                     </button>
@@ -214,48 +194,70 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
 
                 <div className="ws__body">
                     <div className="ws__canvas">
-                        {state.status === 'loading' && <p className="field__hint">Loading inventory…</p>}
-
-                        {state.status === 'error' && (
-                            <StatusNote tone="error" title="The inventory could not be loaded" detail={state.error} />
-                        )}
-
-                        {state.status === 'ready' && (
-                            <div className="grid">
-                                {Array.from({ length: maxSlots }, (_, i) => i + 1).map((slotNumber) => (
-                                    <Slot
-                                        key={slotNumber}
-                                        number={slotNumber}
-                                        item={bySlot.get(slotNumber)}
-                                        draggable={canReorder && !busy}
-                                        isSource={dragging?.kind === 'slot' && dragging.slot === slotNumber}
-                                        isDrop={dropTarget === slotNumber}
-                                        isSelected={selected === slotNumber}
-                                        onSelect={() => setSelected(slotNumber)}
-                                        onDragStart={startSlotDrag}
-                                        onDragEnd={endDrag}
-                                        onDragOver={(e) => allowDrop(e, slotNumber)}
-                                        onDragLeave={() => setDropTarget((t) => (t === slotNumber ? null : t))}
-                                        onDrop={(e) => dropOnSlot(e, slotNumber)}
-                                    />
-                                ))}
+                        <div className="weigh">
+                            <div className="weigh__head">
+                                <span>Weight</span>
+                                <span className="weigh__value u-mono">{kg(used)} / {kg(max)}</span>
                             </div>
-                        )}
+                            <div
+                                className="weigh__bar"
+                                role="progressbar"
+                                aria-valuenow={Math.round(pct)}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-label="Inventory weight"
+                            >
+                                <div
+                                    className={`weigh__fill${used > max && max > 0 ? ' weigh__fill--over' : ''}`}
+                                    style={{ width: `${pct}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="ws__slots">
+                            {state.status === 'loading' && <p className="field__hint">Loading inventory…</p>}
+
+                            {state.status === 'error' && (
+                                <StatusNote tone="error" title="The inventory could not be loaded" detail={state.error} />
+                            )}
+
+                            {state.status === 'ready' && (
+                                <div className="grid">
+                                    {Array.from({ length: maxSlots }, (_, i) => i + 1).map((slotNumber) => (
+                                        <Slot
+                                            key={slotNumber}
+                                            number={slotNumber}
+                                            item={bySlot.get(slotNumber)}
+                                            draggable={canReorder && !busy}
+                                            isSource={dragging?.kind === 'slot' && dragging.slot === slotNumber}
+                                            isDrop={dropTarget === slotNumber}
+                                            isSelected={selected === slotNumber}
+                                            onSelect={() => setSelected(slotNumber)}
+                                            onDragStart={startSlotDrag}
+                                            onDragEnd={endDrag}
+                                            onDragOver={(e) => allowDrop(e, slotNumber)}
+                                            onDragLeave={() => setDropTarget((t) => (t === slotNumber ? null : t))}
+                                            onDrop={(e) => dropOnSlot(e, slotNumber)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <aside className="ws__inspector" aria-label="Item tools">
-                        <div className="ws__scroll">
-                            {/* Once, at the top: the reason nothing below works */}
-                            {!canEdit && <PermissionLine what="add, remove or move items" />}
+                        {/* Once, at the top: the reason nothing below works */}
+                        {!canEdit && <PermissionLine what="add, remove or move items" />}
 
-                            {canEdit && serverLocked && (
-                                <StatusNote
-                                    tone="warn"
-                                    title="Slots cannot be rearranged right now"
-                                    detail="The player is online. Adding and removing still work."
-                                />
-                            )}
+                        {canEdit && serverLocked && (
+                            <StatusNote
+                                tone="warn"
+                                title="Slots cannot be rearranged right now"
+                                detail="The player is online. Adding and removing still work."
+                            />
+                        )}
 
+                        <div className="ws__groups">
                             <section className="ws__section" aria-labelledby="ws-selected">
                                 <h3 className="ws__title u-caps" id="ws-selected">Selected</h3>
                                 {selectedItem ? (
@@ -295,7 +297,7 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                             )}
                         </div>
 
-                        {/* Docked: reachable from any tile without scrolling the inspector */}
+                        {/* Same place whatever is selected: a drag always finds the bin */}
                         <div className="ws__dock">
                             <div
                                 className={`trash${dropTarget === 'trash' ? ' trash--armed' : ''}`}
