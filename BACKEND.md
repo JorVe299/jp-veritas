@@ -39,8 +39,8 @@ use the application's own routes, make it exactly reversible, restore it,
 verify the restoration, and say so in your report. Reading through the
 app's own routes is fine; ad-hoc scripts against the DB are not.
 
-**Restore whatever you disturbed.** `backend/data/permissions.json` and the
-catalog JSON files are runtime state. If a test creates them, delete them
+**Restore whatever you disturbed.** `backend/data/permissions.json`,
+`backend/data/banlog.json` and the catalog JSON files are runtime state. If a test creates them, delete them
 again and say what the state was before and after.
 
 **Document every change in the same commit.** Whatever a change adds,
@@ -187,6 +187,7 @@ commentPolicy.test.js  Repo-wide guard for the comment policy (§1).
 | `auth.js` | Discord OAuth, the session cookie, and resolving a person to a role. |
 | `identity.js` | Discord id ⇄ characters ⇄ identifiers. The portal's whole basis. |
 | `banlist.js` | Merging the two ban records into one shape. |
+| `banLog.js` | The ban history: panel bans kept past their `bans` row, in `data/banlog.json`. |
 | `txadmin.js` | Reading txAdmin's `playersDB.json`. Read-only, cached by mtime. |
 | `bridge.js` | HTTP to the FiveM resource. |
 | `dbHandler.js` | The MySQL pool, plus column/table discovery. |
@@ -275,6 +276,19 @@ connected. ESX has no core delete and answers 501. `players.delete` is not in
 the administrator's defaults: a fresh install leaves it with the owner until
 it is granted on purpose.
 
+**Panel bans are kept in a history until someone deletes them.** Lifting a
+ban deletes its `bans` row, and qb-core drops expired rows on connect, so the
+table alone forgets. `utils/banLog.js` records every ban issued in the panel
+and marks it on lift (a lift of an in-game ban gets an entry too), in
+`data/banlog.json` beside the roles: panel state stays out of the game
+database. Each entry's state is derived on read: `active` while its row
+exists, `lifted`, `ended` past its end, `removed` when the row went some
+other way. Entries go only through `DELETE /api/manage/ban-history/:id`
+(`banlog.delete`). A file that cannot be parsed is an error, never an empty
+history, or the next ban would overwrite it. A refused history write leaves
+the ban standing and says so in the answer. Veritas ID lists entries that are
+no longer in force under their own source, `history`.
+
 **Manual refresh buttons wait a minute.** Every "refresh" / "try again"
 button in the frontend goes through `lib/useCooldown.js` and is disabled for
 60 s after a press. That is a courtesy, not a guard: routes where a request
@@ -327,7 +341,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 180 tests
+cd backend  && npm test         # node --test, currently 188 tests
 cd frontend && npx eslint . && npx vite build
 ```
 
@@ -365,7 +379,7 @@ Consequences worth holding on to:
   repo has to stay outside `resources/`, because FiveM only descends into
   `[bracketed]` folders. Changes to `veritas/` need the resource restarted.
 - **`backend/data/` must be writable by the service user.** The panel writes
-  `permissions.json` there. If it is not writable, saving a role fails — see
+  `permissions.json` and `banlog.json` there. If it is not writable, saving a role fails — see
   the next section.
 
 ---

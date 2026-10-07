@@ -131,6 +131,11 @@ const SOURCES = {
         name: "the server software's ban list",
         row: "In the server software's ban list",
     },
+    // Past staff bans kept by the panel; never in force, so never a missing record either
+    history: {
+        name: "this community's ban history",
+        row: "In this community's ban history",
+    },
 };
 
 const SOURCE_KEYS = Object.keys(SOURCES);

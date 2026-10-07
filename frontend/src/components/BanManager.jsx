@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BanHistory from './BanHistory';
 import BanLine from './BanLine';
 import Icon from './Icon';
 import PermissionLine from './PermissionLine';
@@ -87,11 +88,15 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
             const kicked = answer.data?.kicked === true;
             const span = permanent ? 'Permanent ban' : `Ban for ${dayCount} day${dayCount === 1 ? '' : 's'}`;
 
-            setFeedback(successNote(
-                answer,
-                `${span} recorded`,
-                kicked ? 'Kicked from the server.' : undefined,
-            ));
+            // The ban stands even when the history refused the entry: warn, not success
+            const history = answer.data?.history;
+            setFeedback(history?.logged === false
+                ? {
+                    tone: 'warn',
+                    title: `${span} recorded, but not in the history`,
+                    detail: [history.error, history.hint].filter(Boolean).join(' '),
+                }
+                : successNote(answer, `${span} recorded`, kicked ? 'Kicked from the server.' : undefined));
             report(kicked ? 'live' : 'offline', span);
             setReason('');
             setConfirming(false);
@@ -146,6 +151,10 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                             />
                         ))}
                     </ul>
+                )}
+
+                {citizenid && res.status !== 'unavailable' && (
+                    <BanHistory citizenid={citizenid} reloadToken={version} onChanged={reload} />
                 )}
 
                 {/* This card reads database bans only; the server list adds txAdmin's */}

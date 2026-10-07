@@ -135,6 +135,8 @@ export const fetchAllBans = (params) => api.get('/bans/all', { params });
 // No days default: omitted or 0 means permanent
 export const banPlayer = (citizenid, ban) => api.post('/manage/ban', { citizenid, ...ban });
 export const liftBan = (id) => api.delete(`/manage/ban/${seg(id)}`);
+export const fetchBanHistory = (citizenid) => api.get(`/players/${seg(citizenid)}/ban-history`);
+export const deleteBanHistory = (id) => api.delete(`/manage/ban-history/${seg(id)}`);
 
 // --- Groups ---------------------------------------------------------------
 // All memberships (player_groups), not the active job

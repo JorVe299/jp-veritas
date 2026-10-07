@@ -5,6 +5,7 @@ const { db, parseJSON, tableExists } = require('../utils/dbHandler');
 const { charactersOf, owns, identifiersOf } = require('../utils/identity');
 const txadmin = require('../utils/txadmin');
 const banlist = require('../utils/banlist');
+const banLog = require('../utils/banLog');
 
 const router = express.Router();
 
@@ -114,8 +115,18 @@ router.get('/api/me/bans', async (req, res) => {
             tx.hint = fromTx.hint;
         }
 
+        // Past panel bans whose row is gone; one still in the table is already listed above
+        // History only adds what is over: a failed read hides no ban in force
+        let pastRows = [];
+        try {
+            const entries = await banLog.withState(banLog.log.forPerson({ identifiers }));
+            pastRows = entries.filter(e => e.state !== 'active').map(banLog.asMergedRow);
+        } catch (e) {
+            console.error('[Me] ban history failed:', e.message);
+        }
+
         const merged = banlist
-            .sortBans([...rows, ...txRows])
+            .sortBans([...rows, ...txRows, ...pastRows])
             .filter(row => row.source !== banlist.DATABASE || banlist.belongsTo(row, own))
             .map(citizenView);
 

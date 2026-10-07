@@ -34,7 +34,7 @@ Search by name or citizen ID. Anyone on the server right now sits at the top, an
 - **Money:** credit or debit cash and bank, and adjust or freeze the bank accounts they can use, company accounts included.
 - **Assets:** the carried inventory, by slot and weight, and owned vehicles with plate, garage, fuel and damage.
 - **Session:** kick, revive, heal, teleport or message a connected player. Hunger, thirst, stress, armour and jail time can be changed here too.
-- **Enforcement:** ban or unban them, and see the bans already against them. With its own permission, a character can also be deleted for good, through the framework on QBCore and Qbox, and only while its player is offline.
+- **Enforcement:** ban or unban them, and see the bans already against them. Bans issued in the panel stay in a history after they are lifted or run out, until someone with the right permission deletes the entry. With its own permission, a character can also be deleted for good, through the framework on QBCore and Qbox, and only while its player is offline.
 
 | Money | Assets |
 |---|---|

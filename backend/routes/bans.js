@@ -6,6 +6,7 @@ const { isPlayerOnline, callBridge } = require('../utils/bridge');
 const txadmin = require('../utils/txadmin');
 const banlist = require('../utils/banlist');
 const { identifiersForCitizen, citizensByIdentifier } = require('../utils/identity');
+const banLog = require('../utils/banLog');
 
 const router = express.Router();
 const TABLE = 'bans';
@@ -20,6 +21,11 @@ async function ensureTable(res) {
         hint: 'Ban management expects the standard QBCore/Qbox schema.'
     });
     return false;
+}
+
+// Written into the history; no req.user = login disabled, nobody to name
+function staffName(req) {
+    return req.user?.globalName || req.user?.username || 'Veritas Panel';
 }
 
 // players.userId -> users, where license and discord live
@@ -266,6 +272,18 @@ router.post('/api/manage/ban', async (req, res) => {
 
         console.log(`[Bans] ${who.name} (${citizenid}) banned by ${payload.bannedby} - ${text}`);
 
+        // The ban stands either way; a refused history write is reported, not rolled back
+        let history = { logged: true };
+        try {
+            banLog.log.recordIssued(
+                shapeBan({ id: result.insertId, ...payload }),
+                { citizenid, by: staffName(req) }
+            );
+        } catch (e) {
+            console.error('[Bans] history write failed:', e.message);
+            history = { logged: false, error: e.message, hint: e.hint };
+        }
+
         res.json({
             status: 'success',
             message: duration === 0
@@ -273,7 +291,7 @@ router.post('/api/manage/ban', async (req, res) => {
                 : `${who.name} banned for ${duration} day(s)`,
             ban: { id: result.insertId, expire, permanent: duration === 0 },
             kicked,
-            hint: kicked ? null : undefined
+            history,
         });
     } catch (e) {
         console.error('[Bans] create failed:', e.message);
@@ -289,14 +307,57 @@ router.delete('/api/manage/ban/:id', async (req, res) => {
     try {
         if (!await ensureTable(res)) return;
 
+        // Read before the delete: the history keeps what the row said
+        const [found] = await db.execute(`SELECT * FROM ${TABLE} WHERE id = ?`, [id]);
+        if (found.length === 0) return res.status(404).json({ error: 'Ban not found' });
+
         const [result] = await db.execute(`DELETE FROM ${TABLE} WHERE id = ?`, [id]);
         if (result.affectedRows === 0) return res.status(404).json({ error: 'Ban not found' });
 
-        console.log(`[Bans] ban ${id} lifted`);
-        res.json({ status: 'success', message: 'Ban lifted' });
+        let history = { logged: true };
+        try {
+            banLog.log.recordLifted(shapeBan(found[0]), { by: staffName(req) });
+        } catch (e) {
+            console.error('[Bans] history write failed:', e.message);
+            history = { logged: false, error: e.message, hint: e.hint };
+        }
+
+        console.log(`[Bans] ban ${id} lifted by ${staffName(req)}`);
+        res.json({ status: 'success', message: 'Ban lifted', history });
     } catch (e) {
         console.error('[Bans] delete failed:', e.message);
         res.status(500).json({ error: 'Database error while lifting the ban' });
+    }
+});
+
+// --- History --------------------------------------------------------------
+// Panel bans outlive their `bans` row here until someone with banlog.delete removes them
+
+router.get('/api/players/:citizenid/ban-history', async (req, res) => {
+    try {
+        const who = await identityFor(req.params.citizenid);
+        if (!who) return res.status(404).json({ error: 'Player not found' });
+
+        const identifiers = banlist.identifiersFromRow({ license: who.license, discord: who.discord });
+        const entries = await banLog.withState(
+            banLog.log.forPerson({ citizenid: who.citizenid, identifiers })
+        );
+        res.json({ entries, count: entries.length });
+    } catch (e) {
+        console.error('[Bans] history read failed:', e.message);
+        res.status(e.status || 500).json({ error: e.status ? e.message : 'The ban history could not be read' });
+    }
+});
+
+router.delete('/api/manage/ban-history/:id', (req, res) => {
+    try {
+        if (!banLog.log.remove(String(req.params.id))) {
+            return res.status(404).json({ error: 'History entry not found' });
+        }
+        console.log(`[Bans] history entry ${req.params.id} deleted by ${staffName(req)}`);
+        res.json({ status: 'success', message: 'History entry deleted' });
+    } catch (e) {
+        res.status(e.status || 500).json({ error: e.message, hint: e.hint });
     }
 });
 

@@ -42,6 +42,12 @@ stub('../utils/bridge', {
     callBridge: async () => { throw new Error('no bridge in tests'); },
 });
 
+// Never the real history file: backend/data/banlog.json is runtime state
+const logged = [];
+stub('../utils/banLog', {
+    log: { recordIssued: (ban, meta) => { logged.push({ ban, meta }); } },
+});
+
 const { router } = require('./bans');
 const banlist = require('../utils/banlist');
 
@@ -110,6 +116,16 @@ test('the longest timed ban the form offers never overflows the column', () => {
     assert.ok(banlist.expiryFor(3650) <= INT_MAX);
     const in2030 = Date.UTC(2030, 0, 1) / 1000;
     assert.equal(banlist.expiryFor(3650, in2030), INT_MAX);
+});
+
+test('a ban issued in the panel is written to the history', async () => {
+    const before = logged.length;
+    const res = await ban({ days: 3 });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.history.logged, true);
+    assert.equal(logged.length, before + 1);
+    assert.equal(logged[logged.length - 1].meta.citizenid, 'ABC123');
+    assert.equal(logged[logged.length - 1].ban.reason, 'Testing the ban path');
 });
 
 test('the ceiling qb-adminmenu writes for a permanent ban reads as permanent', () => {

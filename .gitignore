@@ -139,8 +139,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Roles: written by the panel at runtime
+# Roles and ban history: written by the panel at runtime
 backend/data/permissions.json
+backend/data/banlog.json
+backend/data/*.tmp
 
 # Bridge config (holds Config.Token); template: veritas/config.lua.example
 veritas/config.lua

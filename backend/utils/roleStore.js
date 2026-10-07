@@ -348,4 +348,7 @@ function createStore({ capabilityIds, defaults, file }) {
     };
 }
 
-module.exports = { createStore, sanitizeState, idFromLabel, validId, cleanIdList, OWNER_ROLE, STORE, BUILT_IN, BUILT_IN_LABELS, MAX_ROLES };
+module.exports = {
+    createStore, sanitizeState, idFromLabel, validId, cleanIdList, writeHint,
+    OWNER_ROLE, STORE, BUILT_IN, BUILT_IN_LABELS, MAX_ROLES,
+};

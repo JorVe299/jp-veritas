@@ -27,6 +27,7 @@ const CAPABILITIES = [
 
     { id: 'bans.view', group: 'Moderation', label: 'See bans' },
     { id: 'bans.edit', group: 'Moderation', label: 'Ban and unban' },
+    { id: 'banlog.delete', group: 'Moderation', label: 'Delete entries from the ban history' },
     { id: 'actions.live', group: 'Moderation', label: 'Kick, revive, heal, teleport, notify' },
 
     { id: 'system.view', group: 'System', label: 'See diagnostics and schema' },
@@ -130,6 +131,7 @@ const RULES = [
     ['GET', /^\/api\/players\/[^/]+\/groups$/, 'groups.view'],
     ['GET', /^\/api\/players\/[^/]+\/accounts$/, 'accounts.view'],
     ['GET', /^\/api\/players\/[^/]+\/bans$/, 'bans.view'],
+    ['GET', /^\/api\/players\/[^/]+\/ban-history$/, 'bans.view'],
     ['GET', /^\/api\/players\/[^/]+\/position$/, 'players.view'],
     ['GET', /^\/api\/accounts$/, 'accounts.view'],
     ['GET', /^\/api\/bans\/all$/, 'bans.view'],
@@ -158,6 +160,7 @@ const RULES = [
     ['POST', /^\/api\/manage\/account\/freeze$/, 'accounts.edit'],
     ['POST', /^\/api\/manage\/ban$/, 'bans.edit'],
     ['DELETE', /^\/api\/manage\/ban\/[^/]+$/, 'bans.edit'],
+    ['DELETE', /^\/api\/manage\/ban-history\/[^/]+$/, 'banlog.delete'],
     ['POST', /^\/api\/manage\/kick$/, 'actions.live'],
     ['POST', /^\/api\/manage\/revive$/, 'actions.live'],
     ['POST', /^\/api\/manage\/heal$/, 'actions.live'],
