@@ -279,7 +279,8 @@ router.post('/api/manage/ban', async (req, res) => {
         let kicked = false;
         if (await isPlayerOnline(citizenid)) {
             try {
-                await callBridge('/kick-player', { citizenid, reason: `Banned: ${text}` });
+                const reference = banlist.referenceFor(banlist.DATABASE, result.insertId);
+                await callBridge('/kick-player', { citizenid, reason: `Banned: ${text} (${reference})` });
                 kicked = true;
             } catch (e) {
                 console.warn('[Bans] ban written but kick failed:', e.message);
@@ -305,7 +306,12 @@ router.post('/api/manage/ban', async (req, res) => {
             message: duration === 0
                 ? `${who.name} banned permanently`
                 : `${who.name} banned for ${duration} day(s)`,
-            ban: { id: result.insertId, expire, permanent: duration === 0 },
+            ban: {
+                id: result.insertId,
+                reference: banlist.referenceFor(banlist.DATABASE, result.insertId),
+                expire,
+                permanent: duration === 0,
+            },
             kicked,
             history,
         });

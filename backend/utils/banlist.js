@@ -2,11 +2,14 @@
 // Matching is by normalised identifiers only; neither record stores a citizenid
 // `bans` rows carry no date: shown undated, never a date guessed from the id (BACKEND.md §8)
 
+const crypto = require('crypto');
 const { db, tableExists } = require('./dbHandler');
 const { asIdentifier } = require('./identity');
 const { terms, matches } = require('./search');
 
 const TABLE = 'bans';
+const DATABASE = 'database';
+const TXADMIN = 'txadmin';
 
 // Signed INT(11) ceiling on qb-core/qbx_core; the game bans while os.time() < expire
 // Written for permanent bans, as qb-adminmenu does (BACKEND.md §8)
@@ -14,6 +17,21 @@ const PERMANENT_EXPIRE = 2147483647;
 
 // 0, or a far-future value on a wider column, also reads as permanent
 const PERMANENT_AFTER_YEARS = 50;
+
+// Crockford base32: no I, L, O or U, so a reference read aloud cannot be misheard
+const REFERENCE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+/**
+ * Reference staff and players quote: VRT-XXXX-XXXX, derived from source and native id
+ * Same ban, same reference on every surface and after every restart; nothing is stored
+ */
+function referenceFor(source, id) {
+    if (id === null || id === undefined || id === '') return null;
+    const digest = crypto.createHash('sha256').update(`veritas:${source}:${id}`).digest();
+    let out = '';
+    for (let i = 0; i < 8; i++) out += REFERENCE_ALPHABET[digest[i] % 32];
+    return `VRT-${out.slice(0, 4)}-${out.slice(4)}`;
+}
 
 /**
  * Raw `bans` row -> panel shape
@@ -26,6 +44,7 @@ function shapeBan(row) {
         || expire > Date.now() / 1000 + PERMANENT_AFTER_YEARS * 31536000;
     return {
         id: row.id,
+        reference: referenceFor(DATABASE, row.id),
         name: row.name,
         license: row.license,
         discord: row.discord,
@@ -83,8 +102,6 @@ async function databaseBansFor(identifiers) {
     return { available: true, rows };
 }
 
-const DATABASE = 'database';
-const TXADMIN = 'txadmin';
 
 // Identifier kind per `bans` column
 const DATABASE_IDENTIFIER_COLUMNS = {
@@ -109,6 +126,7 @@ function fromDatabase(ban) {
         source: DATABASE,
         type: 'ban',
         nativeId: ban.id,
+        reference: referenceFor(DATABASE, ban.id),
         name: ban.name || null,
         reason: ban.reason || null,
         issuedBy: ban.bannedBy || null,
@@ -140,6 +158,7 @@ function fromTxAdmin(action) {
         source: TXADMIN,
         type: action.type === 'warn' ? 'warn' : 'ban',
         nativeId: action.id ?? null,
+        reference: referenceFor(TXADMIN, action.id),
         name: action.playerName || null,
         reason: action.reason || null,
         issuedBy: action.author || null,
@@ -197,7 +216,7 @@ function sortBans(rows) {
 function matchesQuery(row, query) {
     return matches([
         row.name, row.reason, row.issuedBy, row.citizenid,
-        row.nativeId, row.source,
+        row.nativeId, row.source, row.reference,
         ...(row.identifiers || []),
     ], terms(query));
 }
@@ -210,7 +229,7 @@ function belongsTo(row, identifierSet) {
 
 module.exports = {
     DATABASE, TXADMIN, TABLE, PERMANENT_EXPIRE,
-    shapeBan, expiryFor, databaseBansFor,
+    shapeBan, expiryFor, databaseBansFor, referenceFor,
     fromDatabase, fromTxAdmin,
     compareBans, sortBans, matchesQuery, belongsTo,
     identifiersFromRow,

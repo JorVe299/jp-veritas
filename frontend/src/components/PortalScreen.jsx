@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
+import PortalBanAlert from './PortalBanAlert';
 import PortalBar from './PortalBar';
 import { PlateSprite } from './Plate';
 import PortalCharacter from './PortalCharacter';
 import PortalNotice from './PortalNotice';
 import PortalRoster from './PortalRoster';
-import { usePortalAccount } from '../lib/usePortal';
+import { usePortalAccount, usePortalBans } from '../lib/usePortal';
 import { characterIdFor, characterPath, navigate, PORTAL_PATH, usePath } from '../lib/useSurface';
 
 /**
@@ -21,6 +22,7 @@ export default function PortalScreen({
 }) {
     const path = usePath();
     const account = usePortalAccount();
+    const bans = usePortalBans();
 
     const characters = Array.isArray(account.data?.characters) ? account.data.characters : [];
     const wanted = characterIdFor(path);
@@ -81,6 +83,9 @@ export default function PortalScreen({
                     />
                 )}
 
+                {/* Above everything: a player who is shut out learns it first, on every page */}
+                {account.status === 'ready' && <PortalBanAlert state={bans} />}
+
                 {account.status === 'ready' && (
                     activeId ? (
                         <PortalCharacter
@@ -88,10 +93,11 @@ export default function PortalScreen({
                             key={activeId}
                             citizenid={activeId}
                             summary={summary}
+                            bans={bans}
                             onBack={showBack ? goHome : null}
                         />
                     ) : (
-                        <PortalRoster account={account.data} onOpen={openCharacter} />
+                        <PortalRoster account={account.data} bans={bans} onOpen={openCharacter} />
                     )
                 )}
             </main>

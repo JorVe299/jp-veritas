@@ -45,7 +45,7 @@ function moneyRows(money) {
  * One character, read-only by nature: no inputs, not even disabled ones
  * Callers key it by citizenid: a switch remounts, so old data never shows under a new name
  */
-export default function PortalCharacter({ citizenid, summary = null, onBack }) {
+export default function PortalCharacter({ citizenid, summary = null, bans, onBack }) {
     const state = usePortalResource(fetchMyCharacter, citizenid);
 
     const record = state.status === 'ready' ? state.data : null;
@@ -107,7 +107,7 @@ export default function PortalCharacter({ citizenid, summary = null, onBack }) {
 
                 <div className="idhead__drawer" id={drawerId} inert={!bansOpen}>
                     <div className="idhead__drawerinner">
-                        <PortalBans />
+                        <PortalBans state={bans} />
                     </div>
                 </div>
             </header>

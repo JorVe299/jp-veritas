@@ -24,7 +24,8 @@ export default function AllBansLine({ entry, canEdit, canDeleteHistory = false, 
     const reason = text(entry?.reason);
     const name = text(entry?.name);
     const issuedBy = text(entry?.issuedBy);
-    const reference = text(entry?.nativeId);
+    // Veritas reference first: what a player quotes; the native id only as a fallback
+    const reference = text(entry?.reference) || text(entry?.nativeId);
 
     // Reading order under the reason; missing parts are dropped, never shown as a dash
     const facts = [
@@ -35,7 +36,7 @@ export default function AllBansLine({ entry, canEdit, canDeleteHistory = false, 
         state.term ? { key: 'term', text: state.term } : null,
         fromHistory && text(entry?.revokedBy) ? { key: 'liftedby', text: `Lifted by ${text(entry.revokedBy)}` } : null,
         reference
-            ? { key: 'ref', label: fromDatabase || fromHistory ? 'Row' : 'Action', text: reference, mono: true }
+            ? { key: 'ref', label: 'Ref', text: reference, mono: true }
             : null,
     ].filter(Boolean);
 

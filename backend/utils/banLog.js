@@ -4,10 +4,12 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { db, tableExists } = require('./dbHandler');
-const { identifiersFromRow, TABLE } = require('./banlist');
+const { identifiersFromRow, referenceFor, TABLE, DATABASE } = require('./banlist');
 const { writeHint } = require('./roleStore');
 
 const DEFAULT_FILE = path.join(__dirname, '../data/banlog.json');
+
+const HISTORY = 'history';
 
 // Oldest dropped beyond this: the file is read whole on every request
 const MAX_ENTRIES = 5000;
@@ -137,6 +139,13 @@ function stateOf(entry, rowExists, now = Date.now()) {
     return rowExists ? 'active' : 'removed';
 }
 
+// The reference the ban had while it stood: one ban, one reference, before and after a lift
+function referenceOf(entry) {
+    return Number.isInteger(entry.banId)
+        ? referenceFor(DATABASE, entry.banId)
+        : referenceFor(HISTORY, entry.id);
+}
+
 /** Entries with their state; banIds checked against the table in one query */
 async function withState(entries) {
     const ids = [...new Set(entries.map(e => e.banId).filter(Number.isInteger))];
@@ -147,10 +156,8 @@ async function withState(entries) {
         );
         live = new Set(rows.map(r => r.id));
     }
-    return entries.map(e => ({ ...e, state: stateOf(e, live.has(e.banId)) }));
+    return entries.map(e => ({ ...e, reference: referenceOf(e), state: stateOf(e, live.has(e.banId)) }));
 }
-
-const HISTORY = 'history';
 
 /** Entry (through withState) -> the merged ban shape of utils/banlist.js; never in force */
 function asMergedRow(entry) {
@@ -159,6 +166,7 @@ function asMergedRow(entry) {
         source: HISTORY,
         type: 'ban',
         nativeId: entry.banId,
+        reference: referenceOf(entry),
         name: entry.name,
         reason: entry.reason,
         issuedBy: entry.issuedBy,

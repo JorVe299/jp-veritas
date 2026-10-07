@@ -89,6 +89,7 @@ function HistoryLine({ entry, canDelete, onFeedback, onChanged }) {
             </div>
 
             <div className="line__meta">
+                {entry.reference && <span className="u-mono">{entry.reference}</span>}
                 <span>
                     {entry.issuedAt ? `Issued ${formatDateTime(entry.issuedAt)}` : 'Issued in game'}
                     {entry.issuedBy ? ` by ${entry.issuedBy}` : ''}

@@ -148,3 +148,22 @@ test('search survives a row with holes in it', () => {
     assert.equal(banlist.matchesQuery(bare, 'jordan'), false);
     assert.equal(banlist.matchesQuery(bare, 'perm'), true, 'the action id is still there');
 });
+
+// --- Reference ------------------------------------------------------------
+
+test('a reference is VRT-XXXX-XXXX in Crockford base32', () => {
+    const ref = banlist.referenceFor('database', 7);
+    assert.match(ref, /^VRT-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/);
+});
+
+test('one ban keeps one reference; another ban or record gets another', () => {
+    assert.equal(banlist.referenceFor('database', 7), banlist.referenceFor('database', 7));
+    assert.notEqual(banlist.referenceFor('database', 7), banlist.referenceFor('database', 8));
+    assert.notEqual(banlist.referenceFor('database', 7), banlist.referenceFor('txadmin', 7));
+    assert.equal(banlist.referenceFor('database', null), null);
+});
+
+test('the reference a player quotes finds the ban in the staff search', () => {
+    const row = banlist.fromDatabase(banlist.shapeBan({ id: 7, expire: 0, reason: 'x' }));
+    assert.equal(banlist.matchesQuery(row, row.reference.toLowerCase()), true);
+});

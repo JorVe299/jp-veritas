@@ -158,6 +158,7 @@ router.get('/api/me/bans', async (req, res) => {
 function citizenView(row) {
     const out = {
         id: row.nativeId,
+        reference: row.reference,
         type: row.type,
         reason: row.reason,
         issuedAt: row.issuedAt,

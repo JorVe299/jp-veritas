@@ -4,7 +4,6 @@ import Icon from './Icon';
 import PortalNotice from './PortalNotice';
 import StatusNote from './StatusNote';
 import { useCooldown } from '../lib/useCooldown';
-import { usePortalBans } from '../lib/usePortal';
 import { DASH, numberOrNull } from '../lib/portalText';
 import { formatDateTime } from '../utils/format';
 
@@ -13,10 +12,9 @@ const RETRY_KEY = 'portal-bans-retry';
 /**
  * Account-level ban record; bans follow identifiers, so it sits outside any character
  * States: loading, clean, partial (entries + named gap), unreadable (never shown as clean)
- * Read-only: no contest/appeal affordance (no route for it)
+ * Read-only; state comes from PortalScreen, shared with the alert: one request per page
  */
-export default function PortalBans() {
-    const state = usePortalBans();
+export default function PortalBans({ state }) {
 
     // One cooldown for all three retry buttons: same request
     const retryCooldown = useCooldown(RETRY_KEY);
@@ -343,7 +341,7 @@ function BanRow({ ban, showsAuthor }) {
     const state = stateOf(ban);
     const standing = inForce(ban);
     const source = SOURCES[ban?.source] ?? null;
-    const id = reference(ban?.id);
+    const id = reference(ban?.reference) ?? reference(ban?.id);
 
     // Missing facts are left out, not dashed
     // Source next to the id it scopes; plain text, not a badge: it ranks below "in force"

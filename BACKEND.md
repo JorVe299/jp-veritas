@@ -290,6 +290,13 @@ the ban standing and says so in the answer. Veritas ID and the server-wide list 
 filter `source=history`) show entries that are no longer in force under their
 own source, `history`.
 
+**Ban references are derived, never stored.** Every ban shows a reference
+like `VRT-65S1-ZNPT`: Crockford base32 of a SHA-256 over source and native id
+(`referenceFor` in `utils/banlist.js`). The same ban has the same reference in
+the panel, in Veritas ID, in the kick message and after a lift (history
+entries reuse their row's reference), and the staff search finds it. Changing
+the formula renames every reference players may already have quoted.
+
 **Manual refresh buttons wait a minute.** Every "refresh" / "try again"
 button in the frontend goes through `lib/useCooldown.js` and is disabled for
 60 s after a press. That is a courtesy, not a guard: routes where a request
@@ -342,7 +349,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 188 tests
+cd backend  && npm test         # node --test, currently 191 tests
 cd frontend && npx eslint . && npx vite build
 ```
 

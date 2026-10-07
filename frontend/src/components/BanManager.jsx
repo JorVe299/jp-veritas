@@ -87,6 +87,7 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
 
             const kicked = answer.data?.kicked === true;
             const span = permanent ? 'Permanent ban' : `Ban for ${dayCount} day${dayCount === 1 ? '' : 's'}`;
+            const ref = answer.data?.ban?.reference;
 
             // The ban stands even when the history refused the entry: warn, not success
             const history = answer.data?.history;
@@ -96,7 +97,12 @@ export default function BanManager({ selectedPlayer, onApplied, onShowServerBans
                     title: `${span} recorded, but not in the history`,
                     detail: [history.error, history.hint].filter(Boolean).join(' '),
                 }
-                : successNote(answer, `${span} recorded`, kicked ? 'Kicked from the server.' : undefined));
+                : successNote(
+                    answer,
+                    `${span} recorded`,
+                    [ref ? `Reference ${ref}.` : null, kicked ? 'Kicked from the server.' : null]
+                        .filter(Boolean).join(' ') || undefined,
+                ));
             report(kicked ? 'live' : 'offline', span);
             setReason('');
             setConfirming(false);

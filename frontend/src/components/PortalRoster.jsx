@@ -14,7 +14,7 @@ const CARD_COMPACT_FROM = 1e9;
  * No characters is the ordinary first state: a sentence, not an error
  * Bans shown even without characters: a ban before first play would go unexplained
  */
-export default function PortalRoster({ account, onOpen }) {
+export default function PortalRoster({ account, bans, onOpen }) {
     const characters = Array.isArray(account?.characters) ? account.characters : [];
 
     // The server's count wins over the list length; a mismatch is stated below
@@ -92,7 +92,7 @@ export default function PortalRoster({ account, onOpen }) {
             )}
 
             {/* Account-level, fetches itself: a slow ban store never holds up the list */}
-            <PortalBans />
+            <PortalBans state={bans} />
         </>
     );
 }

@@ -43,6 +43,7 @@ export default function BanLine({ ban, canEdit, onFeedback, onChanged, onReport 
             </div>
 
             <div className="line__meta">
+                {ban.reference && <span className="u-mono">{ban.reference}</span>}
                 <span>By {ban.bannedBy || 'unknown'}</span>
                 <span>
                     {permanent ? 'Never expires' : `Until ${formatDateTime(ban.expiresAt ?? ban.expire)}`}
