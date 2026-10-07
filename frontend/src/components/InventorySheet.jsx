@@ -279,6 +279,21 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                                 ) : (
                                     <p className="field__hint">Click a slot.</p>
                                 )}
+
+                                {/* Fills the column: the largest target in the window */}
+                                <div
+                                    className={`trash ws__trash${dropTarget === 'trash' ? ' trash--armed' : ''}`}
+                                    onDragOver={(e) => allowDrop(e, 'trash')}
+                                    onDragLeave={() => setDropTarget((t) => (t === 'trash' ? null : t))}
+                                    onDrop={dropOnTrash}
+                                >
+                                    <Icon name="trash" size={22} />
+                                    <span>
+                                        {canEdit
+                                            ? 'Drop a tile here to remove it'
+                                            : 'Removing items needs inventory.edit'}
+                                    </span>
+                                </div>
                             </section>
 
                             {canEdit && (
@@ -295,23 +310,6 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
                                     />
                                 </section>
                             )}
-                        </div>
-
-                        {/* Same place whatever is selected: a drag always finds the bin */}
-                        <div className="ws__dock">
-                            <div
-                                className={`trash${dropTarget === 'trash' ? ' trash--armed' : ''}`}
-                                onDragOver={(e) => allowDrop(e, 'trash')}
-                                onDragLeave={() => setDropTarget((t) => (t === 'trash' ? null : t))}
-                                onDrop={dropOnTrash}
-                            >
-                                <Icon name="trash" size={18} />
-                                <span>
-                                    {canEdit
-                                        ? 'Drop a tile here to remove it'
-                                        : 'Removing items needs inventory.edit'}
-                                </span>
-                            </div>
                         </div>
                     </aside>
                 </div>
@@ -452,7 +450,7 @@ function CatalogAdd({ disabled, onAdd, onDragItem, onDragEnd }) {
     const ready = Boolean(picked) && validAmount && !disabled;
 
     return (
-        <div className="detail">
+        <div className="ws__add">
             <CatalogPicker
                 id="sheet-item"
                 kind="items"
@@ -464,63 +462,63 @@ function CatalogAdd({ disabled, onAdd, onDragItem, onDragEnd }) {
                 disabled={disabled}
                 title={(entry) => entry.label || entry.key}
                 meta={(entry) => (entry.unique ? 'unique' : '')}
+                fill
             />
 
-            <div className="field">
-                <label className="field__label" htmlFor="sheet-add-amount">Amount</label>
-                <input
-                    id="sheet-add-amount"
-                    className="input u-mono"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    disabled={disabled}
-                />
-            </div>
-
-            <div
-                className={`slot slot--filled${ready ? '' : ' slot--empty'}`}
-                draggable={ready}
-                onDragStart={(e) => {
-                    if (!picked || !validAmount) { e.preventDefault(); return; }
-                    onDragItem({
-                        kind: 'catalog',
-                        name: picked.key,
-                        label: picked.label || picked.key,
-                        amount: parsed,
-                    });
-                    e.dataTransfer.effectAllowed = 'copy';
-                    e.dataTransfer.setData('text/plain', picked.key);
-                }}
-                onDragEnd={onDragEnd}
-            >
-                <span className="slot__num">new</span>
-                {picked && validAmount && (
-                    <Amount value={parsed} currency={false} compactFrom={SLOT_COMPACT_FROM} className="slot__count u-mono" />
-                )}
-                <span className="slot__art">
-                    <span className="slot__fallback">
-                        {picked ? picked.key.slice(0, 3) : '—'}
+            {/* Tile at slot size: it is dragged onto the grid like any other tile */}
+            <div className="ws__addrow">
+                <div
+                    className={`slot ws__newtile${ready ? ' slot--filled' : ' slot--empty'}`}
+                    draggable={ready}
+                    title={ready ? 'Drag onto a slot' : 'Pick an item first'}
+                    onDragStart={(e) => {
+                        if (!picked || !validAmount) { e.preventDefault(); return; }
+                        onDragItem({
+                            kind: 'catalog',
+                            name: picked.key,
+                            label: picked.label || picked.key,
+                            amount: parsed,
+                        });
+                        e.dataTransfer.effectAllowed = 'copy';
+                        e.dataTransfer.setData('text/plain', picked.key);
+                    }}
+                    onDragEnd={onDragEnd}
+                >
+                    <span className="slot__num">new</span>
+                    {picked && validAmount && (
+                        <Amount value={parsed} currency={false} compactFrom={SLOT_COMPACT_FROM} className="slot__count u-mono" />
+                    )}
+                    <span className="slot__art">
+                        <span className="slot__fallback">{picked ? picked.key.slice(0, 3) : '—'}</span>
                     </span>
-                </span>
-                <span className="slot__label">
-                    {ready ? 'Drag onto a slot' : 'Pick an item first'}
-                </span>
-            </div>
+                    <span className="slot__label">{picked ? (picked.label || picked.key) : 'Pick an item'}</span>
+                </div>
 
-            <button
-                type="button"
-                className="btn btn--primary btn--sm"
-                disabled={!ready}
-                onClick={() => onAdd(picked.key, parsed, picked.label || picked.key)}
-            >
-                {disabled ? 'Working…' : 'Add to inventory'}
-            </button>
-            <span className="field__hint">
-                Lands on the first free slot.
-            </span>
+                <div className="ws__addform">
+                    <div className="field">
+                        <label className="field__label" htmlFor="sheet-add-amount">Amount</label>
+                        <input
+                            id="sheet-add-amount"
+                            className="input u-mono"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            disabled={disabled}
+                        />
+                    </div>
+                    <button
+                        type="button"
+                        className="btn btn--primary"
+                        disabled={!ready}
+                        onClick={() => onAdd(picked.key, parsed, picked.label || picked.key)}
+                    >
+                        {disabled ? 'Working…' : 'Add'}
+                    </button>
+                </div>
+            </div>
+            <span className="field__hint">Add uses the first free slot, or drag the tile.</span>
         </div>
     );
 }

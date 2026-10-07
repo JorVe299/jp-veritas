@@ -5,6 +5,7 @@ import { useCatalog, CATALOG_LIMIT } from '../lib/useCatalog';
 /**
  * Server-searched picker for a large catalog; ~900 vehicles rule out a <select>
  * Selection stays shown when a search drops it: it is what gets submitted
+ * fill: the list takes the free height; label and preview are left to the host
  */
 export default function CatalogPicker({
     id,
@@ -17,6 +18,7 @@ export default function CatalogPicker({
     disabled = false,
     title,
     meta,
+    fill = false,
 }) {
     const [search, setSearch] = useState('');
     const catalog = useCatalog(kind, search);
@@ -25,8 +27,8 @@ export default function CatalogPicker({
     const waiting = catalog.query === null;
 
     return (
-        <div className="field">
-            <label className="field__label" htmlFor={id}>{label}</label>
+        <div className={`field${fill ? ' catalog--fill' : ''}`}>
+            <label className={fill ? 'u-sr' : 'field__label'} htmlFor={id}>{label}</label>
             <input
                 id={id}
                 className="input"
@@ -95,12 +97,14 @@ export default function CatalogPicker({
                 </>
             )}
 
-            <div className="preview">
-                <span className="preview__label u-caps">Selected</span>
-                <span className={selected ? 'preview__value u-mono' : 'preview__value preview__value--empty'}>
-                    {selected ? (selectedLabel || selected) : 'Nothing selected yet'}
-                </span>
-            </div>
+            {!fill && (
+                <div className="preview">
+                    <span className="preview__label u-caps">Selected</span>
+                    <span className={selected ? 'preview__value u-mono' : 'preview__value preview__value--empty'}>
+                        {selected ? (selectedLabel || selected) : 'Nothing selected yet'}
+                    </span>
+                </div>
+            )}
         </div>
     );
 }

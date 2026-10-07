@@ -2066,27 +2066,73 @@
     padding: var(--s-5);
 }
 
-/* Selected and Add item side by side: both in view while working, no tool scroll */
+/* Two full-height tool columns: nothing scrolls but the catalog list itself */
 .ws__groups {
+    flex: 1;
+    min-height: 0;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--s-5);
-    align-items: start;
 }
 
 .ws__section {
     display: flex;
     flex-direction: column;
-    gap: var(--s-2);
+    gap: var(--s-3);
     min-width: 0;
+    min-height: 0;
+}
+
+/* The bin takes what Selected leaves: the largest drop target in the window */
+.ws__trash {
+    flex: 1;
+    min-height: 6rem;
+    align-content: center;
+}
+
+.ws__add {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+}
+
+.catalog--fill {
+    flex: 1;
+    min-height: 0;
+}
+
+.catalog--fill .ladder {
+    flex: 1;
+    min-height: 6rem;
+    max-height: none;
+}
+
+.ws__addrow {
+    display: flex;
+    align-items: stretch;
+    gap: var(--s-3);
+}
+
+/* Same size as a grid tile: it is one, until it is dropped */
+.ws__newtile {
+    flex: none;
+    width: var(--ws-tile);
+    height: var(--ws-tile);
+}
+
+.ws__addform {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--s-2);
 }
 
 .ws__title {
     color: var(--c-text-faint);
-}
-
-.ws__dock {
-    margin-top: auto;
 }
 
 /* One line; the hue sits on the icon only, as in StatusNote */
@@ -2148,18 +2194,27 @@
     font-size: min(var(--fs-md), 40cqi);
 }
 
-/* Narrower screens: smaller tiles, tools stacked; the tools may scroll only here */
+/* Laptops: smaller tiles, tools still side by side */
 @media (max-width: 1280px) {
     .ws {
         --ws-tile: 6.25rem;
     }
+}
 
+/* Too narrow for two tool columns: stacked, and only here the tools may scroll */
+@media (max-width: 1100px) {
     .ws__groups {
+        flex: none;
         grid-template-columns: minmax(0, 1fr);
     }
 
     .ws__inspector {
         overflow-y: auto;
+    }
+
+    .catalog--fill .ladder {
+        flex: none;
+        max-height: 15rem;
     }
 }
 
