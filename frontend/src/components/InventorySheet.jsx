@@ -121,8 +121,11 @@ export default function InventorySheet({ citizenid, playerName, canEdit = false,
 
     const allowDrop = (e, target) => {
         if (!dragging) return;
+        // A new item has nothing to throw away: the bin stays unarmed for it
+        if (dragging.kind === 'catalog' && target === 'trash') return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = target === 'trash' ? 'move' : 'move';
+        // Must be allowed by the source's effectAllowed, or the browser drops nothing
+        e.dataTransfer.dropEffect = dragging.kind === 'catalog' ? 'copy' : 'move';
         setDropTarget(target);
     };
 

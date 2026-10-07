@@ -39,7 +39,8 @@ end
 
 function Items.add(player, src, name, count, slot)
     if inventory() == 'ox_inventory' then
-        return exports.ox_inventory:AddItem(src, name, count) ~= false
+        -- Slot from a drop onto the grid; nil lets ox pick the first fitting one
+        return exports.ox_inventory:AddItem(src, name, count, nil, tonumber(slot)) ~= false
     end
     if type(player.Functions) == 'table' then
         return player.Functions.AddItem(name, count, slot) ~= false
