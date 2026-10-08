@@ -55,6 +55,20 @@ longer exists misleads the next person more than no handbook would.
 it. The owner has said to commit and push every finished change without
 asking.
 
+**Commit messages follow Conventional Commits:** `type(scope): subject`.
+Types are `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `style`, `chore`.
+The scope is optional, one lower-case word for the area touched (`bridge`,
+`bans`, `inventory`, `perms`, `portal`, `deploy`) — never a path or a file
+name; drop it when the change is repo-wide. The subject is lower-case,
+imperative, no trailing period, at most 72 characters including the prefix,
+and names the effect rather than the files. A body after a blank line carries
+the why and the history that the comment policy keeps out of the code.
+`BREAKING CHANGE:` goes in a footer.
+
+Adopted 2026-10-08. Everything before it is the older sentence style and is
+left alone — history is not rewritten. Dependabot's `Bump x from a to b` and
+the web UI's `Update README.md` are not corrected either.
+
 ### Comment policy
 
 No prose in code. A comment is a short technical note; rationale that needs
