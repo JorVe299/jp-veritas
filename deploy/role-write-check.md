@@ -1,11 +1,12 @@
 # Checking that role saving works on the server
 
-Run this on the Debian host after a deploy. It verifies the fix from commit
-`8f4cef1` and settles the two symptoms recorded in BACKEND.md §9: roles failing
-to save with "The permissions could not be saved", and "move up / move down
-does not refresh".
+Both symptoms this was written for — roles failing to save with "The
+permissions could not be saved", and "move up / move down does not refresh" —
+were confirmed working on the live server on 2026-10-08, so nothing here is
+outstanding. Keep it as the walk-through for if either returns, on this host
+or on a fresh install (see BACKEND.md §8).
 
-Expected cause: `/opt/veritas/backend/data/` is not writable by the user the
+Likely cause: `/opt/veritas/backend/data/` is not writable by the user the
 service runs as. The store is written as a temp file that is then renamed into
 place, so the **folder** must be writable — write permission on an existing
 `permissions.json` alone is not enough.
@@ -93,4 +94,5 @@ leave one behind; it is safe to delete. Finally, report:
 - what you changed to fix it
 - whether move up / move down now survives a reload
 
-That closes the role-saving entry in BACKEND.md §9.
+Ordering and saving share one `persist()` in `roleStore.js`, so a working move
+up / move down already proves the write is not being refused.

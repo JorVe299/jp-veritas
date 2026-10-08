@@ -475,6 +475,19 @@ mangled this codebase repeatedly. Use the `Write` tool for new files and
 `String.raw` for regex literals; when patching, assert the anchor exists and
 fail loudly if it does not.
 
+**The role store once reported successes it had not written.** Saving a role
+answered "The permissions could not be saved" on the live server, and moving a
+role up or down appeared to do nothing. One fault, not two: every mutation —
+`create`, `update`, `remove`, `reorder`, `saveMatrix` — goes through the same
+`persist()` in `roleStore.js`, so a refused file write stopped all of them
+while the UI still claimed success. Since `8f4cef1` the write is a temp file
+renamed into place, the new state is adopted only after that succeeds, and a
+failure carries a `hint` naming the real cause (`EACCES` → the folder to
+`chown`, `EROFS`, `ENOSPC`, …). Note the write is a rename, so the **folder**
+must be writable — a `chown` on `permissions.json` alone does not fix it.
+Confirmed working on the live server 2026-10-08. If it ever returns,
+`deploy/role-write-check.md` walks through finding the errno.
+
 ---
 
 ## 9. Open at the time of writing
@@ -485,29 +498,6 @@ capabilities on purpose, but whoever grants `groups.edit` should know this.
 The permission table says so where the tick is: `CapabilityMatrix.jsx` keeps a
 `REACH` map of capability id to one line, shown under the capability's
 identifier. Disclosure only — the permission model is unchanged.
-
-**Role saving fails on the live server** with "The permissions could not be
-saved". The cause is almost certainly that `/opt/veritas/backend/data/` is not
-writable by the user the service runs as. Both halves of this are committed
-(8f4cef1):
-
-- `roleStore.js` now writes to a temp file, renames it into place, adopts the
-  new state only on success, and returns a `hint` naming the actual cause
-  (`EACCES` → which folder to `chown`, `EROFS`, `ENOSPC`, …).
-- `RoleRoster.jsx` no longer heads a failed write with a success title — the
-  reported symptom was a red box reading "Role created" above "The permissions
-  could not be saved".
-
-**"Move up / move down does not refresh"** was reported in the same breath and
-is most likely the same fault: the write was refused, so the order never
-changed, while the UI reported success. Worth re-testing once the write works
-before hunting it separately.
-
-Neither of these has been verified against the live server yet.
-`deploy/role-write-check.md` is the walk-through: it names the service user,
-reads the errno out of the `[Perms]` log line, and maps it to the fix. Note
-that the write is a temp file renamed into place, so the **folder** must be
-writable — a `chown` on `permissions.json` alone does not fix it.
 
 **The resource sync is fixed but unverified in production.** The shared secret
 (`RESOURCE_SECRET` / `Config.BackendSecret`, §5) is covered by tests, but no
