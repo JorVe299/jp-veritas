@@ -13,6 +13,11 @@ export default defineConfig({
       },
     },
   },
+  // Only pure helpers are tested: node environment, no DOM and no jsdom dependency
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.js'],
+  },
   // `vite preview` does not inherit server.proxy; production is served by the backend (server.js)
   preview: {
     proxy: {

@@ -14,3 +14,26 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Tests
+
+Vitest, configured inside `vite.config.js` (`test.include`: `src/**/*.test.js`).
+Test files sit next to the code they test, as in the backend, and assert with
+`node:assert/strict`, so both suites read the same way.
+
+```bash
+npm ci
+npm test           # vitest run: no watch, for CI and for verifying a change
+npm run test:watch # vitest, watching
+npx vitest run src/utils/format.test.js   # a single file
+```
+
+Tested: `src/utils/format.js`, `src/lib/portalText.js`, `src/lib/roleEditing.js`,
+`src/lib/writeFeedback.js`, `src/lib/plate.js`, `buildPermissions`
+(`src/lib/useCan.js`), `buildRails` (`src/lib/useRoster.js`), the URL helpers of
+`src/lib/useSurface.js`, and `safeLoginUrl` / `startDiscordLogin` in `src/api.js`.
+
+Pure helpers only: the environment is `node`, with no jsdom and no component
+rendering — nothing in `src/components/` is tested, and hooks are covered only
+through the pure functions they call. Vitest globals stay off, so each test
+imports `test` from `vitest`; that keeps `eslint.config.js` unchanged.
