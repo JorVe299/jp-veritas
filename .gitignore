@@ -139,25 +139,15 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Roles and ban history: written by the panel at runtime
-backend/data/permissions.json
-backend/data/banlog.json
+# Roles, ban history and data cache: written by the panel; a tracked copy is wiped on deploy
+backend/data/*.json
 backend/data/*.tmp
 
 # Bridge config (holds Config.Token); template: veritas/config.lua.example
 veritas/config.lua
 
-# JSON dumps the bridge writes at runtime
-veritas/jobs.json
-veritas/gangs.json
-veritas/items.json
-veritas/vehicles.json
-
-# Backend data cache, copied from FIVEM_JSON_PATH; tracked copies would be reset on deploy
-backend/data/jobs.json
-backend/data/items.json
-backend/data/vehicles.json
-backend/data/gangs.json
+# JSON dumps the bridge writes at runtime; the backend copies them from FIVEM_JSON_PATH
+veritas/*.json
 
 # AI tooling: assistant settings, skill state and output stay local
 # Claude Code: settings, memory and project instructions
