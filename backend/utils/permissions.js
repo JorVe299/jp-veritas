@@ -1,6 +1,8 @@
 // Capabilities, the route -> capability table and enforce() (BACKEND.md §4)
 // Enforcement is central and fails closed; the owner cannot be locked out
 
+const resourceAuth = require('./resourceAuth');
+
 // view/edit split: looking without changing is the common supporter case
 const CAPABILITIES = [
     { id: 'players.view', group: 'Players', label: 'See the citizen list and details' },
@@ -189,6 +191,17 @@ function enforce(req, res, next) {
     const lower = req.path.toLowerCase();
     if (!lower.startsWith('/api/')) return next();
     if (lower.startsWith('/api/auth/')) return next();
+
+    // SECURITY: the resource principal has a fixed capability list and no role; checked
+    // before the login-disabled and portal branches, which both assume a person
+    if (req.resource) {
+        const wanted = requiredFor(req.method, req.path);
+        if (wanted && resourceAuth.allows(wanted)) return next();
+        return res.status(403).json({
+            error: 'The resource secret does not allow this action',
+            required: wanted || null
+        });
+    }
 
     // No req.user = login disabled (open panel, warned at startup); not a role-less session
     if (!req.user) return next();

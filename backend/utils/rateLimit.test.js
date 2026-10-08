@@ -3,8 +3,8 @@ const assert = require('node:assert');
 const { oncePer } = require('./rateLimit');
 
 // Minimal req/res stand-in: only what the limiter touches
-function call(limit, user, ip = '10.0.0.1') {
-    const req = { user: user ? { id: user } : undefined, ip };
+function call(limit, user, ip = '10.0.0.1', resource = undefined) {
+    const req = { user: user ? { id: user } : undefined, ip, resource };
     const out = { status: 200, headers: {}, body: null, passed: false };
     const res = {
         set(k, v) { out.headers[k] = v; return res; },
@@ -62,6 +62,13 @@ test('one person waiting does not hold up another', () => {
     const limit = oncePer('x', 60_000, clock());
     call(limit, 'a');
     assert.equal(call(limit, 'b').passed, true);
+});
+
+test('the resource keeps its own minute, apart from a person on the same host', () => {
+    const limit = oncePer('x', 60_000, clock());
+    call(limit, null, '127.0.0.1', { capabilities: ['system.edit'] });
+    assert.equal(call(limit, null, '127.0.0.1').passed, true, 'an admin refresh is not spent by the sync');
+    assert.equal(call(limit, null, '127.0.0.1', { capabilities: ['system.edit'] }).passed, false);
 });
 
 test('two actions keep separate minutes', () => {

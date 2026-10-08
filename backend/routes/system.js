@@ -188,7 +188,8 @@ function verdictFor(report) {
     return `None of this account's identifiers appear in the store. It keys actions by [${kinds}]; this account resolves to [${mine}]. If the ban was issued against an identifier the users table does not hold, the two can never meet.`;
 }
 
-// Reloads the catalog JSON without a restart; once a minute per person (any client can call it)
+// Reloads the catalog JSON without a restart; a session with system.edit or the resource
+// secret, held to one call a minute per caller (BACKEND.md §5)
 router.post('/api/system/refresh', oncePer('system.refresh', 60_000), (req, res) => {
     try {
         loadGameData(); // runs sync and load again

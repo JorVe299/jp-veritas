@@ -468,6 +468,9 @@ async function requireAuth(req, res, next) {
     if (!isApiPath(req.path)) return next();
     if (isAuthPath(req.path)) return next();
 
+    // SECURITY: set only by a matching resource secret; enforce() still gates what it may do
+    if (req.resource) return next();
+
     const { session, ended } = await currentSession(req, res);
     if (!session) {
         return res.status(401).json({
