@@ -37,6 +37,17 @@ function walk(rel) {
     });
 }
 
+// Browsers end an HTML comment at the legacy `--!>` as well as at `-->`
+const CLOSERS = new Map([['-->', new RegExp(String.raw`--!?>`)]]);
+
+/** Index of a block closer in text at or after `from`, or -1 */
+function closeAt(text, close, from = 0) {
+    const pattern = CLOSERS.get(close);
+    if (!pattern) return text.indexOf(close, from);
+    const hit = pattern.exec(text.slice(from));
+    return hit ? from + hit.index : -1;
+}
+
 /** Comment blocks as { at, lines }: runs of line comments, or one block comment */
 function commentBlocks(source, syntax) {
     const blocks = [];
@@ -53,7 +64,7 @@ function commentBlocks(source, syntax) {
         const text = line.trim();
         if (open) {
             open.lines.push(line);
-            if (text.includes(open.close)) {
+            if (closeAt(text, open.close) !== -1) {
                 blocks.push(open);
                 open = null;
             }
@@ -63,7 +74,7 @@ function commentBlocks(source, syntax) {
         if (opener) {
             endRun();
             const block = { at: i + 1, lines: [line], close: opener[1] };
-            if (text.indexOf(opener[1], opener[0].length) === -1) open = block;
+            if (closeAt(text, opener[1], opener[0].length) === -1) open = block;
             else blocks.push(block);
             return;
         }
@@ -86,7 +97,7 @@ const SECTION_MARKER = /^[-=]{3} .+ [-=]{3,}$/;
 function contentLines(block) {
     return block.lines
         .map(line => line.trim()
-            .replace(/(\*\/\}?|\]\]|-->)$/, '')
+            .replace(/(\*\/\}?|\]\]|--!?>)$/, '')
             .replace(/^(\{\/\*+|\/\*+|\/\/+|--\[\[|-{2,}|#|<!--|\*)/, '')
             .trim())
         .filter(text => text && !DECORATION.test(text) && !SECTION_MARKER.test(text) && !text.startsWith('@'));
@@ -132,6 +143,14 @@ test('the scanner flags an over-long block in every syntax', () => {
         assert.equal(violations(file, source).long.length, 1, file);
         assert.equal(violations(file, source.replace(/\n.*4/, '')).long.length, 0, `${file} at the limit`);
     }
+});
+
+test('an HTML comment closes at the legacy `--!>` terminator too', () => {
+    const atLimit = '<!-- 1\n 2\n 3\n--!>\n<p>x</p>';
+    assert.deepStrictEqual(violations('a.html', atLimit).long, []);
+    const closedEarly = '<!-- 1\n 2 --!>\n<p>3</p>\n<p>4</p>\n<p>5</p>';
+    assert.deepStrictEqual(violations('a.html', closedEarly).long, []);
+    assert.equal(violations('a.html', '<!-- 1\n 2\n 3\n 4\n--!>').long.length, 1);
 });
 
 test(`comment blocks are at most ${MAX_LINES} lines`, () => {

@@ -380,7 +380,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 202 tests
+cd backend  && npm test         # node --test, currently 203 tests
 cd frontend && npm test         # vitest run, currently 100 tests
 cd frontend && npx eslint . && npx vite build
 ```
