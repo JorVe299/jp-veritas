@@ -380,7 +380,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 202 tests
+cd backend  && npm test         # node --test, currently 214 tests
 cd frontend && npm test         # vitest run, currently 100 tests
 cd frontend && npx eslint . && npx vite build
 ```
@@ -456,6 +456,27 @@ player already holds never needs it. That check once refused to delete a taser.
 table, which is what qbx_garages reads. Writing `'{}'` there produces
 `attempt to perform arithmetic on a nil value (field 'engineHealth')` and the
 car cannot leave the garage.
+
+**An item name that becomes a file name needs both guards.** `GET
+/api/items/:name/image` builds a path out of the name, so `routes/inventory.js`
+keeps the allowlist `/^[a-z0-9_-]{1,64}$/i` *and* resolves the joined path and
+asserts it is still under the image folder (`underImageRoot`). The allowlist
+alone already refuses every traversal, but it is one regex away from not doing
+so, and the containment check is what a traversal then runs into. An escape is
+refused with 404, never trimmed and served. Weapon names are upper-case
+(above), so the allowlist is deliberately case-insensitive — a case-sensitive
+one would hide every weapon icon.
+
+**A vehicle model name is validated even when the catalog is empty.** The
+model arrives in the request body, feeds the Jenkins loop in `getHashKey()`
+and lands in `mods`. `vehicles.json` cannot be the only gate: it starts empty
+(above), and an empty catalog deliberately lets anything through, so a
+multi-megabyte `model` once reached a loop that ran over its whole length.
+`POST /api/manage/vehicle` therefore shape-checks it against `SAFE_MODEL`
+(`/^[a-z0-9_-]{1,32}$/i`, the shape of a spawn name) before the catalog, and
+`getHashKey()` caps its input at `MODEL_NAME_MAX` so the loop bound is a
+constant. Real spawn names are at most 23 characters, so the cap changes no
+hash a game would compute; the tests pin `adder`, `police` and `sultanrs`.
 
 **Neither ban record stores a `citizenid`.** Both store identifiers.
 Filtering "by citizen" means resolving that person to their identifiers and

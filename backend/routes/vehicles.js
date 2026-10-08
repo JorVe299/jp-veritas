@@ -7,11 +7,17 @@ const { getVehicles } = require('../utils/dataLoader');
 const router = express.Router();
 const TABLE = 'player_vehicles';
 
+// SECURITY: spawn-name allowlist; the name reaches the hash loop and the catalog from a body
+const SAFE_MODEL = /^[a-z0-9_-]{1,32}$/i;
+// Spawn names are at most 23 characters in GTA; the cap only bounds the loop
+const MODEL_NAME_MAX = 32;
+
 // GetHashKey(): Jenkins one-at-a-time over the lowercased name; garages need a correct 'hash'
 function getHashKey(name) {
     let hash = 0;
-    const s = String(name).toLowerCase();
-    for (let i = 0; i < s.length; i++) {
+    // SECURITY: iteration bounded by a constant, never by the caller's string length
+    const s = String(name).toLowerCase().slice(0, MODEL_NAME_MAX);
+    for (let i = 0; i < Math.min(s.length, MODEL_NAME_MAX); i++) {
         hash = (hash + s.charCodeAt(i)) >>> 0;
         hash = (hash + (hash << 10)) >>> 0;
         hash = (hash ^ (hash >>> 6)) >>> 0;
@@ -125,6 +131,13 @@ router.post('/api/manage/vehicle', async (req, res) => {
 
     if (!citizenid || !model) {
         return res.status(400).json({ error: 'citizenid and model are required' });
+    }
+
+    // SECURITY: shape-checked before the catalog, which may be empty and gate nothing
+    if (typeof model !== 'string' || !SAFE_MODEL.test(model)) {
+        return res.status(400).json({
+            error: 'model must be a spawn name: letters, digits, underscore or dash, up to 32 characters'
+        });
     }
 
     // Validate against vehicles.json; an empty catalog (resource never ran) lets it through
@@ -315,4 +328,4 @@ router.delete('/api/manage/vehicle/:id', async (req, res) => {
 });
 
 // Property helpers exported for the tests
-module.exports = { router, getHashKey, generatePlate, freshProperties, withMissingProperties };
+module.exports = { router, getHashKey, generatePlate, freshProperties, withMissingProperties, SAFE_MODEL };
