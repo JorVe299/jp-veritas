@@ -10,16 +10,10 @@ const MAX_AGE_MS = 10 * 60 * 1000;
 
 /**
  * Whether these cookies are marked `secure`
- * Unset COOKIE_SECURE derives it from the redirect URI's scheme (BACKEND.md §5)
+ * Delegates so the session cookie and these two can never drift apart (BACKEND.md §5)
  */
 function secure() {
-    const configured = String(process.env.COOKIE_SECURE || '').trim().toLowerCase();
-    if (configured === 'true') return true;
-    if (configured === 'false') return false;
-
-    // SECURITY: an https deployment gets the flag without a second setting; plain http keeps it
-    // off, since a secure cookie never arrives over http://ip:3001 and would lock the owner out
-    return String(process.env.DISCORD_REDIRECT_URI || '').trim().toLowerCase().startsWith('https://');
+    return auth.cookieSecure();
 }
 
 // SECURITY: httpOnly keeps the state out of document.cookie, so a script on the panel cannot

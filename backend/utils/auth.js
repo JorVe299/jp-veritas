@@ -197,12 +197,25 @@ function authorize(user, guild) {
 
 // --- Session --------------------------------------------------------------
 
+/**
+ * Whether cookies are marked `secure`; the one source for every cookie here
+ * Own switch, not NODE_ENV: a secure cookie is dropped on plain http://ip:3001
+ */
+function cookieSecure() {
+    const configured = String(process.env.COOKIE_SECURE || '').trim().toLowerCase();
+    if (configured === 'true') return true;
+    if (configured === 'false') return false;
+
+    // SECURITY: an https deployment gets the flag without a second setting; plain http keeps it
+    // off, since a secure cookie never arrives over http://ip:3001 and would lock the owner out
+    return String(process.env.DISCORD_REDIRECT_URI || '').trim().toLowerCase().startsWith('https://');
+}
+
 function cookieOptions(maxAgeMs) {
     return {
         httpOnly: true,
         sameSite: 'lax', // lax: lets the OAuth return from Discord carry the cookie
-        // Own switch, not NODE_ENV: a secure cookie is dropped on plain http://ip:3001
-        secure: process.env.COOKIE_SECURE === 'true',
+        secure: cookieSecure(),
         maxAge: maxAgeMs,
         path: '/'
     };
@@ -492,6 +505,6 @@ module.exports = {
     SYNC_SECONDS,
     configProblems, buildAuthorizeUrl, exchangeCode, fetchDiscordUser,
     fetchGuildRoles, authorize, issueSession, readSession, clearSession,
-    publicUser, cookieOptions, requireAuth, currentSession, syncSession,
+    publicUser, cookieSecure, cookieOptions, requireAuth, currentSession, syncSession,
     sealTokens, unsealTokens, isApiPath, isAuthPath
 };

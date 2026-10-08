@@ -407,10 +407,11 @@ Keys that have caused trouble:
   set; plain `http://` leaves it off, because a secure cookie never arrives
   over `http://ip:3001` and an unconditional flag would lock the owner out of
   a LAN install. `true` and `false` still override, and an existing `.env`
-  that says `false` keeps its old behaviour. `utils/oauthCookies.js` owns
-  this; `utils/auth.js` reads `COOKIE_SECURE` directly for the session
-  cookie, so the two agree except that an unset value hardens the sign-in
-  cookies first.
+  that says `false` keeps its old behaviour. `utils/auth.js` owns the
+  derivation in `cookieSecure()`, and `utils/oauthCookies.js` delegates to it,
+  so the session cookie and the two sign-in cookies cannot drift apart. That
+  matters most for the session cookie, which carries the sealed Discord
+  tokens; a test asserts the three agree.
 - `TRUST_PROXY` — how many reverse-proxy hops sit in front of this process
   (`1` behind one Caddy or nginx; an address list or `true` also work). Empty
   means none, so `X-Forwarded-For` is ignored and nobody can forge an address
@@ -436,7 +437,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 251 tests
+cd backend  && npm test         # node --test, currently 255 tests
 cd frontend && npm test         # vitest run, currently 100 tests
 cd frontend && npx eslint . && npx vite build
 ```
