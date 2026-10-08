@@ -1,6 +1,11 @@
 import { Fragment, useState } from 'react';
 import Icon from './Icon';
 
+// Reach a right has beyond its own label, stated where it is granted (BACKEND.md §9)
+const REACH = {
+    'groups.edit': 'A job membership lets the player switch to that job in game',
+};
+
 /** Capability-by-role grid; a table, not a role picker: it is read to compare roles */
 export default function CapabilityMatrix({
     roles,
@@ -96,6 +101,9 @@ export default function CapabilityMatrix({
                                         <th scope="row" className="matrix__what">
                                             <span className="matrix__label">{cap.label}</span>
                                             <span className="matrix__id u-mono">{cap.id}</span>
+                                            {REACH[cap.id] && (
+                                                <span className="matrix__note">{REACH[cap.id]}</span>
+                                            )}
                                         </th>
 
                                         {shown.map((role) => (

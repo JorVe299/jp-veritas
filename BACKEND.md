@@ -456,6 +456,9 @@ Fixing it means a shared secret the resource sends, not an exemption by path.
 **`groups.edit` is close to `job.edit`.** Adding a job membership lets the
 player switch to that job in game on a multi-job setup. The two are separate
 capabilities on purpose, but whoever grants `groups.edit` should know this.
+The permission table says so where the tick is: `CapabilityMatrix.jsx` keeps a
+`REACH` map of capability id to one line, shown under the capability's
+identifier. Disclosure only — the permission model is unchanged.
 
 **Role saving fails on the live server** with "The permissions could not be
 saved". The cause is almost certainly that `/opt/veritas/backend/data/` is not
