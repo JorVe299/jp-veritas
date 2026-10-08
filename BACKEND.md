@@ -185,6 +185,7 @@ commentPolicy.test.js  Repo-wide guard for the comment policy (§1).
 | `permissions.js` | The capability list, the route→capability table, and `enforce()`. |
 | `roleStore.js` | Roles as editable records, and the file they live in. |
 | `auth.js` | Discord OAuth, the session cookie, and resolving a person to a role. |
+| `resourceAuth.js` | The FiveM resource as a principal: the shared secret, and the one capability it carries. |
 | `identity.js` | Discord id ⇄ characters ⇄ identifiers. The portal's whole basis. |
 | `banlist.js` | Merging the two ban records into one shape. |
 | `banLog.js` | The ban history: panel bans kept past their `bans` row, in `data/banlog.json`. |
@@ -209,6 +210,13 @@ Two exemptions exist and both are deliberate: the sign-in flow, and
 everything under `/api/me`, which is guarded by ownership rather than by a
 role. Tests assert that the second one is exactly that narrow — `/api/members`
 and `/api/me-too` must not slip through it.
+
+One caller reaches past the *session* check without being either: the FiveM
+resource, which presents `RESOURCE_SECRET` instead (`utils/resourceAuth.js`,
+§5). It is not an exemption from `enforce()` — it is a principal with a fixed
+one-capability list, so an unruled or out-of-reach route answers 403 the same
+way. A wrong secret ends the request rather than degrading to an anonymous
+caller.
 
 There is a test that reads every `router.get/post/...` in `routes/` and
 fails if any lacks a rule. It has caught three separate mistakes in this
@@ -358,7 +366,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 191 tests
+cd backend  && npm test         # node --test, currently 202 tests
 cd frontend && npm test         # vitest run, currently 100 tests
 cd frontend && npx eslint . && npx vite build
 ```
@@ -482,3 +490,12 @@ changed, while the UI reported success. Worth re-testing once the write works
 before hunting it separately.
 
 Neither of these has been verified against the live server yet.
+`deploy/role-write-check.md` is the walk-through: it names the service user,
+reads the errno out of the `[Perms]` log line, and maps it to the fix. Note
+that the write is a temp file renamed into place, so the **folder** must be
+writable — a `chown` on `permissions.json` alone does not fix it.
+
+**The resource sync is fixed but unverified in production.** The shared secret
+(`RESOURCE_SECRET` / `Config.BackendSecret`, §5) is covered by tests, but no
+one has yet watched a real resource start reach a login-protected backend.
+The resource logs a distinct line on 401/403 naming the mismatch.
