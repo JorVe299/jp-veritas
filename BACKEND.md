@@ -359,11 +359,13 @@ cd frontend && npm run dev      # proxies /api to :3001
 
 ```bash
 cd backend  && npm test         # node --test, currently 191 tests
+cd frontend && npm test         # vitest run, currently 100 tests
 cd frontend && npx eslint . && npx vite build
 ```
 
-There is no frontend test runner. Frontend verification is lint, build, and
-reading.
+The frontend suite covers the pure helpers in `frontend/src/utils` and
+`frontend/src/lib` only (`frontend/README.md` lists them). Components are
+verified by lint, build, and reading.
 
 **On Windows**, kill stray Node processes before starting a server —
 Windows will happily let two processes bind 3001 and the second one's
