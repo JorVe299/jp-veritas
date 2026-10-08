@@ -2,6 +2,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const auth = require('../utils/auth');
+const oauthCookies = require('../utils/oauthCookies');
 const { charactersOf } = require('../utils/identity');
 const { capabilitiesOf } = require('../utils/permissions');
 
@@ -13,7 +14,6 @@ const PANEL_URL = process.env.PANEL_ORIGIN || '/';
 
 // SECURITY: the request picks a key, never a path
 const SURFACE_PATHS = { panel: '', portal: '/id' };
-const SURFACE_COOKIE = 'veritas_oauth_surface';
 
 function panelRedirect(res, params, surface) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
@@ -53,10 +53,7 @@ router.get('/api/auth/login', (req, res) => {
 
     // Return to the surface the sign-in started from (portal users land back on /id)
     const surface = req.query.surface === 'portal' ? 'portal' : 'panel';
-    res.cookie(SURFACE_COOKIE, surface, auth.cookieOptions(10 * 60 * 1000));
-
-    // Return trip only; 10 min covers the Discord dialog, abandoned attempts expire
-    res.cookie(auth.STATE_COOKIE, state, auth.cookieOptions(10 * 60 * 1000));
+    oauthCookies.set(res, state, surface);
     res.redirect(url);
 });
 
@@ -64,20 +61,20 @@ router.get('/api/auth/login', (req, res) => {
 router.get('/api/auth/callback', async (req, res) => {
     if (!auth.ENABLED) return panelRedirect(res);
 
+    // SECURITY: the authorization code arrives in the query because OAuth 2 puts it there; it is
+    // single use, bound to the state cookie below, and exchanged server-side at once
     const { code, state, error: oauthError } = req.query;
 
-    // Errors are reported on the surface the person started from; unknown values mean panel
-    const from = req.cookies?.[SURFACE_COOKIE] === 'portal' ? 'portal' : 'panel';
-    res.clearCookie(SURFACE_COOKIE, { path: '/' });
+    // Errors are reported on the surface the person started from
+    const from = oauthCookies.readSurface(req);
+    const expected = oauthCookies.readState(req);
+    oauthCookies.clear(res);
     const back = (params, surface) => panelRedirect(res, params, surface || from);
 
     // Cancelled in the Discord dialog
     if (oauthError) {
         return back({ auth: 'cancelled' });
     }
-
-    const expected = req.cookies?.[auth.STATE_COOKIE];
-    res.clearCookie(auth.STATE_COOKIE, { path: '/' });
 
     if (!code || !state || !expected) {
         return back({ auth: 'error', reason: 'Incomplete callback from Discord.' });

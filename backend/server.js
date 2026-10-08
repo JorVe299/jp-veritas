@@ -6,13 +6,20 @@ const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const { rateLimit } = require('express-rate-limit');
 const { loadGameData, getJobs, getItems, getVehicles } = require('./utils/dataLoader');
 const { FIVEM_API_URL } = require('./utils/bridge');
 const auth = require('./utils/auth');
 const perms = require('./utils/permissions');
 const resourceAuth = require('./utils/resourceAuth');
+const originGuard = require('./utils/originGuard');
+const limits = require('./utils/apiLimits');
 
 const app = express();
+
+// SECURITY: off unless configured; otherwise a client could claim any address in
+// X-Forwarded-For and get a rate-limit bucket per forged hop (BACKEND.md §5)
+app.set('trust proxy', limits.trustProxy());
 
 // CORS for the Vite dev server only; production is same-origin
 // credentials: the session cookie must be sent (rules out origin '*')
@@ -23,10 +30,17 @@ if (PANEL_ORIGIN) {
 app.use(express.json());
 app.use(cookieParser());
 
+// SECURITY: CSRF defence for every state-changing /api request; before the sign-in routes,
+// so POST /api/auth/logout is covered too (BACKEND.md §4)
+app.use(originGuard.guard);
+
 // Before the routes that read the cache
 loadGameData();
 
 // --- Sign-in --------------------------------------------------------------
+// SECURITY: own bucket; sign-in runs before requireAuth, so there is no id to key on yet
+app.use('/api/auth', rateLimit(limits.options(limits.AUTH_PER_WINDOW)));
+
 // Auth routes before requireAuth: reachable without a session
 app.use(require('./routes/auth').router);
 
@@ -34,6 +48,10 @@ app.use(require('./routes/auth').router);
 // it still passes enforce(), which holds it to its capability list (BACKEND.md §5)
 app.use(resourceAuth.identify);
 app.use(auth.requireAuth);
+
+// SECURITY: flood brake for every data route; after requireAuth, so the bucket is the
+// signed-in Discord id rather than one shared address behind a proxy (BACKEND.md §4)
+app.use(rateLimit(limits.options(limits.API_PER_WINDOW, limits.skipNonApi)));
 
 // SECURITY: enforce() before every data route; a route without a rule is denied
 app.use(perms.enforce);
