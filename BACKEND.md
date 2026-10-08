@@ -325,6 +325,45 @@ button in the frontend goes through `lib/useCooldown.js` and is disabled for
 is expensive also carry `oncePer(...)` server-side (currently
 `POST /api/system/refresh`).
 
+**A state-changing request must come from the panel's own host.** There is no
+CSRF token, because issuing one would need the frontend to carry it.
+`utils/originGuard.js` runs before the sign-in routes and refuses any
+`POST`/`PUT`/`PATCH`/`DELETE` under `/api/` whose `Origin` — or `Referer`,
+when `Origin` is absent — does not name this host, `X-Forwarded-Host`, or
+`PANEL_ORIGIN`. Together with `sameSite: 'lax'` on the session cookie that is
+the whole CSRF defence. Two deliberate holes: the comparison is by **host,
+not scheme**, because a TLS terminator forwards plain http to this process
+(§7); and a request carrying the `X-Veritas-Secret` header is exempt, because
+a cross-site page cannot set a custom header without a preflight this backend
+never approves. `GET` is never blocked — nothing under it changes state. A
+full token flow would add a route issuing a per-session token, its
+`enforce()` rule, and a frontend that echoes the token in a header on every
+write; do not half-build that.
+
+**One rate limiter covers every route.** `express-rate-limit` is mounted
+centrally in `server.js` — once on `/api/auth` (before the sign-in routes,
+where there is no id to key on yet) and once after `requireAuth` for
+everything else, so the bucket is the signed-in Discord id rather than one
+address shared behind a proxy. `utils/apiLimits.js` holds the window, the two
+limits and the key function; the FiveM resource gets a bucket of its own, so
+a noisy staff member cannot starve its sync. Static files are skipped, which
+keeps the panel loadable while a flood is being refused. `oncePer(...)` in
+`utils/rateLimit.js` is unchanged and still the per-action cooldown behind
+the refresh buttons — the two are layers, not alternatives.
+
+**The middleware order in `server.js` is load-bearing.** It is: CORS,
+`express.json`, `cookieParser`, `originGuard`, the `/api/auth` limiter, the
+sign-in routes, `resourceAuth.identify`, `requireAuth`, the API limiter,
+`enforce()`, then the data routes. A limiter moved before `requireAuth` loses
+the per-user bucket; `originGuard` moved after the sign-in routes stops
+covering `POST /api/auth/logout`.
+
+**The sign-in cookies get their flags in one place.** `utils/oauthCookies.js`
+writes both short-lived cookies of a sign-in attempt (the OAuth state and the
+surface to return to), so the route cannot set a weaker flag by accident:
+`httpOnly`, `sameSite: 'lax'`, `path: '/'`, 10 minutes, and `secure` as §5
+describes.
+
 ---
 
 ## 5. Configuration
@@ -345,7 +384,8 @@ Keys that have caused trouble:
   which staff member typed it.
 - `PANEL_ORIGIN` — where the sign-in returns to. Never taken from the
   request; the surface is picked from a fixed two-entry table, or it would
-  be an open redirect.
+  be an open redirect. It is also the one cross-origin host `originGuard`
+  accepts for a write (§4), so it belongs empty in production.
 - `BRIDGE_TOKEN` — only checked once `Config.RequireTokenEverywhere = true`
   in the bridge's `config.lua`. While that is false a token protects nothing:
   every built-in bridge route answers whoever can reach the FiveM HTTP port.
@@ -361,6 +401,22 @@ Keys that have caused trouble:
   exemption. An unset or empty value matches nothing: a caller presenting any
   secret is refused, including an empty one. The resource posts to
   `Config.BackendUrl`, which falls back to `http://localhost:3001`.
+- `COOKIE_SECURE` — marks the sign-in cookies `secure`. Empty is the default
+  and derives the flag from the `DISCORD_REDIRECT_URI` scheme: `https://`
+  there means the panel is behind a TLS terminator, so the flag is safe to
+  set; plain `http://` leaves it off, because a secure cookie never arrives
+  over `http://ip:3001` and an unconditional flag would lock the owner out of
+  a LAN install. `true` and `false` still override, and an existing `.env`
+  that says `false` keeps its old behaviour. `utils/oauthCookies.js` owns
+  this; `utils/auth.js` reads `COOKIE_SECURE` directly for the session
+  cookie, so the two agree except that an unset value hardens the sign-in
+  cookies first.
+- `TRUST_PROXY` — how many reverse-proxy hops sit in front of this process
+  (`1` behind one Caddy or nginx; an address list or `true` also work). Empty
+  means none, so `X-Forwarded-For` is ignored and nobody can forge an address
+  to get a fresh rate-limit bucket. It only matters for requests with no
+  session: those are bucketed by address, and with the setting wrong behind a
+  proxy every visitor shares one bucket.
 - `DISCORD_ADMIN_IDS` / `DISCORD_ADMIN_ROLE_IDS` — no longer read. An old
   `.env` that maps the owner only through them lets nobody in; rename them to
   `DISCORD_OWNER_IDS` / `DISCORD_ROLE_OWNER`.
@@ -380,7 +436,7 @@ cd frontend && npm run dev      # proxies /api to :3001
 ```
 
 ```bash
-cd backend  && npm test         # node --test, currently 215 tests
+cd backend  && npm test         # node --test, currently 251 tests
 cd frontend && npm test         # vitest run, currently 100 tests
 cd frontend && npx eslint . && npx vite build
 ```
