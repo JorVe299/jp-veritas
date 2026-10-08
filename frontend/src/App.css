@@ -892,7 +892,8 @@
     transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
 }
 
-.ladder__step:hover:not(:disabled) {
+/* Unpressed only: hovering the active step would undo its bone-on-asphalt inversion */
+.ladder__step:hover:not(:disabled):not(.is-active) {
     background: var(--c-surface-3);
     color: var(--c-text);
 }
@@ -963,7 +964,8 @@
     transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
 }
 
-.segment__btn:hover:not(:disabled) {
+/* Unpressed only: the pressed button is bone-on-asphalt, so recolouring it hides the label */
+.segment__btn:hover:not(:disabled):not([aria-pressed="true"]) {
     color: var(--c-text);
 }
 
