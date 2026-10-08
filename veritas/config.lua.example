@@ -12,6 +12,13 @@ Config.Token = ''
 -- true: every route needs the token; false opens the built-in ones (setup only); deletes always do
 Config.RequireTokenEverywhere = false
 
+-- Where the panel backend listens; the start-up sync posts here
+Config.BackendUrl = 'http://localhost:3001'
+
+-- SECURITY: same value as RESOURCE_SECRET in backend/.env; empty = no sync with login on
+-- Generate: openssl rand -hex 32
+Config.BackendSecret = ''
+
 -- Extra JSON dumps on resource start (file name -> function returning a table)
 -- For your own tooling; the backend reads only jobs, gangs, items and vehicles
 Config.ExtraDumps = {

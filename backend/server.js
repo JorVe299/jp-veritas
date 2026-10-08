@@ -10,6 +10,7 @@ const { loadGameData, getJobs, getItems, getVehicles } = require('./utils/dataLo
 const { FIVEM_API_URL } = require('./utils/bridge');
 const auth = require('./utils/auth');
 const perms = require('./utils/permissions');
+const resourceAuth = require('./utils/resourceAuth');
 
 const app = express();
 
@@ -28,6 +29,10 @@ loadGameData();
 // --- Sign-in --------------------------------------------------------------
 // Auth routes before requireAuth: reachable without a session
 app.use(require('./routes/auth').router);
+
+// SECURITY: before requireAuth, so the resource's own secret stands in for a session;
+// it still passes enforce(), which holds it to its capability list (BACKEND.md §5)
+app.use(resourceAuth.identify);
 app.use(auth.requireAuth);
 
 // SECURITY: enforce() before every data route; a route without a rule is denied

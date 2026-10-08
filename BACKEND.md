@@ -330,6 +330,15 @@ Keys that have caused trouble:
 - `BRIDGE_TOKEN` again: deleting a character needs it whatever
   `RequireTokenEverywhere` says. Without `Config.Token` set on both sides the
   delete answers 502 and names the missing token.
+- `RESOURCE_SECRET` — what the FiveM resource is recognised by. It has no
+  session, so its start-up POST to `/api/system/refresh` carries the secret in
+  an `X-Veritas-Secret` header (`Config.BackendSecret` on the resource side).
+  `utils/resourceAuth.js` runs before `requireAuth`, compares over SHA-256
+  digests, and lets the request on as a principal that holds `system.edit` and
+  nothing else — `enforce()` still decides, so this is a secret, not a path
+  exemption. An unset or empty value matches nothing: a caller presenting any
+  secret is refused, including an empty one. The resource posts to
+  `Config.BackendUrl`, which falls back to `http://localhost:3001`.
 - `DISCORD_ADMIN_IDS` / `DISCORD_ADMIN_ROLE_IDS` — no longer read. An old
   `.env` that maps the owner only through them lets nobody in; rename them to
   `DISCORD_OWNER_IDS` / `DISCORD_ROLE_OWNER`.
@@ -445,13 +454,6 @@ fail loudly if it does not.
 ---
 
 ## 9. Open at the time of writing
-
-**The resource's data sync cannot reach the backend with login on.** On
-start, `veritas/server.lua` POSTs `/api/system/refresh` with no session, so
-with Discord login configured it gets a 401 and logs "Could not sync with
-the backend". The catalog files are still written to disk; they are only
-picked up on the next backend restart or a press of "Reload reference data".
-Fixing it means a shared secret the resource sends, not an exemption by path.
 
 **`groups.edit` is close to `job.edit`.** Adding a job membership lets the
 player switch to that job in game on a multi-job setup. The two are separate

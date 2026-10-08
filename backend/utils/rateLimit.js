@@ -1,8 +1,10 @@
 // oncePer(): one request per window, per person, per action (in memory; a restart resets it)
 // The server-side guard behind the frontend's refresh cooldowns (BACKEND.md §4)
 
-/** Discord id when signed in, else the IP (login disabled) */
+/** Discord id when signed in, the resource for its secret, else the IP (login disabled) */
 function whoIs(req) {
+    // The resource shares the panel's host; an admin refresh must not spend its window
+    if (req.resource) return 'resource';
     return req.user?.id ? `user:${req.user.id}` : `ip:${req.ip}`;
 }
 

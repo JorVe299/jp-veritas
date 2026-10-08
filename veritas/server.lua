@@ -247,6 +247,33 @@ SetHttpHandler(function(req, res)
     end)
 end)
 
+-- --- Backend sync ---------------------------------------------------------
+
+local function backendUrl()
+    local base = (Config.BackendUrl or ''):gsub('/+$', '')
+    if base == '' then base = 'http://localhost:3001' end
+    return base .. '/api/system/refresh'
+end
+
+-- SECURITY: the backend has no session for the resource; the shared secret is the only
+-- thing it is recognised by (BACKEND.md §5)
+local function syncBackend()
+    local headers = { ['Content-Type'] = 'application/json' }
+    local secret = Config.BackendSecret or ''
+    if secret ~= '' then headers['X-Veritas-Secret'] = secret end
+
+    -- Fire and forget; the catalog files are already on disk either way
+    PerformHttpRequest(backendUrl(), function(err)
+        if err == 200 then
+            print('^2[Veritas] ^7Backend synced successfully.')
+        elseif err == 401 or err == 403 then
+            print('^1[Veritas] ^7Backend refused the sync - Config.BackendSecret must match RESOURCE_SECRET.')
+        else
+            print('^1[Veritas] ^7Could not sync with the backend (is it running?)')
+        end
+    end, 'POST', '', headers)
+end
+
 -- --- Startup --------------------------------------------------------------
 
 AddEventHandler('onResourceStart', function(resource)
@@ -273,12 +300,5 @@ AddEventHandler('onResourceStart', function(resource)
         print(('^2[Veritas] ^7Exported %s'):format(filename))
     end
 
-    -- Fire and forget; fails with Discord login on (BACKEND.md §9)
-    PerformHttpRequest('http://localhost:3001/api/system/refresh', function(err)
-        if err == 200 then
-            print('^2[Veritas] ^7Backend synced successfully.')
-        else
-            print('^1[Veritas] ^7Could not sync with the backend (is it running?)')
-        end
-    end, 'POST', '', { ['Content-Type'] = 'application/json' })
+    syncBackend()
 end)

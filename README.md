@@ -102,11 +102,12 @@ The three parts are deployed together. The backend and the panel share one port,
 You need Node.js 20.19 or newer (22 LTS recommended), access to the MySQL/MariaDB database your FiveM server uses, and a Discord application for sign-in.
 
 1. **Clone the repo outside `resources/`**, then link or copy `veritas/` into your server's resources (for example `resources/[local]/veritas`).
-2. **Configure the bridge.** Copy `veritas/config.lua.example` to `veritas/config.lua` and set `Config.Token` to a long random secret (`openssl rand -hex 32`). Set `Config.RequireTokenEverywhere = true` once setup works, because the bridge listens on the FiveM HTTP port, which is public on most servers. Add `ensure veritas` to `server.cfg`.
+2. **Configure the bridge.** Copy `veritas/config.lua.example` to `veritas/config.lua` and set `Config.Token` to a long random secret (`openssl rand -hex 32`). Set `Config.RequireTokenEverywhere = true` once setup works, because the bridge listens on the FiveM HTTP port, which is public on most servers. Set `Config.BackendSecret` to a second random secret, and `Config.BackendUrl` if the panel does not run on `http://localhost:3001`. Add `ensure veritas` to `server.cfg`.
 3. **Configure the backend.** Copy `backend/.env.example` to `backend/.env` and fill it in. Every setting is explained in that file. The ones you cannot skip:
    - `DB_*`: the database the game server writes to.
    - `FIVEM_JSON_PATH` and `FIVEM_API_URL`: where the `veritas` resource lives and how to reach it.
    - `BRIDGE_TOKEN`: the same value as `Config.Token`.
+   - `RESOURCE_SECRET`: the same value as `Config.BackendSecret`, so the resource's start-up sync is let in.
    - `DISCORD_*`: the OAuth app, with `DISCORD_REDIRECT_URI` also listed under Redirects in the Discord Developer Portal.
    - `DISCORD_OWNER_IDS` or `DISCORD_ROLE_OWNER`: at least one owner.
    - `SESSION_SECRET`: signs the login cookie.
