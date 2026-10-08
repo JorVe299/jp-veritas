@@ -143,20 +143,31 @@ function discoverImagePath() {
     return candidates.find(c => fs.existsSync(c)) || null;
 }
 
-const IMAGE_PATH = discoverImagePath();
+// SECURITY: absolute root; containment of a served file is asserted against it
+const IMAGE_PATH = (() => {
+    const found = discoverImagePath();
+    return found ? path.resolve(found) : null;
+})();
 if (IMAGE_PATH) {
     console.log(`[Inventory] item images from ${IMAGE_PATH}`);
 } else {
     console.log('[Inventory] no ox_inventory image folder found - the grid falls back to text tiles');
 }
 
-// SECURITY: the item name becomes a file path: strict allowlist (no traversal)
+// SECURITY: the item name becomes a file path: strict allowlist (no separator, no dot)
 const SAFE_ITEM = /^[a-z0-9_-]{1,64}$/i;
 
+// SECURITY: resolved path must stay under IMAGE_PATH; an escape is refused, never trimmed
+function underImageRoot(file) {
+    const resolved = path.resolve(file);
+    return resolved === IMAGE_PATH || resolved.startsWith(IMAGE_PATH + path.sep);
+}
+
 function imageFileFor(name) {
-    if (!IMAGE_PATH || !SAFE_ITEM.test(name)) return null;
+    if (!IMAGE_PATH || typeof name !== 'string' || !SAFE_ITEM.test(name)) return null;
     for (const ext of ['png', 'webp', 'jpg']) {
         const file = path.join(IMAGE_PATH, `${name}.${ext}`);
+        if (!underImageRoot(file)) return null;
         if (fs.existsSync(file)) return file;
     }
     return null;
@@ -403,4 +414,5 @@ async function handleMove(req, res) {
     }
 }
 
-module.exports = { router };
+// Image path resolution exported for the tests
+module.exports = { router, imageFileFor };

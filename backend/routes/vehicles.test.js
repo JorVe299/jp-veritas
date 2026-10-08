@@ -125,3 +125,67 @@ test('the repair takes the plate from the row, not from the old table', () => {
     const { props } = withMissingProperties({}, { ...ROW, plate: 'NEW 0001' });
     assert.equal(props.plate, 'NEW 0001');
 });
+
+// --- Model names ----------------------------------------------------------
+// SECURITY: the model drives the hash loop and lands in 'mods'; bounded at the boundary
+
+const express = require('express');
+const { router, SAFE_MODEL } = require('./vehicles');
+
+async function addVehicle(body) {
+    const app = express();
+    app.use(express.json());
+    app.use(router);
+    const server = app.listen(0);
+    try {
+        const res = await fetch(`http://127.0.0.1:${server.address().port}/api/manage/vehicle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        return { status: res.status, body: await res.json() };
+    } finally {
+        server.close();
+    }
+}
+
+test('known models still hash to the value the game computes', () => {
+    // GetHashKey() values; a changed hash strands the car in the garage
+    assert.equal(getHashKey('adder'), 3078201489);
+    assert.equal(getHashKey('police'), 2046537925);
+    assert.equal(getHashKey('sultanrs'), 3999278268);
+});
+
+test('a model name longer than the cap cannot lengthen the hash loop', () => {
+    const long = 'a'.repeat(5000000);
+    assert.equal(getHashKey(long), getHashKey('a'.repeat(32)));
+});
+
+test('a value carrying its own length does not drive the hash loop', () => {
+    for (const junk of [{ length: 1e9 }, null, undefined, 42, []]) {
+        const hash = getHashKey(junk);
+        assert.ok(Number.isInteger(hash), `${JSON.stringify(junk)} must still hash to an integer`);
+    }
+});
+
+test('real spawn names pass the model allowlist', () => {
+    for (const model in { adder: 1, police: 1, t20: 1, issi7: 1, sultanrs: 1, vehicle_name: 1 }) {
+        assert.ok(SAFE_MODEL.test(model), `${model} is a legitimate spawn name`);
+    }
+    assert.ok(SAFE_MODEL.test('ADDER'), 'case must not matter');
+    assert.ok(SAFE_MODEL.test('kuruma-2'), 'a dash is allowed');
+});
+
+test('an oversized or shaped-wrong model fails the allowlist', () => {
+    const bad = ['', 'a'.repeat(33), 'a'.repeat(100000), '../adder', 'adder adder', 'adder;x', 'adder.json'];
+    for (const model of bad) {
+        assert.equal(SAFE_MODEL.test(model), false, `${model.slice(0, 20)} must be refused`);
+    }
+});
+
+test('the add route refuses a model that is not a spawn name', async () => {
+    for (const model of ['a'.repeat(300), '../../etc/passwd', 42, { length: 1e9 }, ['adder']]) {
+        const res = await addVehicle({ citizenid: 'ABC123', model });
+        assert.equal(res.status, 400, JSON.stringify(res.body));
+    }
+});
